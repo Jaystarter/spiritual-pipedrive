@@ -1496,6 +1496,15 @@ function ProfileAssignmentPicker({
   selectedIds: string[];
   onChange: (ids: string[]) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const selectedProfiles = selectedIds
+    .map((id) => profiles.find((profile) => profile.id === id))
+    .filter(Boolean) as BoardProfile[];
+  const visibleProfiles = profiles.filter((profile) =>
+    profile.name.toLowerCase().includes(query.trim().toLowerCase())
+  );
+
   function toggle(profileId: string) {
     const selected = selectedIds.includes(profileId);
 
@@ -1517,31 +1526,135 @@ function ProfileAssignmentPicker({
 
   return (
     <div className="rounded-2xl border bg-card p-2">
-      <p className="px-1 pb-2 text-[0.68rem] font-black uppercase tracking-[0.16em] text-muted-foreground">
-        Assigned profiles ({selectedIds.length}/3)
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {profiles.map((profile) => {
-          const selected = selectedIds.includes(profile.id);
-
-          return (
-            <button
-              key={profile.id}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-2xl border px-2 py-1.5 text-xs font-bold transition",
-                selected
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "bg-background hover:bg-muted"
-              )}
-              onClick={() => toggle(profile.id)}
-              type="button"
-            >
-              <ProfileAvatar profile={profile} size="xs" />
-              {profile.name}
-            </button>
-          );
-        })}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="px-1 text-[0.68rem] font-black uppercase tracking-[0.16em] text-muted-foreground">
+            Assigned profiles ({selectedIds.length}/3)
+          </p>
+          <ProfileStack profiles={selectedProfiles} className="mt-2" />
+        </div>
+        <Button onClick={() => setOpen(true)} type="button" variant="outline">
+          Assign profiles
+        </Button>
       </div>
+
+      <AnimatePresence>
+        {open ? (
+          <div className="fixed inset-0 z-[95] flex items-end justify-center sm:items-center">
+            <motion.button
+              aria-label="Close assignment picker"
+              className="absolute inset-0 bg-foreground/45 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
+              type="button"
+            />
+            <motion.div
+              className="relative z-10 flex max-h-[86vh] w-full max-w-lg flex-col rounded-t-[2rem] border bg-card p-4 shadow-2xl sm:rounded-[2rem]"
+              initial={{ opacity: 0, y: 72, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 72, scale: 0.98 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Assign profiles"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+                    Assign profiles
+                  </p>
+                  <h3 className="mt-1 text-2xl font-black tracking-tight">
+                    Choose 1 to 3 people
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Search the registered profiles and tap to assign or remove.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setOpen(false)}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                >
+                  <X className="size-5" />
+                </Button>
+              </div>
+
+              <label className="relative mt-4 block">
+                <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <span className="sr-only">Search profiles</span>
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search profiles"
+                  className="h-11 w-full rounded-2xl border bg-background pl-11 pr-4 text-sm outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
+                />
+              </label>
+
+              <ProfileStack profiles={selectedProfiles} className="mt-3 rounded-2xl bg-background p-3" />
+
+              <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                {visibleProfiles.length > 0 ? (
+                  visibleProfiles.map((profile) => {
+                    const selected = selectedIds.includes(profile.id);
+                    const disabled = !selected && selectedIds.length >= 3;
+
+                    return (
+                      <button
+                        key={profile.id}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-2xl border bg-background p-3 text-left transition",
+                          selected && "border-primary bg-primary/10",
+                          disabled && "cursor-not-allowed opacity-45"
+                        )}
+                        disabled={disabled}
+                        onClick={() => toggle(profile.id)}
+                        type="button"
+                      >
+                        <ProfileAvatar profile={profile} size="sm" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-black">
+                            {profile.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {profile.active_contacts} active contacts
+                          </span>
+                        </span>
+                        <span
+                          className={cn(
+                            "rounded-full border px-2 py-1 text-[0.65rem] font-black uppercase tracking-[0.12em]",
+                            selected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {selected ? "Selected" : "Add"}
+                        </span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="rounded-2xl border border-dashed bg-background p-4 text-center text-sm text-muted-foreground">
+                    No profiles match that search.
+                  </p>
+                )}
+              </div>
+
+              <Button
+                className="mt-4 w-full"
+                disabled={selectedIds.length < 1}
+                onClick={() => setOpen(false)}
+                type="button"
+              >
+                Done
+              </Button>
+            </motion.div>
+          </div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
