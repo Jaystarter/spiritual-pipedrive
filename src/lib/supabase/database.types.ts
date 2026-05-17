@@ -19,8 +19,11 @@ export type Database = {
           phone: string | null;
           teacher: string | null;
           notes: string | null;
+          assigned_profile_ids: string[];
           sort_order: number;
           baptized_at: string | null;
+          last_contacted_at: string | null;
+          next_follow_up_at: string | null;
           archived_at: string | null;
           created_at: string;
           updated_at: string;
@@ -32,8 +35,11 @@ export type Database = {
           phone?: string | null;
           teacher?: string | null;
           notes?: string | null;
+          assigned_profile_ids?: string[];
           sort_order?: number;
           baptized_at?: string | null;
+          last_contacted_at?: string | null;
+          next_follow_up_at?: string | null;
           archived_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -45,11 +51,94 @@ export type Database = {
           phone?: string | null;
           teacher?: string | null;
           notes?: string | null;
+          assigned_profile_ids?: string[];
           sort_order?: number;
           baptized_at?: string | null;
+          last_contacted_at?: string | null;
+          next_follow_up_at?: string | null;
           archived_at?: string | null;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      person_events: {
+        Row: {
+          id: string;
+          person_id: string;
+          event_type:
+            | "created"
+            | "stage_moved"
+            | "details_updated"
+            | "note_added"
+            | "archived";
+          title: string;
+          body: string | null;
+          from_stage: StageId | null;
+          to_stage: StageId | null;
+          actor_profile_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          person_id: string;
+          event_type:
+            | "created"
+            | "stage_moved"
+            | "details_updated"
+            | "note_added"
+            | "archived";
+          title: string;
+          body?: string | null;
+          from_stage?: StageId | null;
+          to_stage?: StageId | null;
+          actor_profile_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          person_id?: string;
+          event_type?:
+            | "created"
+            | "stage_moved"
+            | "details_updated"
+            | "note_added"
+            | "archived";
+          title?: string;
+          body?: string | null;
+          from_stage?: StageId | null;
+          to_stage?: StageId | null;
+          actor_profile_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "person_events_person_id_fkey";
+            columns: ["person_id"];
+            isOneToOne: false;
+            referencedRelation: "people";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      profiles: {
+        Row: {
+          id: string;
+          name: string;
+          avatar_url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          avatar_url?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          avatar_url?: string | null;
+          created_at?: string;
         };
         Relationships: [];
       };
