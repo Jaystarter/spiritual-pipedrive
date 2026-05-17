@@ -144,27 +144,27 @@ export function ProfileSheet({
             type="button"
           />
           <motion.div
-            className="relative z-10 max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] border bg-card p-4 shadow-2xl sm:rounded-[2rem]"
-            initial={{ opacity: 0, y: 80, scale: 0.98 }}
+            className="relative z-10 max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[1.75rem] border bg-card p-5 shadow-[0_60px_120px_-30px_oklch(0.2_0.028_264_/_0.45)] sm:rounded-[1.75rem]"
+            initial={{ opacity: 0, y: 60, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 80, scale: 0.98 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+            exit={{ opacity: 0, y: 60, scale: 0.98 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             role="dialog"
             aria-modal="true"
             aria-label="Choose profile"
           >
-            <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-muted sm:hidden" />
+            <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-foreground/10 sm:hidden" />
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+                <p className="text-[0.62rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                   Profiles
                 </p>
-                <h2 className="mt-1 text-3xl font-black tracking-tight">
+                <h2 className="mt-1.5 font-display text-3xl leading-[0.95] tracking-display sm:text-4xl">
                   Who is using the board?
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Pick your profile once. Contacts, moves, and notes will be
-                  attached to it until you switch.
+                  Pick your profile once. Contacts, moves, and notes are attached
+                  to it until you switch.
                 </p>
               </div>
               {!required ? (
@@ -184,7 +184,7 @@ export function ProfileSheet({
 
             <div className="mt-5 space-y-2">
               {profiles.length === 0 ? (
-                <div className="rounded-3xl border border-dashed bg-background p-5 text-center text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-dashed border-foreground/15 bg-background/60 p-6 text-center text-sm italic text-muted-foreground">
                   No profiles yet. Add the first one below.
                 </div>
               ) : null}
@@ -197,14 +197,14 @@ export function ProfileSheet({
                   <div
                     key={profile.id}
                     className={cn(
-                      "rounded-3xl border bg-background p-3 transition",
-                      active && "border-primary bg-primary/10"
+                      "rounded-2xl border border-foreground/10 bg-background/70 p-3 transition",
+                      active && "border-foreground/30 bg-foreground/5"
                     )}
                   >
                     <div className="flex items-center gap-3">
                       <button
                         aria-label={`Change ${profile.name}'s photo`}
-                        className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border bg-card font-black text-primary"
+                        className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-foreground/15 bg-card font-display tracking-display text-foreground/80 shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset]"
                         disabled={busy}
                         onClick={() => requestAvatar(profile.id)}
                         type="button"
@@ -220,8 +220,8 @@ export function ProfileSheet({
                         ) : (
                           profile.name.slice(0, 1).toUpperCase()
                         )}
-                        <span className="absolute bottom-0 right-0 rounded-tl-lg bg-foreground p-1 text-background">
-                          <Camera className="size-3" />
+                        <span className="absolute -bottom-0.5 -right-0.5 rounded-full border-2 border-card bg-foreground p-1 text-background">
+                          <Camera className="size-2.5" />
                         </span>
                       </button>
 
@@ -231,19 +231,18 @@ export function ProfileSheet({
                         type="button"
                       >
                         <span className="flex items-center gap-2">
-                          <span className="truncate text-base font-black">
+                          <span className="truncate font-display text-lg leading-[1.05] tracking-display text-foreground">
                             {profile.name}
                           </span>
                           {active ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.65rem] font-black uppercase tracking-[0.12em] text-primary-foreground">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-[0.16em] text-background">
                               <Check className="size-3" />
                               Active
                             </span>
                           ) : null}
                         </span>
-                        <span className="mt-1 block text-xs text-muted-foreground">
-                          {profile.active_contacts} contacts ·{" "}
-                          {profile.baptized_this_month} baptized this month
+                        <span className="mt-0.5 block text-[0.72rem] text-muted-foreground">
+                          {profile.active_contacts} contacts · {profile.baptized_this_month} baptized this month
                         </span>
                       </button>
 
@@ -266,9 +265,8 @@ export function ProfileSheet({
                       </Button>
                     </div>
                     {confirming ? (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Tap the check to delete. Profiles with active contacts
-                        cannot be deleted.
+                      <p className="mt-2 text-[0.72rem] text-muted-foreground">
+                        Tap the check to delete. Profiles with active contacts can&apos;t be removed.
                       </p>
                     ) : null}
                   </div>
@@ -276,26 +274,26 @@ export function ProfileSheet({
               })}
             </div>
 
-            <form action={handleCreate} className="mt-5 flex gap-2 rounded-3xl border bg-background p-2">
+            <form action={handleCreate} className="mt-5 flex gap-2 rounded-2xl border border-foreground/10 bg-background/70 p-1.5">
               <input
                 name="profileName"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Add profile name"
-                className="min-w-0 flex-1 rounded-2xl bg-transparent px-3 text-sm outline-none"
+                className="min-w-0 flex-1 rounded-xl bg-transparent px-3 text-sm tracking-tight outline-none placeholder:text-muted-foreground/70"
               />
-              <Button disabled={isPending} type="submit">
+              <Button disabled={isPending} type="submit" size="sm">
                 {isPending ? (
-                  <RefreshCcw className="size-4 animate-spin" />
+                  <RefreshCcw className="size-3.5 animate-spin" />
                 ) : (
-                  <Plus className="size-4" />
+                  <Plus className="size-3.5" />
                 )}
                 Add
               </Button>
             </form>
 
             {error ? (
-              <p className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p className="mt-3 rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </p>
             ) : null}
