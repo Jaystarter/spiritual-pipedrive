@@ -71,6 +71,9 @@ export type Database = {
             | "stage_moved"
             | "details_updated"
             | "note_added"
+            | "study_logged"
+            | "text_reaction"
+            | "call_reaction"
             | "archived";
           title: string;
           body: string | null;
@@ -87,6 +90,9 @@ export type Database = {
             | "stage_moved"
             | "details_updated"
             | "note_added"
+            | "study_logged"
+            | "text_reaction"
+            | "call_reaction"
             | "archived";
           title: string;
           body?: string | null;
@@ -103,6 +109,9 @@ export type Database = {
             | "stage_moved"
             | "details_updated"
             | "note_added"
+            | "study_logged"
+            | "text_reaction"
+            | "call_reaction"
             | "archived";
           title?: string;
           body?: string | null;
@@ -114,6 +123,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "person_events_person_id_fkey";
+            columns: ["person_id"];
+            isOneToOne: false;
+            referencedRelation: "people";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      person_studies: {
+        Row: {
+          id: string;
+          person_id: string;
+          study_number: number;
+          title: string;
+          studied_at: string;
+          notes: string | null;
+          actor_profile_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          person_id: string;
+          study_number: number;
+          title?: string;
+          studied_at: string;
+          notes?: string | null;
+          actor_profile_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          person_id?: string;
+          study_number?: number;
+          title?: string;
+          studied_at?: string;
+          notes?: string | null;
+          actor_profile_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "person_studies_actor_profile_id_fkey";
+            columns: ["actor_profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "person_studies_person_id_fkey";
             columns: ["person_id"];
             isOneToOne: false;
             referencedRelation: "people";

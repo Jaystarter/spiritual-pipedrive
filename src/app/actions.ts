@@ -10,14 +10,18 @@ type PersonRow = Database["public"]["Tables"]["people"]["Row"];
 type PersonInsert = Database["public"]["Tables"]["people"]["Insert"];
 type PersonUpdate = Database["public"]["Tables"]["people"]["Update"];
 type EventInsert = Database["public"]["Tables"]["person_events"]["Insert"];
+type StudyInsert = Database["public"]["Tables"]["person_studies"]["Insert"];
+type StudyUpdate = Database["public"]["Tables"]["person_studies"]["Update"];
 
 export type PersonEvent = Database["public"]["Tables"]["person_events"]["Row"];
+export type PersonStudy = Database["public"]["Tables"]["person_studies"]["Row"];
 export type BoardProfile = Database["public"]["Tables"]["profiles"]["Row"] & {
   active_contacts: number;
   baptized_this_month: number;
 };
 export type BoardPerson = PersonRow & {
   events: PersonEvent[];
+  studies: PersonStudy[];
 };
 
 export type BoardState = {
@@ -63,12 +67,56 @@ type AddNoteInput = {
   actorProfileId: string;
 };
 
+type AddPersonStudyInput = {
+  id: string;
+  studyNumber: number;
+  title?: string;
+  studiedAt: string;
+  notes?: string;
+  actorProfileId: string;
+};
+
+type UpdatePersonStudyTitleInput = {
+  id: string;
+  title: string;
+  actorProfileId: string;
+};
+
+type DeletePersonStudyInput = {
+  id: string;
+  actorProfileId: string;
+};
+
+export type ContactReactionChannel = "text" | "call";
+export type ContactReactionOutcome =
+  | "responded"
+  | "no_response"
+  | "picked_up"
+  | "missed";
+
+type AddContactReactionInput = {
+  id: string;
+  channel: ContactReactionChannel;
+  outcome: ContactReactionOutcome;
+  actorProfileId: string;
+};
+
+type AddPersonStudyResult = {
+  study: PersonStudy;
+  event: PersonEvent;
+};
+
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function cleanOptional(value?: string) {
   const cleaned = value?.trim();
   return cleaned ? cleaned : null;
+}
+
+function cleanStudyTitle(value: string | undefined, studyNumber: number) {
+  const cleaned = value?.trim() || `Study ${studyNumber}`;
+  return cleaned.slice(0, 80);
 }
 
 function cleanDate(value?: string) {
@@ -83,6 +131,20 @@ function cleanDate(value?: string) {
   }
 
   return date.toISOString();
+}
+
+function cleanDateOnly(value?: string) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return value;
 }
 
 function cleanProfileName(value: string) {
@@ -245,7 +307,7 @@ async function insertEvent(
   });
 }
 
-async function hydrateEvents(people: PersonRow[]) {
+async function hydratePeople(people: PersonRow[]) {
   if (people.length === 0) {
     return [] as BoardPerson[];
   }
@@ -253,27 +315,42 @@ async function hydrateEvents(people: PersonRow[]) {
   const supabase = createSupabaseAdmin();
 
   if (!supabase) {
-    return people.map((person) => ({ ...person, events: [] }));
+    return people.map((person) => ({ ...person, events: [], studies: [] }));
   }
 
   const ids = people.map((person) => person.id);
-  const { data } = await supabase
+  const [{ data: events }, { data: studies }] = await Promise.all([
+    supabase
     .from("person_events")
     .select("*")
     .in("person_id", ids)
     .order("created_at", { ascending: false })
-    .limit(300);
+      .limit(300),
+    supabase
+      .from("person_studies")
+      .select("*")
+      .in("person_id", ids)
+      .order("study_number", { ascending: true }),
+  ]);
   const eventsByPerson = new Map<string, PersonEvent[]>();
+  const studiesByPerson = new Map<string, PersonStudy[]>();
 
-  for (const event of data ?? []) {
+  for (const event of events ?? []) {
     const events = eventsByPerson.get(event.person_id) ?? [];
     events.push(event);
     eventsByPerson.set(event.person_id, events);
   }
 
+  for (const study of studies ?? []) {
+    const personStudies = studiesByPerson.get(study.person_id) ?? [];
+    personStudies.push(study);
+    studiesByPerson.set(study.person_id, personStudies);
+  }
+
   return people.map((person) => ({
     ...person,
     events: eventsByPerson.get(person.id) ?? [],
+    studies: studiesByPerson.get(person.id) ?? [],
   }));
 }
 
@@ -369,13 +446,13 @@ export async function listPeople(): Promise<BoardState> {
 
   try {
     return {
-      people: await hydrateEvents(people),
+      people: await hydratePeople(people),
       profiles: await listProfilesWithStats(people),
       configured: true,
     };
   } catch (profileError) {
     return {
-      people: await hydrateEvents(people),
+      people: await hydratePeople(people),
       profiles: [],
       configured: true,
       error:
@@ -560,14 +637,14 @@ export async function createPerson(
     title: "Added to the journey",
     body:
       input.stage === "hunting"
-        ? "Started in Hunting."
+        ? "Started in Sowing Seeds."
         : `Started in ${getStageLabel(input.stage)}.`,
     to_stage: input.stage,
     actor_profile_id: actor.actorProfileId,
   });
 
   revalidatePath("/");
-  return { ok: true, data: { ...data, events: [] } };
+  return { ok: true, data: { ...data, events: [], studies: [] } };
 }
 
 export async function updatePerson(
@@ -660,7 +737,7 @@ export async function updatePerson(
   });
 
   revalidatePath("/");
-  return { ok: true, data: { ...data, events: [] } };
+  return { ok: true, data: { ...data, events: [], studies: [] } };
 }
 
 export async function movePerson(
@@ -831,4 +908,224 @@ export async function addPersonNote(
 
   revalidatePath("/");
   return { ok: true, data };
+}
+
+export async function addContactReaction(
+  input: AddContactReactionInput
+): Promise<ActionResult<PersonEvent>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const actor = await validateActorProfile(input.actorProfileId);
+
+  if ("error" in actor) {
+    return { ok: false, error: actor.error };
+  }
+
+  const outcomes: Record<ContactReactionOutcome, { label: string; body: string }> = {
+    responded: {
+      label: "Replied",
+      body: "Contact replied by text.",
+    },
+    no_response: {
+      label: "No reply",
+      body: "Contact has not replied yet.",
+    },
+    picked_up: {
+      label: "Picked up",
+      body: "Contact picked up the call.",
+    },
+    missed: {
+      label: "Missed",
+      body: "Call was not answered.",
+    },
+  };
+  const validTextOutcome =
+    input.channel === "text" &&
+    (input.outcome === "responded" || input.outcome === "no_response");
+  const validCallOutcome =
+    input.channel === "call" && (input.outcome === "picked_up" || input.outcome === "missed");
+
+  if (!validTextOutcome && !validCallOutcome) {
+    return { ok: false, error: "Choose a valid contact reaction." };
+  }
+
+  const outcome = outcomes[input.outcome];
+  const channelLabel = input.channel === "text" ? "Text" : "Call";
+  const { data, error } = await supabase
+    .from("person_events")
+    .insert({
+      person_id: input.id,
+      event_type: input.channel === "text" ? "text_reaction" : "call_reaction",
+      title: `${channelLabel}: ${outcome.label}`,
+      body: outcome.body,
+      actor_profile_id: actor.actorProfileId,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  await supabase
+    .from("people")
+    .update({ last_contacted_at: new Date().toISOString() })
+    .eq("id", input.id)
+    .is("archived_at", null);
+
+  revalidatePath("/");
+  return { ok: true, data };
+}
+
+export async function addPersonStudy(
+  input: AddPersonStudyInput
+): Promise<ActionResult<AddPersonStudyResult>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const actor = await validateActorProfile(input.actorProfileId);
+
+  if ("error" in actor) {
+    return { ok: false, error: actor.error };
+  }
+
+  const studyNumber = Math.trunc(input.studyNumber);
+
+  if (studyNumber < 1 || studyNumber > 30) {
+    return { ok: false, error: "Choose a study from 1 to 30." };
+  }
+
+  const studiedAt = cleanDateOnly(input.studiedAt);
+
+  if (!studiedAt) {
+    return { ok: false, error: "Choose the study date." };
+  }
+
+  const notes = cleanOptional(input.notes);
+  const studyInsert: StudyInsert = {
+    person_id: input.id,
+    study_number: studyNumber,
+    title: cleanStudyTitle(input.title, studyNumber),
+    studied_at: studiedAt,
+    notes,
+    actor_profile_id: actor.actorProfileId,
+  };
+
+  const { data: study, error: studyError } = await supabase
+    .from("person_studies")
+    .upsert(studyInsert, { onConflict: "person_id,study_number" })
+    .select("*")
+    .single();
+
+  if (studyError) {
+    return { ok: false, error: studyError.message };
+  }
+
+  await supabase
+    .from("people")
+    .update({ last_contacted_at: new Date().toISOString() })
+    .eq("id", input.id)
+    .is("archived_at", null);
+
+  const { data: event, error: eventError } = await supabase
+    .from("person_events")
+    .insert({
+      person_id: input.id,
+      event_type: "study_logged",
+      title: `${study.title} logged`,
+      body: notes
+        ? `Completed on ${formatStudyDate(studiedAt)}. ${notes}`
+        : `Completed on ${formatStudyDate(studiedAt)}.`,
+      actor_profile_id: actor.actorProfileId,
+    })
+    .select("*")
+    .single();
+
+  if (eventError) {
+    return { ok: false, error: eventError.message };
+  }
+
+  revalidatePath("/");
+  return { ok: true, data: { study, event } };
+}
+
+export async function updatePersonStudyTitle(
+  input: UpdatePersonStudyTitleInput
+): Promise<ActionResult<PersonStudy>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const actor = await validateActorProfile(input.actorProfileId);
+
+  if ("error" in actor) {
+    return { ok: false, error: actor.error };
+  }
+
+  const title = input.title.trim();
+
+  if (!title) {
+    return { ok: false, error: "Study name cannot be empty." };
+  }
+
+  if (title.length > 80) {
+    return { ok: false, error: "Study name must be 80 characters or less." };
+  }
+
+  const patch: StudyUpdate = { title };
+  const { data, error } = await supabase
+    .from("person_studies")
+    .update(patch)
+    .eq("id", input.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { ok: true, data };
+}
+
+export async function deletePersonStudy(
+  input: DeletePersonStudyInput
+): Promise<ActionResult<{ id: string }>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const actor = await validateActorProfile(input.actorProfileId);
+
+  if ("error" in actor) {
+    return { ok: false, error: actor.error };
+  }
+
+  const { error } = await supabase.from("person_studies").delete().eq("id", input.id);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { ok: true, data: { id: input.id } };
+}
+
+function formatStudyDate(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
 }

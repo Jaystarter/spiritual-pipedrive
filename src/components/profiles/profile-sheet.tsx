@@ -154,17 +154,10 @@ export function ProfileSheet({
             aria-label="Choose profile"
           >
             <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-foreground/10 sm:hidden" />
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-[0.62rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                   Profiles
-                </p>
-                <h2 className="mt-1.5 font-display text-3xl leading-[0.95] tracking-display sm:text-4xl">
-                  Who is using the board?
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Pick your profile once. Contacts, moves, and notes are attached
-                  to it until you switch.
                 </p>
               </div>
               {!required ? (
@@ -182,7 +175,7 @@ export function ProfileSheet({
               onChange={handleAvatarChange}
             />
 
-            <div className="mt-5 space-y-2">
+            <div className="mt-4 space-y-2">
               {profiles.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-foreground/15 bg-background/60 p-6 text-center text-sm italic text-muted-foreground">
                   No profiles yet. Add the first one below.

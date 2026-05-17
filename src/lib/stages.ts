@@ -1,8 +1,8 @@
 export const STAGES = [
   {
     id: "hunting",
-    label: "Hunting",
-    shortLabel: "Hunting",
+    label: "Sowing Seeds",
+    shortLabel: "Seeds",
     description: "People being prayed for, contacted, or invited.",
     tone: "amber",
   },
