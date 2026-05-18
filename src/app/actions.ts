@@ -84,6 +84,12 @@ type UpdatePersonStudyTitleInput = {
   actorProfileId: string;
 };
 
+type UpdatePersonStudyNoteInput = {
+  id: string;
+  notes: string;
+  actorProfileId: string;
+};
+
 type DeletePersonStudyInput = {
   id: string;
   actorProfileId: string;
@@ -919,6 +925,48 @@ export async function archivePerson(
   return { ok: true };
 }
 
+export async function deletePerson(
+  id: string,
+  actorProfileId: string
+): Promise<ActionResult<{ id: string }>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const actor = await validateActorProfile(actorProfileId);
+
+  if ("error" in actor) {
+    return { ok: false, error: actor.error };
+  }
+
+  const personId = id.trim();
+
+  if (!uuidPattern.test(personId)) {
+    return { ok: false, error: "Choose a valid contact." };
+  }
+
+  const { data, error } = await supabase
+    .from("people")
+    .delete()
+    .eq("id", personId)
+    .is("archived_at", null)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  if (!data) {
+    return { ok: false, error: "That contact no longer exists." };
+  }
+
+  revalidatePath("/");
+  return { ok: true, data };
+}
+
 export async function addPersonNote(
   input: AddNoteInput
 ): Promise<ActionResult<PersonEvent>> {
@@ -1150,6 +1198,37 @@ export async function updatePersonStudyTitle(
   }
 
   const patch: StudyUpdate = { title };
+  const { data, error } = await supabase
+    .from("person_studies")
+    .update(patch)
+    .eq("id", input.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { ok: true, data };
+}
+
+export async function updatePersonStudyNote(
+  input: UpdatePersonStudyNoteInput
+): Promise<ActionResult<PersonStudy>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const actor = await validateActorProfile(input.actorProfileId);
+
+  if ("error" in actor) {
+    return { ok: false, error: actor.error };
+  }
+
+  const patch: StudyUpdate = { notes: cleanOptional(input.notes) };
   const { data, error } = await supabase
     .from("person_studies")
     .update(patch)

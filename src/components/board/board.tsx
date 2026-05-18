@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -33,7 +34,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  Briefcase,
   Camera,
   Check,
   ChevronLeft,
@@ -43,7 +43,6 @@ import {
   Pencil,
   Plus,
   Search,
-  School,
   Settings,
   SlidersHorizontal,
   Star,
@@ -56,18 +55,18 @@ import {
   addPersonStudy,
   createPerson,
   createProfile,
+  deletePerson,
   deletePersonStudy,
   deleteProfile,
   movePerson,
   updatePersonAvatar,
-  updatePersonStudyTitle,
+  updatePersonStudyNote,
   updatePerson,
   type BoardProfile,
   type BoardPerson,
   type ContactReactionChannel,
   type ContactReactionOutcome,
   type PersonEvent,
-  type PersonLifeStatus,
   type PersonStudy,
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
@@ -757,6 +756,26 @@ export function BibleStudyBoard({
     );
   }
 
+  function handleDeleted(personId: string) {
+    const deletedPerson = people.find((person) => person.id === personId);
+
+    setPeople((current) => current.filter((person) => person.id !== personId));
+    setSelectedId((current) => (current === personId ? null : current));
+
+    if (deletedPerson) {
+      setProfiles((current) =>
+        current.map((profile) =>
+          deletedPerson.assigned_profile_ids.includes(profile.id)
+            ? {
+                ...profile,
+                active_contacts: Math.max(0, profile.active_contacts - 1),
+              }
+            : profile
+        )
+      );
+    }
+  }
+
   function handleStudyLogged(
     personId: string,
     study: PersonStudy,
@@ -895,6 +914,7 @@ export function BibleStudyBoard({
         configured={configured}
         onClose={() => setSelectedId(null)}
         onUpdated={handleUpdated}
+        onDeleted={handleDeleted}
         onProfilesChange={setProfiles}
         onNotice={setNotice}
         onStudyLogged={handleStudyLogged}
@@ -1148,28 +1168,30 @@ function AppShellHeader({
               </span>
             </button>
 
-            <div
-              aria-label={otherProfiles.length > 0 ? "Switch active profile" : undefined}
-              className="flex min-w-0 flex-1 items-center overflow-x-auto overscroll-x-contain px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-              onWheel={handleProfileWheel}
-              role={otherProfiles.length > 0 ? "group" : undefined}
-            >
-              <div className="flex h-[3.25rem] items-center gap-2">
-                {otherProfiles.map((profile) => (
-                  <button
-                    key={profile.id}
-                    type="button"
-                    aria-label={`Switch to ${profile.name}`}
-                    onClick={() => onSelectProfile(profile.id)}
-                    className="group/avatar relative inline-flex size-11 shrink-0 items-center justify-center rounded-full opacity-40 transition duration-200 ease-out hover:scale-105 hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95"
-                  >
-                    <span className="absolute inset-0 rounded-full bg-background/60 opacity-0 transition group-hover/avatar:opacity-100" />
-                    <ProfileAvatar profile={profile} size="md" />
-                  </button>
-                ))}
-                <HeaderSdMark />
+            {otherProfiles.length > 0 ? (
+              <div
+                aria-label="Switch active profile"
+                className="flex min-w-0 flex-1 items-center overflow-x-auto overscroll-x-contain px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                onWheel={handleProfileWheel}
+                role="group"
+              >
+                <div className="flex h-[3.25rem] items-center gap-2">
+                  {otherProfiles.map((profile) => (
+                    <button
+                      key={profile.id}
+                      type="button"
+                      aria-label={`Switch to ${profile.name}`}
+                      onClick={() => onSelectProfile(profile.id)}
+                      className="group/avatar relative inline-flex size-11 shrink-0 items-center justify-center rounded-full opacity-40 transition duration-200 ease-out hover:scale-105 hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95"
+                    >
+                      <span className="absolute inset-0 rounded-full bg-background/60 opacity-0 transition group-hover/avatar:opacity-100" />
+                      <ProfileAvatar profile={profile} size="md" />
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
+            <HeaderSdMark />
 
           <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(0.75rem+env(safe-area-inset-right))] z-[80] flex flex-col items-end gap-2 overflow-visible sm:bottom-8 sm:right-6">
             <AnimatePresence initial={false}>
@@ -1268,23 +1290,16 @@ function AppShellHeader({
                 railOpen && floatingActionButtonActiveClass
               )}
             >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "quick-actions-diamond-shine absolute inset-[0.22rem] rounded-full transition-opacity duration-200",
-                  railOpen ? "opacity-0" : "opacity-100"
-                )}
-              />
               <Plus
-                className={cn("relative z-10 size-5 transition-transform duration-200", railOpen && "rotate-45")}
+                className={cn("size-5 transition-transform duration-200", railOpen && "rotate-45")}
               />
               {followUpItems.length > 0 && !railOpen ? (
-                <span className="absolute -right-1 -top-1 z-20 inline-flex min-w-5 items-center justify-center rounded-full border border-white/80 bg-sky-500 px-1.5 text-[0.58rem] font-black leading-5 text-white shadow-[0_8px_18px_-8px_oklch(0.45_0.12_244_/_0.8),0_0_12px_oklch(0.76_0.13_244_/_0.5)]">
+                <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full border border-white/80 bg-sky-500 px-1.5 text-[0.58rem] font-black leading-5 text-white shadow-[0_8px_18px_-8px_oklch(0.45_0.12_244_/_0.8),0_0_12px_oklch(0.76_0.13_244_/_0.5)]">
                   {Math.min(followUpItems.length, 9)}
                 </span>
               ) : null}
               {(search || profileFilter !== "all") && followUpItems.length === 0 && !railOpen ? (
-                <span className="absolute right-2 top-2 z-20 size-2 rounded-full bg-sky-500 shadow-[0_0_10px_oklch(0.76_0.13_244_/_0.6)]" />
+                <span className="absolute right-2 top-2 size-2 rounded-full bg-sky-500 shadow-[0_0_10px_oklch(0.76_0.13_244_/_0.6)]" />
               ) : null}
             </button>
 
@@ -1377,107 +1392,63 @@ function AppShellHeader({
             ) : null}
 
             {openControl === "followup" ? (
-              <div className="absolute bottom-0 right-full z-[100] mr-3 w-[min(22rem,calc(100vw-5.5rem))] origin-bottom-right rounded-3xl border border-white/45 bg-white/40 p-3 shadow-[0_24px_70px_-38px_oklch(0.4_0.08_240_/_0.55)] backdrop-blur-2xl">
-                <div className="relative mb-3 px-8 text-center">
-                  <div className="pointer-events-none">
+              <div className="absolute bottom-0 right-full z-[100] mr-3 w-[min(22rem,calc(100vw-5.5rem))] origin-bottom-right rounded-3xl border border-white/55 bg-white/55 p-3 shadow-[0_24px_70px_-38px_oklch(0.4_0.08_240_/_0.55)] backdrop-blur-2xl">
+                <div className="mb-3 flex items-start justify-between gap-3 px-1">
+                  <div>
                     <p className="text-[0.64rem] font-black tracking-[0.22em] text-sky-600">
-                      Notifications
+                      Notifications - To Do
                     </p>
-                    <p className="mt-1 text-xs font-black text-sky-600">
-                      To-do list
+                    <p className="mt-1 text-xs font-bold text-muted-foreground">
+                      No activity updated in 5+ days.
                     </p>
                   </div>
                   <button
                     type="button"
                     aria-label="Close follow-up tasks"
                     onClick={() => setOpenControl(null)}
-                    className="absolute right-1 top-0 z-10 rounded-full p-1 text-muted-foreground transition hover:bg-background/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+                    className="rounded-full p-1 text-muted-foreground transition hover:bg-background/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
                   >
                     <X className="size-3.5" />
                   </button>
                 </div>
-                <div className="max-h-[24rem] overflow-y-auto pr-1">
+                <div className="max-h-[24rem] space-y-2 overflow-y-auto pr-1">
                   {followUpItems.length > 0 ? (
-                    <motion.ul
-                      aria-label="People needing follow-up"
-                      className="space-y-2"
-                      initial="hidden"
-                      animate="visible"
-                      variants={{
-                        hidden: {},
-                        visible: {
-                          transition: {
-                            staggerChildren: 0.07,
-                          },
-                        },
-                      }}
-                    >
-                      {followUpItems.map((item, index) => {
-                        const typeDelay = 0.12 + index * 0.08;
-                        const typeDuration = Math.min(0.95, 0.38 + item.person.name.length * 0.018);
-
-                        return (
-                          <motion.li
-                            key={item.person.id}
-                            className="soft-inset grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 overflow-hidden rounded-2xl border bg-white/50 px-3 py-2.5"
-                            variants={{
-                              hidden: { opacity: 0, y: 8, scale: 0.98 },
-                              visible: { opacity: 1, y: 0, scale: 1 },
-                            }}
-                            transition={{ duration: 0.22, ease: "easeOut" }}
-                          >
-                            <span className="inline-flex size-6 items-center justify-center rounded-full bg-sky-500/90 text-[0.65rem] font-black text-white shadow-[0_0_16px_oklch(0.76_0.13_244_/_0.38)]">
-                              {index + 1}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="flex min-w-0 items-center text-sm font-black text-foreground">
-                                <motion.span
-                                  className="min-w-0 truncate"
-                                  initial={{ clipPath: "inset(0 100% 0 0)" }}
-                                  animate={{ clipPath: "inset(0 0% 0 0)" }}
-                                  transition={{
-                                    duration: typeDuration,
-                                    delay: typeDelay,
-                                    ease: "easeOut",
-                                  }}
-                                >
-                                  {item.person.name}
-                                </motion.span>
-                                <motion.span
-                                  aria-hidden="true"
-                                  className="ml-0.5 h-4 w-px shrink-0 rounded-full bg-sky-500/75"
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: [0, 1, 1, 0] }}
-                                  transition={{
-                                    duration: typeDuration + 0.22,
-                                    delay: typeDelay,
-                                    ease: "easeOut",
-                                    times: [0, 0.12, 0.78, 1],
-                                  }}
-                                />
-                              </p>
-                              <p className="truncate text-[0.68rem] font-bold text-muted-foreground">
-                                {item.stageLabel} · {item.ownerLabel}
-                              </p>
-                              <p className="truncate text-[0.62rem] font-semibold text-muted-foreground/80">
-                                Last: {item.latestActivity.label}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-lg font-black leading-none text-sky-600">
-                                {item.daysQuiet}
-                              </p>
-                              <p className="text-[0.55rem] font-black uppercase tracking-[0.14em] text-muted-foreground">
-                                days
-                              </p>
-                            </div>
-                          </motion.li>
-                        );
-                      })}
-                    </motion.ul>
+                    followUpItems.map((item, index) => (
+                      <div
+                        key={item.person.id}
+                        className="soft-inset grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border bg-white/50 px-3 py-2.5"
+                      >
+                        <span className="inline-flex size-6 items-center justify-center rounded-full bg-sky-500/90 text-[0.65rem] font-black text-white shadow-[0_0_16px_oklch(0.76_0.13_244_/_0.38)]">
+                          {index + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-black text-foreground">
+                            {item.person.name}
+                          </p>
+                          <p className="truncate text-[0.68rem] font-bold text-muted-foreground">
+                            {item.stageLabel} · {item.ownerLabel}
+                          </p>
+                          <p className="truncate text-[0.62rem] font-semibold text-muted-foreground/80">
+                            Last: {item.latestActivity.label}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-black leading-none text-sky-600">
+                            {item.daysQuiet}
+                          </p>
+                          <p className="text-[0.55rem] font-black uppercase tracking-[0.14em] text-muted-foreground">
+                            days
+                          </p>
+                        </div>
+                      </div>
+                    ))
                   ) : (
-                    <div className="grid min-h-[9rem] place-items-center rounded-2xl border border-sky-200/45 bg-white/25 px-4 py-6 text-center">
-                      <Check className="size-6 text-sky-500" aria-hidden="true" />
+                    <div className="rounded-2xl border border-sky-200/60 bg-white/45 px-4 py-6 text-center">
+                      <Check className="mx-auto mb-2 size-5 text-sky-500" />
+                      <p className="text-sm font-black text-foreground">All caught up</p>
+                      <p className="mt-1 text-xs font-bold text-muted-foreground">
+                        Everyone has activity within five days.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -2674,6 +2645,7 @@ function PersonDetailPanel({
   configured,
   onClose,
   onUpdated,
+  onDeleted,
   onProfilesChange,
   onNotice,
   onStudyLogged,
@@ -2686,6 +2658,7 @@ function PersonDetailPanel({
   configured: boolean;
   onClose: () => void;
   onUpdated: (person: BoardPerson) => void;
+  onDeleted: (personId: string) => void;
   onProfilesChange: (profiles: BoardProfile[]) => void;
   onNotice: (message?: string) => void;
   onStudyLogged: (
@@ -2701,19 +2674,19 @@ function PersonDetailPanel({
     person?.assigned_profile_ids ?? []
   );
   const [detailNotes, setDetailNotes] = useState(person?.notes ?? "");
-  const [lifeStatus, setLifeStatus] = useState<PersonLifeStatus | null>(
-    person?.life_status ?? null
-  );
   const [detailTabsCollapsed, setDetailTabsCollapsed] = useState(false);
   const [assignmentPopupOpen, setAssignmentPopupOpen] = useState(false);
   const [isNameEditing, setIsNameEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(person?.name ?? "");
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState<0 | 1 | 2>(0);
   const [studySelection, setStudySelection] = useState<{
     studyNumber: number;
     focusKey: number;
   } | null>(null);
   const [isAvatarPending, startAvatarTransition] = useTransition();
+  const [isDeletePending, startDeleteTransition] = useTransition();
   const [swipeStartX, setSwipeStartX] = useState<number | null>(null);
+  const deleteConfirmId = useId();
   const nameInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const isCommittingNameRef = useRef(false);
@@ -2749,7 +2722,7 @@ function PersonDetailPanel({
     const frame = window.requestAnimationFrame(() => {
       setSelectedProfileIds(person.assigned_profile_ids);
       setDetailNotes(notes);
-      setLifeStatus(person.life_status);
+      setDeleteConfirmStep(0);
     });
 
     savedDetailNotesRef.current = notes;
@@ -2861,34 +2834,6 @@ function PersonDetailPanel({
     setIsNameEditing(true);
   }
 
-  function selectLifeStatus(nextStatus: PersonLifeStatus) {
-    if (!canEditPerson() || !person || !activeProfile) {
-      return;
-    }
-
-    const previousStatus = lifeStatus;
-    const nextLifeStatus = previousStatus === nextStatus ? null : nextStatus;
-
-    setLifeStatus(nextLifeStatus);
-    startTransition(async () => {
-      const result = await updatePerson({
-        id: person.id,
-        lifeStatus: nextLifeStatus,
-        actorProfileId: activeProfile.id,
-      });
-
-      if (!result.ok || !result.data) {
-        setLifeStatus(previousStatus);
-        onNotice(result.ok ? "The person could not be updated." : result.error);
-        return;
-      }
-
-      onNotice(undefined);
-      setLifeStatus(result.data.life_status);
-      onUpdated(result.data);
-    });
-  }
-
   function cancelNameEdit() {
     if (person) {
       setNameDraft(person.name);
@@ -2902,6 +2847,42 @@ function PersonDetailPanel({
     window.requestAnimationFrame(() => {
       nameInputRef.current?.focus();
       nameInputRef.current?.select();
+    });
+  }
+
+  function startDeleteConfirmation() {
+    if (!canEditPerson() || !person) {
+      return;
+    }
+
+    setDeleteConfirmStep(1);
+    onNotice(undefined);
+  }
+
+  function cancelDeleteConfirmation() {
+    setDeleteConfirmStep(0);
+    onNotice(undefined);
+  }
+
+  function confirmPermanentDelete() {
+    if (!canEditPerson() || !person || !activeProfile) {
+      return;
+    }
+
+    const personId = person.id;
+
+    startDeleteTransition(async () => {
+      const result = await deletePerson(personId, activeProfile.id);
+
+      if (!result.ok || !result.data) {
+        setDeleteConfirmStep(0);
+        onNotice(result.ok ? "The contact could not be deleted." : result.error);
+        return;
+      }
+
+      onNotice(undefined);
+      setDeleteConfirmStep(0);
+      onDeleted(result.data.id);
     });
   }
 
@@ -3043,7 +3024,7 @@ function PersonDetailPanel({
                   stageTones[person.stage].glow
                 )}
               />
-              <div className="relative flex items-start justify-between gap-4 border-b border-foreground/[0.07] px-6 pb-5 pt-6">
+              <div className="relative border-b border-foreground/[0.07] px-6 pb-5 pt-6">
                 <input
                   ref={avatarInputRef}
                   type="file"
@@ -3051,8 +3032,8 @@ function PersonDetailPanel({
                   className="sr-only"
                   onChange={handleAvatarChange}
                 />
-                <div className="min-w-0 flex-1">
-                    <div className="mb-3 flex w-full flex-col items-start justify-start gap-2 text-left uppercase text-muted-foreground">
+                <div className="min-w-0">
+                    <div className="mb-3 flex w-full flex-col items-start justify-start gap-2 pr-20 text-left uppercase text-muted-foreground">
                       <div className="flex max-w-full flex-wrap items-center justify-start gap-2 text-[0.66rem] font-semibold tracking-[0.28em] sm:tracking-[0.38em]">
                       <span
                         className={cn("size-1.5 rounded-full", stageTones[person.stage].dot)}
@@ -3085,7 +3066,7 @@ function PersonDetailPanel({
                         </div>
                       ) : null}
                     </div>
-                    <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex w-full min-w-0 items-center gap-3">
                       <button
                         aria-label={`Change photo for ${person.name}`}
                         className="group/avatar relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60"
@@ -3104,7 +3085,7 @@ function PersonDetailPanel({
                           <input
                             ref={nameInputRef}
                             aria-label="Contact name"
-                            className="soft-inset w-full min-w-0 rounded-xl border px-2 py-1 font-display text-[clamp(1.8rem,4vw,2.45rem)] leading-none tracking-display text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring/15"
+                            className="soft-inset block w-full min-w-0 max-w-none rounded-xl border px-3 py-1.5 font-display text-[clamp(1.35rem,5vw,2.25rem)] leading-[1.05] tracking-display text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring/15 sm:text-[clamp(1.65rem,3.5vw,2.45rem)]"
                             disabled={isPending}
                             onBlur={() => {
                               if (skipNextNameBlurRef.current) {
@@ -3130,11 +3111,11 @@ function PersonDetailPanel({
                             value={nameDraft}
                           />
                         ) : (
-                          <h2 className="flex min-w-0 items-center gap-2 font-display text-[clamp(1.8rem,4vw,2.45rem)] leading-none tracking-display text-foreground">
+                          <h2 className="min-w-0 font-display text-[clamp(1.35rem,5vw,2.25rem)] leading-[1.05] tracking-display text-foreground sm:text-[clamp(1.65rem,3.5vw,2.45rem)]">
                             <button
                               type="button"
                               aria-label={`Rename ${person.name}`}
-                              className="-mx-1 block min-w-0 max-w-full truncate rounded-xl px-1 text-left outline-none transition hover:bg-background/45 focus-visible:ring-2 focus-visible:ring-ring/20"
+                              className="-mx-1 block min-w-0 max-w-full whitespace-normal break-words rounded-xl px-1 text-left outline-none transition hover:bg-background/45 focus-visible:ring-2 focus-visible:ring-ring/20 [overflow-wrap:break-word] [text-wrap:balance]"
                               onDoubleClick={startNameEdit}
                               onKeyDown={(event) => {
                                 if (event.key === "Enter" || event.key === " ") {
@@ -3151,35 +3132,71 @@ function PersonDetailPanel({
                       </div>
                     </div>
                   </div>
-                <div className="flex shrink-0 items-start gap-2">
-                  <PipelineDaysLine days={daysInPipeline(person.created_at)} />
-                  <span className="flex shrink-0 items-center gap-1.5 text-sky-500">
+                <div className="absolute right-6 top-6 flex shrink-0 items-start gap-2">
+                  <span className="relative flex shrink-0 items-center text-sky-500">
                     <button
                       type="button"
-                      aria-label="Mark as university student"
-                      aria-pressed={lifeStatus === "student"}
-                      className={cn(
-                        "soft-control inline-flex size-7 items-center justify-center rounded-full border transition hover:-translate-y-0.5 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95",
-                        lifeStatus === "student" &&
-                          "border-white/90 bg-white/45 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.95)] shadow-[0_0_0_2px_oklch(1_0_0_/_0.72),0_0_20px_oklch(1_0_0_/_0.9),0_0_28px_oklch(0.76_0.13_244_/_0.38)]"
-                      )}
-                      onClick={() => selectLifeStatus("student")}
+                      aria-controls={deleteConfirmStep ? deleteConfirmId : undefined}
+                      aria-expanded={deleteConfirmStep > 0}
+                      aria-label={`Delete ${person.name}`}
+                      className="soft-control inline-flex size-7 items-center justify-center rounded-full border text-sky-500 transition hover:-translate-y-0.5 hover:border-red-300 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={isDeletePending}
+                      onClick={startDeleteConfirmation}
                     >
-                      <School className="size-3.5" />
+                      <Trash2 className="size-3.5" />
                     </button>
-                    <button
-                      type="button"
-                      aria-label="Mark as worker"
-                      aria-pressed={lifeStatus === "worker"}
-                      className={cn(
-                        "soft-control inline-flex size-7 items-center justify-center rounded-full border transition hover:-translate-y-0.5 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95",
-                        lifeStatus === "worker" &&
-                          "border-white/90 bg-white/45 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.95)] shadow-[0_0_0_2px_oklch(1_0_0_/_0.72),0_0_20px_oklch(1_0_0_/_0.9),0_0_28px_oklch(0.76_0.13_244_/_0.38)]"
-                      )}
-                      onClick={() => selectLifeStatus("worker")}
-                    >
-                      <Briefcase className="size-3.5" />
-                    </button>
+                    <AnimatePresence>
+                      {deleteConfirmStep > 0 ? (
+                        <motion.div
+                          id={deleteConfirmId}
+                          role="alertdialog"
+                          aria-label={`Confirm deleting ${person.name}`}
+                          className="soft-panel-strong absolute right-0 top-9 z-20 w-60 rounded-2xl border p-3 text-left text-foreground shadow-2xl"
+                          initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                          transition={{ duration: 0.16, ease: "easeOut" }}
+                        >
+                          <p className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-red-600">
+                            {deleteConfirmStep === 1
+                              ? "Delete this contact?"
+                              : "Delete permanently?"}
+                          </p>
+                          <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+                            {deleteConfirmStep === 1
+                              ? "This requires one more confirmation."
+                              : "This permanently removes the contact and their activity."}
+                          </p>
+                          <div className="mt-3 flex justify-end gap-2">
+                            <button
+                              type="button"
+                              className="rounded-full border border-foreground/10 px-3 py-1 text-[0.66rem] font-bold uppercase tracking-[0.16em] text-muted-foreground transition hover:border-foreground/25 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                              onClick={cancelDeleteConfirmation}
+                            >
+                              Cancel
+                            </button>
+                            {deleteConfirmStep === 1 ? (
+                              <button
+                                type="button"
+                                className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-[0.66rem] font-black uppercase tracking-[0.16em] text-red-700 transition hover:border-red-300 hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
+                                onClick={() => setDeleteConfirmStep(2)}
+                              >
+                                Yes
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="rounded-full bg-red-600 px-3 py-1 text-[0.66rem] font-black uppercase tracking-[0.16em] text-white transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/25 disabled:cursor-not-allowed disabled:opacity-70"
+                                disabled={isDeletePending}
+                                onClick={confirmPermanentDelete}
+                              >
+                                {isDeletePending ? "Deleting" : "Yes"}
+                              </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      ) : null}
+                    </AnimatePresence>
                   </span>
                   <Button onClick={onClose} size="icon" type="button" variant="ghost">
                     <X className="size-5" />
@@ -4335,14 +4352,17 @@ function StudyTimelineList({
         className="absolute bottom-2 left-[9px] top-2 w-px bg-foreground/10"
       />
       <ul className="space-y-3">
-        {studies.map((study) => {
+        {studies.map((study, index) => {
           const actor = profiles.find(
             (profile) => profile.id === study.actor_profile_id
           );
+          const displayNumber = studies.length - index;
+
           return (
             <StudyTimelineItem
               key={study.id}
               study={study}
+              displayNumber={displayNumber}
               actor={actor ?? null}
               personId={personId}
               activeProfile={activeProfile}
@@ -4361,6 +4381,7 @@ function StudyTimelineList({
 
 function StudyTimelineItem({
   study,
+  displayNumber,
   actor,
   personId,
   activeProfile,
@@ -4371,6 +4392,7 @@ function StudyTimelineItem({
   onStudySelected,
 }: {
   study: PersonStudy;
+  displayNumber: number;
   actor: BoardProfile | null;
   personId: string;
   activeProfile: BoardProfile | null;
@@ -4380,12 +4402,16 @@ function StudyTimelineItem({
   onStudyDeleted: (personId: string, studyId: string) => void;
   onStudySelected: (studyNumber: number) => void;
 }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState(getStudyTitle(study));
+  const [notePopupOpen, setNotePopupOpen] = useState(false);
+  const [noteDraft, setNoteDraft] = useState(study.notes ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [timestampVisible, setTimestampVisible] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const notePopupId = useId();
+  const noteInputId = useId();
   const studyTitle = getStudyTitle(study);
+  const savedNote = study.notes?.trim() ?? "";
+  const hasStudyNote = Boolean(savedNote);
 
   function requireStudyAction() {
     if (!configured) {
@@ -4401,38 +4427,55 @@ function StudyTimelineItem({
     return true;
   }
 
-  function handleRename(formData: FormData) {
+  function openNotePopup() {
+    if (!requireStudyAction()) {
+      return;
+    }
+
+    setConfirmDelete(false);
+    setNoteDraft(study.notes ?? "");
+    setNotePopupOpen(true);
+  }
+
+  function closeNotePopup() {
+    setNoteDraft(study.notes ?? "");
+    setNotePopupOpen(false);
+  }
+
+  function handleSaveNote(formData: FormData) {
     if (!requireStudyAction() || !activeProfile) {
       return;
     }
 
-    const nextTitle = String(formData.get("title") ?? "").trim();
+    const nextNote = String(formData.get("notes") ?? "").trim();
 
-    if (!nextTitle) {
-      onNotice("Study name cannot be empty.");
+    if (nextNote === savedNote) {
+      onNotice(undefined);
+      setNotePopupOpen(false);
       return;
     }
 
     startTransition(async () => {
-      const result = await updatePersonStudyTitle({
+      const result = await updatePersonStudyNote({
         id: study.id,
-        title: nextTitle,
+        notes: nextNote,
         actorProfileId: activeProfile.id,
       });
 
       if (!result.ok || !result.data) {
-        onNotice(result.ok ? "The study name could not be saved." : result.error);
+        onNotice(result.ok ? "The study note could not be saved." : result.error);
         return;
       }
 
       onNotice(undefined);
       onStudyRenamed(personId, result.data);
-      setTitle(getStudyTitle(result.data));
-      setIsEditing(false);
+      setNoteDraft(result.data.notes ?? "");
+      setNotePopupOpen(false);
     });
   }
 
   function handleDelete() {
+    setNotePopupOpen(false);
     setConfirmDelete(true);
   }
 
@@ -4469,7 +4512,7 @@ function StudyTimelineItem({
         onClick={() => setTimestampVisible((value) => !value)}
         type="button"
       >
-        {study.study_number}
+        {displayNumber}
       </button>
       <div className="soft-control rounded-xl border p-3">
         {timestampVisible ? (
@@ -4480,58 +4523,127 @@ function StudyTimelineItem({
         <div className="flex items-start gap-2.5">
           <ProfileAvatar profile={actor} size="xs" />
           <div className="min-w-0 flex-1">
-            {isEditing ? (
-              <form action={handleRename} className="flex min-w-0 items-center gap-1.5">
-                <input
-                  autoFocus
-                  className="soft-inset h-8 min-w-0 flex-1 rounded-lg border px-2 text-[0.82rem] font-medium tracking-tight outline-none transition focus-visible:ring-2 focus-visible:ring-ring/15"
-                  maxLength={80}
-                  name="title"
-                  onChange={(event) => setTitle(event.target.value)}
-                  value={title}
-                />
-                <Button disabled={isPending} size="sm" type="submit" className="h-8 px-2.5">
-                  Save
-                </Button>
-                <Button
+            <div className="flex min-w-0 items-center gap-1.5">
+              <button
+                aria-label={`Open ${studyTitle}`}
+                className="min-w-0 truncate text-left text-[0.85rem] font-medium tracking-tight text-foreground transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                onClick={() => onStudySelected(study.study_number)}
+                type="button"
+              >
+                {studyTitle}
+              </button>
+              <div className="relative shrink-0">
+                <button
+                  aria-controls={notePopupOpen ? notePopupId : undefined}
+                  aria-expanded={notePopupOpen}
+                  aria-haspopup="dialog"
+                  aria-label={`${hasStudyNote ? "Edit" : "Add"} quick note for ${studyTitle}`}
+                  className="shrink-0 rounded-md p-1 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
                   disabled={isPending}
-                  onClick={() => {
-                    setTitle(getStudyTitle(study));
-                    setIsEditing(false);
-                  }}
-                  size="sm"
-                  type="button"
-                  variant="ghost"
-                  className="h-8 px-2.5"
-                >
-                  Cancel
-                </Button>
-              </form>
-            ) : (
-              <div className="flex min-w-0 items-center gap-1.5">
-                <button
-                  aria-label={`Open care notes for ${studyTitle}`}
-                  className="min-w-0 truncate text-left text-[0.85rem] font-medium tracking-tight text-foreground transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
-                  onClick={() => onStudySelected(study.study_number)}
-                  type="button"
-                >
-                  {studyTitle}
-                </button>
-                <button
-                  aria-label={`Rename ${studyTitle}`}
-                  className="shrink-0 rounded-md p-1 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground"
-                  onClick={() => {
-                    if (requireStudyAction()) {
-                      setConfirmDelete(false);
-                      setIsEditing(true);
-                    }
-                  }}
+                  onClick={openNotePopup}
                   type="button"
                 >
                   <Pencil className="size-3.5" />
                 </button>
               </div>
-            )}
+              {notePopupOpen
+                ? createPortal(
+                    <div className="fixed inset-0 z-[130] flex items-center justify-center px-4 py-6 sm:px-6">
+                      <button
+                        aria-label="Close quick note"
+                        className="absolute inset-0 cursor-default bg-foreground/10 backdrop-blur-[1px]"
+                        disabled={isPending}
+                        onClick={closeNotePopup}
+                        type="button"
+                      />
+                      <motion.div
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        className="relative z-10 max-h-[calc(100vh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl border border-white/75 bg-white/90 p-3 text-foreground shadow-[0_24px_70px_-28px_oklch(0.2_0.028_264_/_0.55)] backdrop-blur-xl dark:border-foreground/10 dark:bg-card/95 sm:p-4"
+                        id={notePopupId}
+                        initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                        role="dialog"
+                        aria-modal="true"
+                        transition={{ duration: 0.16, ease: "easeOut" }}
+                      >
+                        <form
+                          action={handleSaveNote}
+                          className="space-y-2"
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") {
+                              event.preventDefault();
+                              closeNotePopup();
+                            }
+                          }}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <label
+                              className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-sky-700"
+                              htmlFor={noteInputId}
+                            >
+                              Quick note
+                            </label>
+                            <button
+                              aria-label="Close quick note"
+                              className="rounded-full p-1 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                              disabled={isPending}
+                              onClick={closeNotePopup}
+                              type="button"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </div>
+                          <textarea
+                            autoFocus
+                            className="soft-inset min-h-20 w-full resize-none rounded-xl border px-3 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring/20"
+                            id={noteInputId}
+                            name="notes"
+                            onChange={(event) => setNoteDraft(event.target.value)}
+                            placeholder="Add a quick note for this study..."
+                            rows={3}
+                            value={noteDraft}
+                          />
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[0.64rem] font-medium text-muted-foreground">
+                              Shows under the title.
+                            </span>
+                            <div className="flex gap-1.5">
+                              <Button
+                                className="h-7 px-2.5 text-[0.68rem]"
+                                disabled={isPending}
+                                onClick={closeNotePopup}
+                                size="sm"
+                                type="button"
+                                variant="ghost"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                className="h-7 px-3 text-[0.68rem]"
+                                disabled={isPending}
+                                size="sm"
+                                type="submit"
+                              >
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        </form>
+                      </motion.div>
+                    </div>,
+                    document.body
+                  )
+                : null}
+            </div>
+            {hasStudyNote ? (
+              <button
+                aria-label={`Open ${studyTitle}`}
+                className="mt-2 block w-full border-l-2 border-foreground/10 pl-3 text-left text-[0.78rem] leading-5 text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                onClick={() => onStudySelected(study.study_number)}
+                type="button"
+              >
+                {savedNote}
+              </button>
+            ) : null}
           </div>
           <div className="relative shrink-0">
             <button
@@ -4581,16 +4693,6 @@ function StudyTimelineItem({
             </AnimatePresence>
           </div>
         </div>
-        {study.notes ? (
-          <button
-            aria-label={`Open care notes for ${studyTitle}`}
-            className="mt-2 block w-full border-l-2 border-foreground/10 pl-3 text-left text-[0.78rem] leading-5 text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
-            onClick={() => onStudySelected(study.study_number)}
-            type="button"
-          >
-            {study.notes}
-          </button>
-        ) : null}
       </div>
     </li>
   );
@@ -4627,29 +4729,6 @@ function ContactAvatar({
       ) : (
         person?.name.slice(0, 1).toUpperCase() ?? "·"
       )}
-    </span>
-  );
-}
-
-function PipelineDaysLine({ days }: { days: number }) {
-  const digits = String(days).padStart(2, "0").split("");
-
-  return (
-    <span
-      className="inline-flex shrink-0 items-center gap-1 font-sans tracking-normal"
-      title={`${days} days in the pipeline`}
-      aria-label={`${days} days in the pipeline`}
-    >
-      {digits.map((digit, index) => (
-        <span
-          key={`${digit}-${index}`}
-          className="relative inline-flex h-10 w-8 items-center justify-center overflow-hidden rounded-md border border-slate-950/40 bg-slate-900 text-lg font-black leading-none text-white shadow-[0_2px_0_oklch(0.13_0.02_264),0_10px_20px_-14px_oklch(0.2_0.028_264_/_0.6)]"
-        >
-          <span className="absolute inset-x-0 top-1/2 h-px bg-white/12" />
-          <span className="absolute inset-x-0 top-0 h-1/2 bg-white/[0.04]" />
-          <span className="relative">{digit}</span>
-        </span>
-      ))}
     </span>
   );
 }
