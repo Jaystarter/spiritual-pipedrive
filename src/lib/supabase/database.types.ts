@@ -19,6 +19,7 @@ export type Database = {
           phone: string | null;
           teacher: string | null;
           notes: string | null;
+          avatar_url: string | null;
           assigned_profile_ids: string[];
           sort_order: number;
           baptized_at: string | null;
@@ -35,6 +36,7 @@ export type Database = {
           phone?: string | null;
           teacher?: string | null;
           notes?: string | null;
+          avatar_url?: string | null;
           assigned_profile_ids?: string[];
           sort_order?: number;
           baptized_at?: string | null;
@@ -51,6 +53,7 @@ export type Database = {
           phone?: string | null;
           teacher?: string | null;
           notes?: string | null;
+          avatar_url?: string | null;
           assigned_profile_ids?: string[];
           sort_order?: number;
           baptized_at?: string | null;

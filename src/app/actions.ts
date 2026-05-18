@@ -108,6 +108,7 @@ type AddPersonStudyResult = {
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_PERSON_STUDIES = 68;
 
 function cleanOptional(value?: string) {
   const cleaned = value?.trim();
@@ -525,6 +526,53 @@ export async function updateProfileAvatar(
 
     revalidatePath("/");
     return { ok: true, data: profile ?? { ...data, active_contacts: 0, baptized_this_month: 0 } };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not update photo.",
+    };
+  }
+}
+
+export async function updatePersonAvatar(
+  id: string,
+  avatarUrl: string | null,
+  actorProfileId: string
+): Promise<ActionResult<BoardPerson>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const actor = await validateActorProfile(actorProfileId);
+
+  if ("error" in actor) {
+    return { ok: false, error: actor.error };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("people")
+      .update({ avatar_url: cleanAvatarUrl(avatarUrl) })
+      .eq("id", id)
+      .is("archived_at", null)
+      .select("*")
+      .single();
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    await insertEvent(data.id, {
+      event_type: "details_updated",
+      title: "Contact photo updated",
+      body: avatarUrl ? "Added or changed the contact photo." : "Removed the contact photo.",
+      actor_profile_id: actor.actorProfileId,
+    });
+
+    revalidatePath("/");
+    return { ok: true, data: { ...data, events: [], studies: [] } };
   } catch (error) {
     return {
       ok: false,
@@ -998,8 +1046,8 @@ export async function addPersonStudy(
 
   const studyNumber = Math.trunc(input.studyNumber);
 
-  if (studyNumber < 1 || studyNumber > 30) {
-    return { ok: false, error: "Choose a study from 1 to 30." };
+  if (studyNumber < 1 || studyNumber > MAX_PERSON_STUDIES) {
+    return { ok: false, error: `Choose a study from 1 to ${MAX_PERSON_STUDIES}.` };
   }
 
   const studiedAt = cleanDateOnly(input.studiedAt);

@@ -7,8 +7,10 @@ import {
   useState,
   useSyncExternalStore,
   useTransition,
+  type ChangeEvent,
   type WheelEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   closestCorners,
@@ -30,18 +32,17 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Camera,
   Check,
   ChevronLeft,
   ChevronRight,
-  GripVertical,
   MessageCircle,
   Phone,
   Pencil,
   Plus,
   Search,
-  Send,
-  Share2,
   SlidersHorizontal,
+  Star,
   Trash2,
   X,
 } from "lucide-react";
@@ -50,8 +51,11 @@ import {
   addContactReaction,
   addPersonStudy,
   createPerson,
+  createProfile,
   deletePersonStudy,
+  deleteProfile,
   movePerson,
+  updatePersonAvatar,
   updatePersonStudyTitle,
   updatePerson,
   type BoardProfile,
@@ -96,58 +100,58 @@ type StageTone = {
 
 const stageTones: Record<StageId, StageTone> = {
   hunting: {
-    text: "text-amber-900",
-    soft: "bg-amber-50 text-amber-950",
-    ring: "ring-amber-400/55",
-    dot: "bg-amber-500",
-    card: "from-amber-100/55 via-amber-50/20 to-transparent",
-    edge: "via-amber-400/50",
-    glow: "from-amber-200/45 via-amber-100/0 to-transparent",
+    text: "text-sky-700",
+    soft: "soft-control text-sky-700",
+    ring: "ring-sky-300/60",
+    dot: "bg-sky-400",
+    card: "from-sky-100/55 via-white/30 to-transparent",
+    edge: "via-sky-300/55",
+    glow: "from-sky-100/60 via-white/0 to-transparent",
   },
   first_bible_study: {
-    text: "text-slate-700",
-    soft: "bg-slate-100 text-slate-900",
-    ring: "ring-slate-400/65",
-    dot: "bg-slate-500",
-    card: "from-slate-100/60 via-slate-50/25 to-transparent",
-    edge: "via-slate-400/45",
-    glow: "from-slate-200/35 via-slate-100/0 to-transparent",
+    text: "text-blue-700",
+    soft: "soft-control text-blue-700",
+    ring: "ring-blue-300/60",
+    dot: "bg-blue-400",
+    card: "from-blue-100/50 via-white/30 to-transparent",
+    edge: "via-blue-300/50",
+    glow: "from-blue-100/55 via-white/0 to-transparent",
   },
   third_bible_study: {
-    text: "text-indigo-800",
-    soft: "bg-indigo-50 text-indigo-950",
-    ring: "ring-indigo-400/50",
-    dot: "bg-indigo-500",
-    card: "from-indigo-100/50 via-indigo-50/20 to-transparent",
-    edge: "via-indigo-400/45",
-    glow: "from-indigo-200/40 via-indigo-100/0 to-transparent",
+    text: "text-cyan-700",
+    soft: "soft-control text-cyan-700",
+    ring: "ring-cyan-300/60",
+    dot: "bg-cyan-400",
+    card: "from-cyan-100/50 via-white/30 to-transparent",
+    edge: "via-cyan-300/50",
+    glow: "from-cyan-100/55 via-white/0 to-transparent",
   },
   seventh_bible_study: {
-    text: "text-violet-800",
-    soft: "bg-violet-50 text-violet-950",
-    ring: "ring-violet-400/50",
-    dot: "bg-violet-500",
-    card: "from-violet-100/50 via-violet-50/20 to-transparent",
-    edge: "via-violet-400/45",
-    glow: "from-violet-200/40 via-violet-100/0 to-transparent",
+    text: "text-sky-800",
+    soft: "soft-control text-sky-800",
+    ring: "ring-sky-300/60",
+    dot: "bg-sky-500",
+    card: "from-sky-100/45 via-white/30 to-transparent",
+    edge: "via-sky-300/50",
+    glow: "from-sky-100/55 via-white/0 to-transparent",
   },
   ready_for_baptism: {
-    text: "text-emerald-800",
-    soft: "bg-emerald-50 text-emerald-950",
-    ring: "ring-emerald-400/50",
-    dot: "bg-emerald-500",
-    card: "from-emerald-100/50 via-emerald-50/20 to-transparent",
-    edge: "via-emerald-400/45",
-    glow: "from-emerald-200/40 via-emerald-100/0 to-transparent",
+    text: "text-blue-800",
+    soft: "soft-control text-blue-800",
+    ring: "ring-blue-300/60",
+    dot: "bg-blue-500",
+    card: "from-blue-100/45 via-white/30 to-transparent",
+    edge: "via-blue-300/50",
+    glow: "from-blue-100/55 via-white/0 to-transparent",
   },
   baptized: {
-    text: "text-yellow-800",
-    soft: "bg-yellow-50 text-yellow-950",
-    ring: "ring-yellow-400/55",
-    dot: "bg-yellow-500",
-    card: "from-yellow-100/55 via-amber-50/20 to-transparent",
-    edge: "via-amber-400/50",
-    glow: "from-yellow-200/45 via-yellow-100/0 to-transparent",
+    text: "text-cyan-800",
+    soft: "soft-control text-cyan-800",
+    ring: "ring-cyan-300/60",
+    dot: "bg-cyan-500",
+    card: "from-cyan-100/45 via-white/30 to-transparent",
+    edge: "via-cyan-300/50",
+    glow: "from-cyan-100/55 via-white/0 to-transparent",
   },
 };
 
@@ -169,7 +173,80 @@ const stageIndex: Record<StageId, string> = {
   baptized: "06",
 };
 
-const TOTAL_STUDIES = 30;
+const STUDY_TITLES = [
+  "The Secret of the Forgiveness of Sins",
+  "The Savior Of Each Age & The New Name",
+  "Tree Of Life & Christ Ahnsahnghong",
+  "Jerusalem Mother",
+  "Heavenly Family & Earthly Family",
+  "Keep The Sabbath Day Holy",
+  "Passover The Way To Eternal Life",
+  "Cross Reverence Is Idolatry",
+  "Be Baptized Immediately",
+  "The Bible Is Fact",
+  "Whom Does The Bible Testify About?",
+  "King David & Christ Ahnsahnghong",
+  "God Who Built Zion",
+  "Heavenly Wedding Banquet",
+  "The History of Abraham's Family",
+  "Prophecy of Daniel 2&7",
+  "The Prophecy of Revelation 13",
+  "The Prophecy of Revelation 17 & 18",
+  "The Law of Tithe",
+  "The City of Refuge & The Earth",
+  "The Trinity",
+  "The Order of Melchizedek",
+  "Mother's the source of the water of life",
+  "Weeds & Wheat",
+  "The Church Bought With God's Own Blood",
+  "What is the Gospel?",
+  "You Shall Have No Other God's Before Me",
+  "The Work of God Putting A Seal",
+  "The Book of Life",
+  "The Soul Exist",
+  "The Church Established By The Root of David",
+  "The Last Adam & Christ Ahnsahnghong",
+  "The Bible is a book of Prophecy",
+  "What Day of the Week is the biblical Sabbath",
+  "The Law of Moses and The Law of Christ",
+  "Moses & Jesus (Meaning of the Cross)",
+  "Who are False Prophets",
+  "Blessings Through Tithing",
+  "About Food",
+  "The Words of God are Absolute",
+  "Apart From Me You Can Do Nothing",
+  "The Commands Of God And The Rules of Men",
+  "Watch Out For False Prophets",
+  "The Reign of God and The Reign of the Devil",
+  "The Law of Life and The Law of Death",
+  "Jesus 2nd Coming & Last Judgement",
+  "Coming on the Clouds",
+  "The Lesson From the Fig Tree",
+  "God's coming from the East",
+  "Old Testament & New Testament Sabbath",
+] as const;
+const TOTAL_STUDIES = STUDY_TITLES.length;
+const CM_TITLES = [
+  "FI: Two Meanings of the Wife of Christ",
+  "FI: The Bride in Rev 22:17 Indicates the Church",
+  "FI: The Bride of the Lamb in Rev 19:7",
+  'FI: The "Us" in Ge 1:26 Refers to the Triune God',
+  "FI: God Cannot Be Two because the Bible Says God is One",
+  "FI: God Cannot Come As A Man",
+  "FI: Christ Should Perform Miraculous Signs",
+  "FI: They Cannot Believe In God because They Cannot See Him",
+  "FI: The Bible Is Just A Book Written By Men",
+  "FI: We Can Be Saved Only By Faith",
+  "FI: Deeds Have Nothing To Do With Salvation",
+  "FI: Abolishment of the Passover of the New Covenant",
+  "FI: Origin of Sunday Service",
+  "FI: Sunday Service is Based on Jesus Resurrection and the Holy Spirit's",
+  "FI: The Early Church Worshiped and Gave Offerings on Sunday",
+  "FI: (Hosea 2:11) The Early Church Kept Sunday as the Lords Day",
+  "FI: (Col 2:16) The Sabbath and the Feast Were Abolished",
+  "FI: (Gal 4:10) The Sabbath and the Feast Were Abolished",
+] as const;
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 function sortPeople(people: BoardPerson[]) {
   return [...people].sort((a, b) => {
@@ -190,6 +267,32 @@ function formatDate(value: string | null) {
     month: "short",
     day: "numeric",
   }).format(new Date(value));
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return "Not set";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function daysInPipeline(createdAt: string) {
+  const timestamp = Date.parse(createdAt);
+
+  if (Number.isNaN(timestamp)) {
+    return 1;
+  }
+
+  const elapsedDays = Math.floor((Date.now() - timestamp) / 86_400_000);
+
+  return Math.max(1, elapsedDays);
 }
 
 function getAssignedProfiles(person: BoardPerson, profiles: BoardProfile[]) {
@@ -216,30 +319,18 @@ function sortStudies(studies: PersonStudy[]) {
   return [...studies].sort((a, b) => a.study_number - b.study_number);
 }
 
-function getStudyTitle(study: PersonStudy) {
-  return study.title?.trim() || `Study ${study.study_number}`;
+function getStudyCatalogTitle(studyNumber: number) {
+  return STUDY_TITLES[studyNumber - 1] ?? `Study ${studyNumber}`;
 }
 
-function buildStudyTimelineCopy(
-  person: BoardPerson,
-  studies: PersonStudy[],
-  profiles: BoardProfile[]
-) {
-  const studyLines = sortStudies(studies).map((study) => {
-    const actor = profiles.find((profile) => profile.id === study.actor_profile_id);
-    const actorName = actor?.name || person.teacher || "System";
-    const notes = study.notes?.trim().replace(/\s+/g, " ");
-    const details = [
-      getStudyTitle(study),
-      formatDate(study.studied_at),
-      actorName,
-      notes,
-    ].filter(Boolean);
+function getStudyTitle(study: PersonStudy) {
+  const title = study.title?.trim();
 
-    return `${study.study_number}. ${details.join(" - ")}`;
-  });
+  if (!title || title === `Study ${study.study_number}`) {
+    return getStudyCatalogTitle(study.study_number);
+  }
 
-  return [`Bible study timeline for ${person.name}`, "", ...studyLines].join("\n");
+  return title;
 }
 
 function getStudyTimestamp(value: string | null | undefined) {
@@ -316,36 +407,56 @@ function getNextStudyNumber(studies: PersonStudy[]) {
   return TOTAL_STUDIES;
 }
 
-function getMonthValue(value: string | null | undefined) {
-  return value ? value.slice(0, 7) : "";
-}
+function getDateValue(value: string | null | undefined) {
+  const datePart = value?.slice(0, 10);
 
-function getMonthLabel(monthValue: string) {
-  const [year, month] = monthValue.split("-").map(Number);
-
-  if (!year || !month) {
-    return "Month";
+  if (datePart && /^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    return datePart;
   }
 
+  return new Date().toISOString().slice(0, 10);
+}
+
+function dateValueToUtcDate(dateValue: string) {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function utcDateToDateValue(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function shiftDateValue(dateValue: string, offsetDays: number) {
+  const date = dateValueToUtcDate(dateValue);
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+
+  return utcDateToDateValue(date);
+}
+
+function getWeekStartDateValue(dateValue: string) {
+  const date = dateValueToUtcDate(dateValue);
+  date.setUTCDate(date.getUTCDate() - date.getUTCDay());
+
+  return utcDateToDateValue(date);
+}
+
+function getDateRangeValues(startDateValue: string, dayCount: number) {
+  const startDate = dateValueToUtcDate(startDateValue);
+
+  return Array.from({ length: dayCount }, (_, index) => {
+    const date = new Date(startDate);
+    date.setUTCDate(startDate.getUTCDate() + index);
+
+    return utcDateToDateValue(date);
+  });
+}
+
+function formatCalendarTitle(dateValue: string) {
   return new Intl.DateTimeFormat("en", {
-    month: "short",
-    year: "numeric",
+    month: "long",
+    day: "numeric",
     timeZone: "UTC",
-  }).format(new Date(Date.UTC(year, month - 1, 1)));
-}
-
-function shiftMonth(monthValue: string, offset: number) {
-  const [year, month] = monthValue.split("-").map(Number);
-
-  if (!year || !month) {
-    return monthValue;
-  }
-
-  const nextMonth = new Date(Date.UTC(year, month - 1 + offset, 1));
-  const nextYear = nextMonth.getUTCFullYear();
-  const nextMonthNumber = String(nextMonth.getUTCMonth() + 1).padStart(2, "0");
-
-  return `${nextYear}-${nextMonthNumber}`;
+  }).format(dateValueToUtcDate(dateValue));
 }
 
 function sameIds(a: string[], b: string[]) {
@@ -421,6 +532,8 @@ export function BibleStudyBoard({
   const [search, setSearch] = useState("");
   const [profileFilter, setProfileFilter] = useState("all");
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [pendingProfileSwitchId, setPendingProfileSwitchId] = useState<string | null>(null);
   const activeProfileId = useSyncExternalStore(
     onActiveProfileChange,
     getActiveProfileId,
@@ -473,6 +586,9 @@ export function BibleStudyBoard({
   const selectedPerson = selectedId
     ? people.find((person) => person.id === selectedId) ?? null
     : null;
+  const pendingProfileSwitch = pendingProfileSwitchId
+    ? profiles.find((profile) => profile.id === pendingProfileSwitchId) ?? null
+    : null;
 
   function requireActiveProfile() {
     if (!activeProfile) {
@@ -485,8 +601,19 @@ export function BibleStudyBoard({
   }
 
   function handleSelectProfile(profileId: string) {
+    if (activeProfileId && profileId !== activeProfileId) {
+      setPendingProfileSwitchId(profileId);
+      setProfileSheetOpen(false);
+      return;
+    }
+
+    confirmProfileSwitch(profileId);
+  }
+
+  function confirmProfileSwitch(profileId: string) {
     setActiveProfileId(profileId);
     setProfileSheetOpen(false);
+    setPendingProfileSwitchId(null);
     setNotice(undefined);
   }
 
@@ -645,11 +772,11 @@ export function BibleStudyBoard({
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground grain">
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 [background:radial-gradient(80rem_55rem_at_90%_-15%,oklch(0.86_0.09_70_/_0.32),transparent_55%),radial-gradient(60rem_45rem_at_-5%_110%,oklch(0.6_0.09_265_/_0.18),transparent_55%),linear-gradient(180deg,var(--background)_0%,oklch(0.95_0.018_82)_60%,var(--background)_100%)]"
+        className="pointer-events-none fixed inset-0 -z-10 [background:radial-gradient(70rem_44rem_at_18%_-10%,oklch(1_0_0_/_0.92),transparent_58%),radial-gradient(54rem_38rem_at_95%_8%,oklch(0.82_0.105_244_/_0.2),transparent_58%),radial-gradient(48rem_38rem_at_8%_105%,oklch(0.86_0.06_210_/_0.24),transparent_62%),linear-gradient(145deg,oklch(0.985_0.004_215)_0%,var(--background)_46%,oklch(0.91_0.018_215)_100%)]"
       />
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-px bg-[linear-gradient(90deg,transparent,oklch(0.2_0.028_264_/_0.18),transparent)]"
+        className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-px bg-[linear-gradient(90deg,transparent,oklch(0.76_0.13_244_/_0.28),transparent)]"
       />
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1840px] flex-col gap-5 px-4 pb-10 pt-5 sm:px-6 sm:pt-7">
         <AppShellHeader
@@ -661,6 +788,7 @@ export function BibleStudyBoard({
           onProfileFilterChange={setProfileFilter}
           onOpenProfiles={() => setProfileSheetOpen(true)}
           onSelectProfile={handleSelectProfile}
+          onAddContact={() => setQuickAddOpen(true)}
           configured={configured}
           notice={notice}
         />
@@ -678,7 +806,6 @@ export function BibleStudyBoard({
             activeProfile={activeProfile}
             configured={configured}
             isPending={isPending}
-            onCreated={handleCreated}
             onMove={moveWithButtons}
             onNotice={setNotice}
             onSelect={setSelectedId}
@@ -701,10 +828,21 @@ export function BibleStudyBoard({
         configured={configured}
         onClose={() => setSelectedId(null)}
         onUpdated={handleUpdated}
+        onProfilesChange={setProfiles}
         onNotice={setNotice}
         onStudyLogged={handleStudyLogged}
         onStudyRenamed={handleStudyRenamed}
         onStudyDeleted={handleStudyDeleted}
+      />
+      <QuickAddContactDialog
+        open={quickAddOpen}
+        profiles={profiles}
+        activeProfile={activeProfile}
+        configured={configured}
+        onClose={() => setQuickAddOpen(false)}
+        onCreated={handleCreated}
+        onProfilesChange={setProfiles}
+        onNotice={setNotice}
       />
       <ProfileSheet
         open={profileSheetOpen || requireProfile}
@@ -715,6 +853,53 @@ export function BibleStudyBoard({
         onProfilesChange={setProfiles}
         onSelectProfile={handleSelectProfile}
       />
+      <AnimatePresence>
+        {pendingProfileSwitch ? (
+          <motion.div
+            aria-modal="true"
+            className="fixed inset-0 z-[130] flex items-center justify-center bg-foreground/25 px-4 py-6 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            role="dialog"
+          >
+            <motion.div
+              className="soft-panel-strong w-full max-w-xs rounded-[1.5rem] border p-5 text-center"
+              initial={{ opacity: 0, y: 12, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className="mx-auto mb-3 flex justify-center">
+                <ProfileAvatar profile={pendingProfileSwitch} size="md" />
+              </div>
+              <h2 className="font-display text-2xl leading-none tracking-display text-foreground">
+                Switch profile?
+              </h2>
+              <p className="mt-2 text-sm leading-5 text-muted-foreground">
+                Do you want to switch to {pendingProfileSwitch.name}?
+              </p>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <Button
+                  className="h-10 rounded-full"
+                  onClick={() => setPendingProfileSwitchId(null)}
+                  type="button"
+                  variant="outline"
+                >
+                  No
+                </Button>
+                <Button
+                  className="baby-blue-button h-10 rounded-full"
+                  onClick={() => confirmProfileSwitch(pendingProfileSwitch.id)}
+                  type="button"
+                >
+                  Yes
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </main>
   );
 }
@@ -728,6 +913,7 @@ function AppShellHeader({
   onProfileFilterChange,
   onOpenProfiles,
   onSelectProfile,
+  onAddContact,
   configured,
   notice,
 }: {
@@ -739,6 +925,7 @@ function AppShellHeader({
   onProfileFilterChange: (value: string) => void;
   onOpenProfiles: () => void;
   onSelectProfile: (profileId: string) => void;
+  onAddContact: () => void;
   configured: boolean;
   notice?: string;
 }) {
@@ -801,8 +988,13 @@ function AppShellHeader({
 
   return (
     <header className="relative isolate z-[70] overflow-visible">
-      <div className="relative overflow-visible rounded-3xl border border-foreground/10 bg-card/85 p-2 shadow-[0_1px_0_oklch(1_0_0_/_0.45)_inset,0_18px_50px_-32px_oklch(0.2_0.028_264_/_0.22)] backdrop-blur-xl">
-        <div className="relative flex min-h-11 items-center overflow-visible pr-[5.75rem]">
+      <div className="relative overflow-visible border-b border-foreground/10 py-2">
+        <div className="mb-2 flex items-center justify-center sm:justify-start">
+          <h1 className="s-drive-wordmark" aria-label="S-Drive">
+            S-Drive
+          </h1>
+        </div>
+        <div className="relative flex min-h-11 items-center overflow-visible">
           <button
             type="button"
             aria-label={
@@ -811,14 +1003,10 @@ function AppShellHeader({
                 : "Choose active profile"
             }
             onClick={onOpenProfiles}
-            className={cn(
-              "group flex h-11 w-[9.5rem] min-w-0 shrink-0 items-center gap-3 rounded-2xl px-3 text-left transition hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 sm:w-[13.5rem] lg:w-[15rem]",
-              activeProfile &&
-                "bg-background/55 shadow-[0_1px_0_oklch(1_0_0_/_0.5)_inset]"
-            )}
+            className="group flex h-11 min-w-0 shrink-0 items-center gap-3 px-1 pr-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
           >
-            <ProfileAvatar profile={activeProfile} size="sm" />
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-none tracking-tight">
+            <ProfileAvatar profile={activeProfile} size="sm" live={Boolean(activeProfile)} />
+            <span className="min-w-0 max-w-[8rem] truncate text-sm font-semibold leading-none tracking-tight sm:max-w-[10rem]">
               {activeProfile ? activeProfile.name : "Choose profile"}
             </span>
           </button>
@@ -826,7 +1014,7 @@ function AppShellHeader({
           {otherProfiles.length > 0 ? (
             <div
               aria-label="Switch active profile"
-              className="ml-1 flex min-w-0 flex-1 items-center overflow-x-auto overscroll-x-contain px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              className="flex min-w-0 flex-1 items-center overflow-x-auto overscroll-x-contain px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
               onWheel={handleProfileWheel}
               role="group"
             >
@@ -847,15 +1035,29 @@ function AppShellHeader({
             </div>
           ) : null}
 
-          <div className="absolute right-0 top-0 z-[80] flex items-center gap-1 overflow-visible">
+          <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-0 z-[80] flex flex-col items-end overflow-visible sm:bottom-8">
+            <button
+              type="button"
+              aria-label="Add contact"
+              disabled={!configured || !activeProfile}
+              onClick={() => {
+                setOpenControl(null);
+                onAddContact();
+              }}
+              className={cn(
+                "soft-control relative inline-flex size-11 items-center justify-center rounded-l-2xl rounded-r-md border border-r-0 text-muted-foreground backdrop-blur-xl transition hover:-translate-x-0.5 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-45"
+              )}
+            >
+              <Plus className="size-4" />
+            </button>
             <button
               type="button"
               aria-label="Open search"
               aria-expanded={openControl === "search"}
               onClick={() => setOpenControl((current) => (current === "search" ? null : "search"))}
               className={cn(
-                "relative inline-flex size-11 items-center justify-center rounded-2xl bg-background/45 text-muted-foreground transition hover:bg-background/75 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
-                search && "text-foreground"
+                "soft-control -mt-px relative inline-flex size-11 items-center justify-center rounded-l-2xl rounded-r-md border border-r-0 text-muted-foreground backdrop-blur-xl transition hover:-translate-x-0.5 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
+                search && "text-sky-600 cyan-accent"
               )}
             >
               <Search className="size-4" />
@@ -869,8 +1071,8 @@ function AppShellHeader({
               aria-expanded={openControl === "filter"}
               onClick={() => setOpenControl((current) => (current === "filter" ? null : "filter"))}
               className={cn(
-                "relative inline-flex size-11 items-center justify-center rounded-2xl bg-background/45 text-muted-foreground transition hover:bg-background/75 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
-                profileFilter !== "all" && "text-foreground"
+                "soft-control -mt-px relative inline-flex size-11 items-center justify-center rounded-l-2xl rounded-r-md border border-r-0 text-muted-foreground backdrop-blur-xl transition hover:-translate-x-0.5 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
+                profileFilter !== "all" && "text-sky-600 cyan-accent"
               )}
             >
               <SlidersHorizontal className="size-4" />
@@ -880,7 +1082,7 @@ function AppShellHeader({
             </button>
 
             {openControl === "search" ? (
-              <div className="absolute right-0 top-full z-[100] mt-2 w-[min(20rem,calc(100vw-2rem))] origin-top-right rounded-3xl border border-foreground/10 bg-card p-3 shadow-[0_24px_70px_-32px_oklch(0.2_0.028_264_/_0.38)]">
+              <div className="soft-panel-strong absolute bottom-0 right-full z-[100] mr-3 w-[min(20rem,calc(100vw-5.5rem))] origin-bottom-right rounded-3xl border p-3">
                 <div className="mb-2 flex items-center justify-between gap-3 px-1">
                   <span className="text-[0.64rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                     Search contacts
@@ -907,7 +1109,7 @@ function AppShellHeader({
                       }
                     }}
                     placeholder="Search by name, owner, or note"
-                    className="h-12 w-full rounded-2xl border border-foreground/10 bg-background/60 px-3 pl-11 pr-10 text-sm font-medium tracking-tight outline-none transition placeholder:font-normal placeholder:text-muted-foreground/70 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/25"
+                    className="soft-inset h-12 w-full rounded-2xl border px-3 pl-11 pr-10 text-sm font-medium tracking-tight outline-none transition placeholder:font-normal placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/25"
                   />
                   {search ? (
                     <button
@@ -924,7 +1126,7 @@ function AppShellHeader({
             ) : null}
 
             {openControl === "filter" ? (
-              <div className="absolute right-0 top-full z-[100] mt-2 w-[min(18rem,calc(100vw-2rem))] origin-top-right rounded-3xl border border-foreground/10 bg-card p-3 shadow-[0_24px_70px_-32px_oklch(0.2_0.028_264_/_0.38)]">
+              <div className="soft-panel-strong absolute bottom-0 right-full z-[100] mr-3 w-[min(18rem,calc(100vw-5.5rem))] origin-bottom-right rounded-3xl border p-3">
                 <div className="mb-2 flex items-center justify-between gap-3 px-1">
                   <span className="text-[0.64rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                     Filter contacts
@@ -948,7 +1150,7 @@ function AppShellHeader({
                         setOpenControl(null);
                       }
                     }}
-                    className="h-12 w-full appearance-none rounded-2xl border border-foreground/10 bg-background/60 px-4 pr-9 text-sm font-medium tracking-tight outline-none transition focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-ring/25"
+                    className="soft-inset h-12 w-full appearance-none rounded-2xl border px-4 pr-9 text-sm font-medium tracking-tight outline-none transition focus-visible:ring-2 focus-visible:ring-ring/25"
                     aria-label="Filter by owner"
                   >
                     <option value="all">All contacts</option>
@@ -996,7 +1198,6 @@ function JourneyBoard({
   activeProfile,
   configured,
   isPending,
-  onCreated,
   onMove,
   onNotice,
   onSelect,
@@ -1007,7 +1208,6 @@ function JourneyBoard({
   activeProfile: BoardProfile | null;
   configured: boolean;
   isPending: boolean;
-  onCreated: (person: BoardPerson) => void;
   onMove: (person: BoardPerson, stage: StageId) => void;
   onNotice: (message?: string) => void;
   onSelect: (id: string) => void;
@@ -1035,7 +1235,6 @@ function JourneyBoard({
                 activeProfile={activeProfile}
                 configured={configured}
                 isPending={isPending}
-                onCreated={onCreated}
                 onMove={onMove}
                 onNotice={onNotice}
                 onSelect={onSelect}
@@ -1056,7 +1255,6 @@ function StageLane({
   activeProfile,
   configured,
   isPending,
-  onCreated,
   onMove,
   onNotice,
   onSelect,
@@ -1068,7 +1266,6 @@ function StageLane({
   activeProfile: BoardProfile | null;
   configured: boolean;
   isPending: boolean;
-  onCreated: (person: BoardPerson) => void;
   onMove: (person: BoardPerson, stage: StageId) => void;
   onNotice: (message?: string) => void;
   onSelect: (id: string) => void;
@@ -1081,8 +1278,8 @@ function StageLane({
     <section
       ref={setNodeRef}
       className={cn(
-        "group/lane relative flex h-full min-h-[42rem] w-[82vw] max-w-[22rem] flex-col rounded-[1.6rem] border bg-card/82 shadow-[0_1px_0_oklch(1_0_0_/_0.5)_inset,0_30px_60px_-32px_oklch(0.2_0.028_264_/_0.16)] transition-all md:w-auto md:max-w-none",
-        isOver && "ring-2 ring-foreground/15 ring-offset-2 ring-offset-background"
+        "soft-panel group/lane relative flex h-full min-h-[42rem] w-[82vw] max-w-[22rem] flex-col rounded-[1.6rem] border transition-all md:w-auto md:max-w-none",
+        isOver && "ring-2 ring-sky-300/55 ring-offset-2 ring-offset-background"
       )}
     >
       <div className="relative flex items-start justify-between gap-4 px-5 pb-4 pt-5">
@@ -1095,6 +1292,7 @@ function StageLane({
             <h2 className="min-w-0 truncate font-display text-2xl leading-[0.95] tracking-display text-foreground">
               {stage.label}
             </h2>
+            {stage.id === "hunting" ? <SeedSproutAnimation /> : null}
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -1107,17 +1305,6 @@ function StageLane({
             {people.length}
           </span>
         </div>
-      </div>
-
-      <div className="relative px-3 pb-3">
-        <AddPersonForm
-          stage={stage.id}
-          profiles={profiles}
-          activeProfile={activeProfile}
-          configured={configured}
-          onCreated={onCreated}
-          onNotice={onNotice}
-        />
       </div>
 
       <div className="relative flex flex-1 flex-col">
@@ -1142,7 +1329,7 @@ function StageLane({
               />
             ))}
             {people.length === 0 ? (
-              <div className="flex min-h-44 flex-col items-center justify-center gap-3 rounded-[1.3rem] border border-dashed border-foreground/10 bg-background/40 p-6 text-center">
+              <div className="soft-inset flex min-h-44 flex-col items-center justify-center gap-3 rounded-[1.3rem] border border-dashed p-6 text-center">
                 <span
                   className={cn(
                     "flex size-9 items-center justify-center rounded-full text-foreground/40",
@@ -1166,26 +1353,43 @@ function StageLane({
   );
 }
 
-function AddPersonForm({
-  stage,
+function QuickAddContactDialog({
+  open,
   profiles,
   activeProfile,
   configured,
+  onClose,
   onCreated,
+  onProfilesChange,
   onNotice,
 }: {
-  stage: StageId;
+  open: boolean;
   profiles: BoardProfile[];
   activeProfile: BoardProfile | null;
   configured: boolean;
+  onClose: () => void;
   onCreated: (person: BoardPerson) => void;
+  onProfilesChange: (profiles: BoardProfile[]) => void;
   onNotice: (message?: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [stage, setStage] = useState<StageId>(STAGES[0].id);
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>(() =>
     activeProfile ? [activeProfile.id] : []
   );
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      setStage(STAGES[0].id);
+      setSelectedProfileIds(activeProfile ? [activeProfile.id] : []);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeProfile, open]);
 
   function handleSubmit(formData: FormData) {
     if (!configured) {
@@ -1214,72 +1418,115 @@ function AddPersonForm({
 
       onNotice(undefined);
       onCreated(result.data);
-      setOpen(false);
+      onClose();
     });
   }
 
   if (!open) {
-    return (
-      <button
-        type="button"
-        disabled={!configured || !activeProfile}
-        onClick={() => {
-          setSelectedProfileIds(activeProfile ? [activeProfile.id] : []);
-          setOpen(true);
-        }}
-        className={cn(
-          "group flex h-11 w-full items-center justify-between gap-2 rounded-2xl border border-dashed border-foreground/15 bg-background/60 px-3 text-left text-xs font-medium tracking-tight text-muted-foreground transition",
-          "hover:border-foreground/30 hover:bg-background hover:text-foreground",
-          (!configured || !activeProfile) && "cursor-not-allowed opacity-50"
-        )}
-      >
-        <span className="flex items-center gap-2">
-          <span className="flex size-6 items-center justify-center rounded-full border border-foreground/15 bg-card text-foreground/70 transition group-hover:border-foreground/30 group-hover:text-foreground">
-            <Plus className="size-3.5" />
-          </span>
-          {activeProfile ? "Add person" : "Choose profile first"}
-        </span>
-        <span className="hidden text-[0.6rem] uppercase tracking-[0.2em] opacity-60 group-hover:opacity-100 sm:inline">
-          N
-        </span>
-      </button>
-    );
+    return null;
   }
 
+  return createPortal(
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-foreground/35 px-4 py-6 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+    >
+      <form
+        action={handleSubmit}
+        className="soft-panel-strong w-full max-w-md rounded-lg border p-4"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="relative mb-4 flex items-center justify-center">
+          <h2 className="text-center font-display text-3xl leading-none tracking-display">
+            New Contacts
+          </h2>
+          <button
+            aria-label="Close add contact"
+            className="soft-control absolute right-0 inline-flex size-9 items-center justify-center rounded-md border text-muted-foreground transition hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            onClick={onClose}
+            type="button"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="space-y-3">
+          <input
+            autoFocus
+            name="name"
+            placeholder="Full name"
+            className="soft-inset h-12 w-full rounded-md border px-4 text-sm font-medium tracking-tight outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/20"
+          />
+          <select
+            aria-label="Starting stage"
+            className="soft-inset h-12 w-full rounded-md border px-4 text-sm font-medium tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            onChange={(event) => {
+              if (isStageId(event.target.value)) {
+                setStage(event.target.value);
+              }
+            }}
+            value={stage}
+          >
+            {STAGES.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+          <ProfileAssignmentPicker
+            profiles={profiles}
+            selectedIds={selectedProfileIds}
+            onChange={setSelectedProfileIds}
+            onProfilesChange={onProfilesChange}
+            shape="square"
+          />
+          <textarea
+            name="notes"
+            placeholder="Care notes (optional)"
+            rows={3}
+            className="soft-inset w-full resize-none rounded-md border px-4 py-3 text-sm leading-5 outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/20"
+          />
+        </div>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <Button className="rounded-md" disabled={isPending} onClick={onClose} type="button" variant="ghost">
+            Cancel
+          </Button>
+          <Button className="rounded-md" disabled={isPending || selectedProfileIds.length < 1} type="submit">
+            Save contact
+          </Button>
+        </div>
+      </form>
+    </div>,
+    document.body
+  );
+}
+
+function SeedSproutAnimation() {
   return (
-    <form action={handleSubmit} className="space-y-2 rounded-2xl border bg-background/90 p-3 shadow-sm">
-      <input
-        autoFocus
-        name="name"
-        placeholder="Full name"
-        className="h-10 w-full rounded-xl border-0 bg-transparent px-3 text-sm font-medium tracking-tight outline-none placeholder:text-muted-foreground/70 focus-visible:bg-card/60"
+    <motion.span
+      aria-hidden
+      className="relative ml-0.5 inline-flex size-6 shrink-0 items-end justify-center"
+      animate={{ y: [0, -2, 0] }}
+      transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+    >
+      <motion.span
+        className="absolute bottom-1 h-3 w-1 rounded-full bg-sky-500/80"
+        animate={{ scaleY: [0.75, 1.08, 0.82] }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
       />
-      <ProfileAssignmentPicker
-        profiles={profiles}
-        selectedIds={selectedProfileIds}
-        onChange={setSelectedProfileIds}
+      <motion.span
+        className="absolute bottom-3 left-2 h-2.5 w-3 rounded-[999px_999px_999px_0] bg-sky-300/90 shadow-[0_0_12px_oklch(0.76_0.13_244_/_0.38)]"
+        animate={{ rotate: [-12, -24, -12], scale: [0.9, 1.05, 0.9] }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
       />
-      <textarea
-        name="notes"
-        placeholder="Care notes (optional)"
-        rows={2}
-        className="w-full resize-none rounded-xl border-0 bg-transparent px-3 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground/70 focus-visible:bg-card/60"
+      <motion.span
+        className="absolute bottom-3 right-2 h-2.5 w-3 rounded-[999px_999px_0_999px] bg-cyan-200/95 shadow-[0_0_12px_oklch(0.76_0.13_244_/_0.35)]"
+        animate={{ rotate: [12, 24, 12], scale: [0.9, 1.05, 0.9] }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
       />
-      <div className="flex items-center justify-end gap-1 pt-1">
-        <Button
-          disabled={isPending}
-          onClick={() => setOpen(false)}
-          type="button"
-          variant="ghost"
-          size="sm"
-        >
-          Cancel
-        </Button>
-        <Button disabled={isPending} type="submit" size="sm">
-          Save
-        </Button>
-      </div>
-    </form>
+      <span className="absolute bottom-0 h-2.5 w-4 rounded-[999px_999px_999px_999px] bg-sky-700/75 shadow-[0_5px_12px_oklch(0.58_0.032_250_/_0.18)]" />
+    </motion.span>
   );
 }
 
@@ -1305,13 +1552,12 @@ function SortablePersonCard({
   onReactionLogged: (personId: string, event: PersonEvent) => void;
 }) {
   const {
-    attributes,
-    listeners,
     setNodeRef,
     transform,
     transition,
     isDragging,
   } = useSortable({ id: person.id });
+  const [collapsed, setCollapsed] = useState(false);
   const previousStage = getNextStage(person.stage, -1);
   const nextStage = getNextStage(person.stage, 1);
   const style = {
@@ -1325,15 +1571,32 @@ function SortablePersonCard({
   const latestReaction = getLatestContactReaction(person.events);
   const latestStudy = getLatestCompletedStudy(person.studies);
   const overdueReaction = isReactionOverdue(latestReaction);
+  const collapsedProfile = assignedProfiles[0] ?? activeProfile;
+  const collapseButton = (
+    <button
+      aria-label={collapsed ? `Expand ${person.name}` : `Collapse ${person.name}`}
+      aria-pressed={collapsed}
+      className={cn(
+        "absolute left-2 top-3 z-10 inline-flex size-7 items-center justify-center rounded-full border bg-background/85 shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset] transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95",
+        collapsed
+          ? "border-amber-400 text-amber-700"
+          : "border-foreground/10 text-foreground/35 hover:border-amber-300 hover:text-amber-600"
+      )}
+      onClick={() => setCollapsed((value) => !value)}
+      type="button"
+    >
+      <Star className={cn("size-3.5", collapsed && "fill-current")} />
+    </button>
+  );
 
   return (
     <motion.article
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative overflow-hidden rounded-2xl border border-transparent bg-card ring-1 ring-inset shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset,0_18px_36px_-26px_oklch(0.2_0.028_264_/_0.18)] transition-all",
+        "soft-control group relative overflow-hidden rounded-2xl border border-transparent ring-1 ring-inset transition-all",
         tone.ring,
-        "hover:-translate-y-0.5 hover:shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset,0_28px_52px_-26px_oklch(0.2_0.028_264_/_0.28)]",
+        "hover:-translate-y-0.5 hover:cyan-accent",
         overdueReaction &&
           "border-red-400/70 ring-red-400/55 shadow-[0_0_0_1px_oklch(0.64_0.2_25_/_0.22),0_0_28px_oklch(0.64_0.2_25_/_0.24)]",
         isDragging && "opacity-40"
@@ -1352,127 +1615,146 @@ function SortablePersonCard({
         )}
       />
 
-      <div className="relative flex min-h-10 items-center px-3.5 pt-3">
-        <button
-          className="absolute left-2 top-3 cursor-grab rounded-md p-1 text-foreground/30 opacity-0 transition hover:bg-foreground/5 hover:text-foreground/70 group-hover:opacity-100 active:cursor-grabbing"
-          type="button"
-          aria-label={`Drag ${person.name}`}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="size-3.5" />
-        </button>
-        <Button
-          aria-label={`Move ${person.name} backward`}
-          disabled={!configured || disabled || !previousStage}
-          onClick={() => previousStage && onMove(person, previousStage)}
-          size="icon-sm"
-          type="button"
-          variant="ghost"
-          className="absolute left-8 top-3 size-7"
-        >
-          <ChevronLeft className="size-3.5" />
-        </Button>
-        <button
-          className="mx-auto min-w-0 max-w-full px-10 text-center"
-          type="button"
-          onClick={() => onSelect(person.id)}
-        >
-          <h3 className="truncate font-display text-2xl leading-none tracking-display text-foreground transition group-hover:text-foreground">
-            {person.name}
-          </h3>
-        </button>
-        <Button
-          aria-label={`Move ${person.name} forward`}
-          disabled={!configured || disabled || !nextStage}
-          onClick={() => nextStage && onMove(person, nextStage)}
-          size="icon-sm"
-          type="button"
-          variant="ghost"
-          className="absolute right-8 top-3 size-7"
-        >
-          <ChevronRight className="size-3.5" />
-        </Button>
-        {hasFollowUp ? (
-          <span className="absolute right-3 top-12 shrink-0 rounded-full bg-foreground/5 px-2 py-0.5 text-[0.6rem] font-medium tracking-[0.12em] text-foreground/70">
-            {formatDate(person.next_follow_up_at)}
-          </span>
-        ) : null}
-      </div>
-
-      {latestStudy ? (
-        <p className="relative mx-3.5 mt-3 line-clamp-2 border-l-2 border-foreground/10 pl-3 text-[0.78rem] leading-5 text-muted-foreground">
-          <span className="font-medium text-foreground/80">Last study:</span>{" "}
-          {getStudyTitle(latestStudy)}
-          <span className="text-foreground/40"> · </span>
-          <span>{formatDate(latestStudy.studied_at)}</span>
-        </p>
-      ) : null}
-
-      {person.stage === "baptized" && person.baptized_at ? (
-        <p className="relative mx-3.5 mt-3 text-[0.62rem] font-medium uppercase tracking-[0.2em] text-amber-700">
-          Baptized {new Date(person.baptized_at).toLocaleDateString()}
-        </p>
-      ) : null}
-
-      <div className="relative mt-4 flex min-w-0 items-center gap-1.5 border-t border-foreground/[0.07] bg-foreground/[0.015] px-3 py-2">
-        {assignedProfiles.length > 0 ? (
-          <>
-            <div className="flex -space-x-1.5">
-              {assignedProfiles.slice(0, 3).map((profile) => (
-                <ProfileAvatar key={profile.id} profile={profile} size="xs" />
-              ))}
-            </div>
-            <span className="min-w-0 truncate text-[0.72rem] font-medium text-muted-foreground">
-              {assignedProfiles.map((profile) => profile.name).join(", ")}
-            </span>
-          </>
-        ) : (
-          <span className="shrink-0 text-[0.6rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Unassigned
-          </span>
-        )}
-        <div className="flex min-w-0 items-center gap-1">
-          {latestReaction ? (
-            <>
-              <span className="h-3.5 w-px shrink-0 bg-foreground/10" />
-              <div className="flex min-w-0 items-center gap-1 text-[0.66rem] font-medium text-muted-foreground">
-                {latestReaction.event_type === "text_reaction" ? (
-                  <MessageCircle className="size-3.5 shrink-0 text-foreground/70" />
-                ) : (
-                  <Phone className="size-3.5 shrink-0 text-foreground/70" />
-                )}
-                <span className="min-w-0 truncate uppercase tracking-[0.14em]">
-                  {getContactReactionDisplayTitle(latestReaction)}
-                </span>
-                <span className="shrink-0 text-foreground/25">·</span>
-                <span className="shrink-0 tracking-normal text-foreground/60">
-                  {formatDate(latestReaction.created_at)}
-                </span>
-              </div>
-              <ContactReactionControls
-                person={person}
-                activeProfile={activeProfile}
-                configured={configured}
-                disabled={disabled}
-                onNotice={onNotice}
-                onReactionLogged={onReactionLogged}
-                compact
-              />
-            </>
-          ) : (
-            <ContactReactionControls
-              person={person}
-              activeProfile={activeProfile}
-              configured={configured}
-              disabled={disabled}
-              onNotice={onNotice}
-              onReactionLogged={onReactionLogged}
-              compact
-            />
-          )}
+      {collapsed ? (
+        <div className="relative flex min-h-14 items-center justify-start py-2 pl-12 pr-3">
+          <button
+            aria-label={`Expand ${person.name}`}
+            aria-pressed={collapsed}
+            className="absolute left-3 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full border border-amber-400 bg-background/85 text-amber-700 shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset] transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95"
+            onClick={() => setCollapsed(false)}
+            type="button"
+          >
+            <Star className="size-3.5 fill-current" />
+          </button>
+          <div className="flex min-w-0 items-center justify-start gap-3">
+            <ProfileAvatar profile={collapsedProfile} size="icon" />
+            <button
+              className="min-w-0 text-left"
+              onClick={() => onSelect(person.id)}
+              type="button"
+            >
+              <h3 className="truncate font-display text-xl leading-none tracking-display text-foreground">
+                {person.name}
+              </h3>
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="relative flex min-h-10 items-center px-3.5 pt-3">
+            {collapseButton}
+            <Button
+              aria-label={`Move ${person.name} backward`}
+              disabled={!configured || disabled || !previousStage}
+              onClick={() => previousStage && onMove(person, previousStage)}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+              className="absolute left-8 top-3 size-7"
+            >
+              <ChevronLeft className="size-3.5" />
+            </Button>
+            <button
+              className="mx-auto min-w-0 max-w-full px-10 text-center"
+              type="button"
+              onClick={() => onSelect(person.id)}
+            >
+              <h3 className="truncate font-display text-2xl leading-none tracking-display text-foreground transition group-hover:text-foreground">
+                {person.name}
+              </h3>
+            </button>
+            <Button
+              aria-label={`Move ${person.name} forward`}
+              disabled={!configured || disabled || !nextStage}
+              onClick={() => nextStage && onMove(person, nextStage)}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+              className="absolute right-8 top-3 size-7"
+            >
+              <ChevronRight className="size-3.5" />
+            </Button>
+            {hasFollowUp ? (
+              <span className="absolute right-3 top-12 shrink-0 rounded-full bg-foreground/5 px-2 py-0.5 text-[0.6rem] font-medium tracking-[0.12em] text-foreground/70">
+                {formatDate(person.next_follow_up_at)}
+              </span>
+            ) : null}
+          </div>
+
+          {latestStudy ? (
+            <p className="relative mx-3.5 mt-3 line-clamp-2 border-l-2 border-foreground/10 pl-3 text-[0.78rem] leading-5 text-muted-foreground">
+              <span className="font-medium text-foreground/80">Last study:</span>{" "}
+              {getStudyTitle(latestStudy)}
+              <span className="text-foreground/40"> · </span>
+              <span>{formatDate(latestStudy.studied_at)}</span>
+            </p>
+          ) : null}
+
+          {person.stage === "baptized" && person.baptized_at ? (
+            <p className="relative mx-3.5 mt-3 text-[0.62rem] font-medium uppercase tracking-[0.2em] text-amber-700">
+              Baptized {new Date(person.baptized_at).toLocaleDateString()}
+            </p>
+          ) : null}
+
+          <div className="relative mt-4 flex min-w-0 items-center gap-1.5 border-t border-foreground/[0.07] bg-foreground/[0.015] px-3 py-2">
+            {assignedProfiles.length > 0 ? (
+              <div className="flex -space-x-1.5">
+                {assignedProfiles.slice(0, 3).map((profile) => (
+                  <ProfileAvatar key={profile.id} profile={profile} size="xs" />
+                ))}
+              </div>
+            ) : (
+              <span className="shrink-0 text-[0.6rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Unassigned
+              </span>
+            )}
+            <div className="absolute left-1/2 top-1/2 flex min-w-0 max-w-[58%] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-1">
+              {latestReaction ? (
+                <>
+                  <div className="flex min-w-0 items-center gap-1 text-[0.66rem] font-medium text-muted-foreground">
+                    {latestReaction.event_type === "text_reaction" ? (
+                      <MessageCircle className="size-3.5 shrink-0 text-foreground/70" />
+                    ) : (
+                      <Phone className="size-3.5 shrink-0 text-foreground/70" />
+                    )}
+                    <span className="min-w-0 truncate uppercase tracking-[0.14em]">
+                      {getContactReactionDisplayTitle(latestReaction)}
+                    </span>
+                    <span className="shrink-0 text-foreground/25">·</span>
+                    <span className="shrink-0 tracking-normal text-foreground/60">
+                      {formatDate(latestReaction.created_at)}
+                    </span>
+                  </div>
+                  <div className="absolute left-[calc(100%+0.75rem)] top-1/2 -translate-y-1/2">
+                    <ContactReactionControls
+                      person={person}
+                      activeProfile={activeProfile}
+                      configured={configured}
+                      disabled={disabled}
+                      onNotice={onNotice}
+                      onReactionLogged={onReactionLogged}
+                      compact
+                    />
+                  </div>
+                </>
+              ) : null}
+            </div>
+            <div className="ml-auto flex shrink-0 items-center">
+              {latestReaction ? null : (
+                  <ContactReactionControls
+                    person={person}
+                    activeProfile={activeProfile}
+                    configured={configured}
+                    disabled={disabled}
+                    onNotice={onNotice}
+                    onReactionLogged={onReactionLogged}
+                    compact
+                  />
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </motion.article>
   );
 }
@@ -1488,7 +1770,7 @@ function CardPreview({
   return (
     <article
       className={cn(
-        "relative w-72 rotate-1 overflow-hidden rounded-2xl border border-transparent bg-card p-4 ring-1 ring-inset shadow-[0_30px_60px_-20px_oklch(0.2_0.028_264_/_0.35)]",
+        "soft-panel relative w-72 rotate-1 overflow-hidden rounded-2xl border border-transparent p-4 ring-1 ring-inset",
         tone.ring
       )}
     >
@@ -1519,6 +1801,7 @@ function PersonDetailPanel({
   configured,
   onClose,
   onUpdated,
+  onProfilesChange,
   onNotice,
   onStudyLogged,
   onStudyRenamed,
@@ -1530,6 +1813,7 @@ function PersonDetailPanel({
   configured: boolean;
   onClose: () => void;
   onUpdated: (person: BoardPerson) => void;
+  onProfilesChange: (profiles: BoardProfile[]) => void;
   onNotice: (message?: string) => void;
   onStudyLogged: (
     personId: string,
@@ -1544,17 +1828,18 @@ function PersonDetailPanel({
     person?.assigned_profile_ids ?? []
   );
   const [detailNotes, setDetailNotes] = useState(person?.notes ?? "");
-  const [activeDetailTab, setActiveDetailTab] = useState<"profiles" | "studies">("profiles");
+  const [detailTabsCollapsed, setDetailTabsCollapsed] = useState(false);
+  const [assignmentPopupOpen, setAssignmentPopupOpen] = useState(false);
   const [isNameEditing, setIsNameEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(person?.name ?? "");
   const [studySelection, setStudySelection] = useState<{
     studyNumber: number;
     focusKey: number;
   } | null>(null);
-  const [assignmentFocusRequest, setAssignmentFocusRequest] = useState(0);
+  const [isAvatarPending, startAvatarTransition] = useTransition();
   const [swipeStartX, setSwipeStartX] = useState<number | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const assignmentSectionRef = useRef<HTMLDivElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const isCommittingNameRef = useRef(false);
   const skipNextNameBlurRef = useRef(false);
   const savedDetailNotesRef = useRef(person?.notes ?? "");
@@ -1599,31 +1884,6 @@ function PersonDetailPanel({
 
     return () => window.cancelAnimationFrame(frame);
   }, [person]);
-
-  useEffect(() => {
-    if (assignmentFocusRequest === 0 || activeDetailTab !== "profiles") {
-      return;
-    }
-
-    const focusAssignmentSection = () => {
-      const assignmentSection = assignmentSectionRef.current;
-
-      if (!assignmentSection) {
-        return;
-      }
-
-      assignmentSection.scrollIntoView({ block: "nearest", behavior: "smooth" });
-      assignmentSection.focus({ preventScroll: true });
-    };
-
-    const frame = window.requestAnimationFrame(focusAssignmentSection);
-    const timeout = window.setTimeout(focusAssignmentSection, 240);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(timeout);
-    };
-  }, [activeDetailTab, assignmentFocusRequest]);
 
   function canEditPerson() {
     if (!person) {
@@ -1795,8 +2055,6 @@ function PersonDetailPanel({
     if (Math.abs(deltaX) < 48) {
       return;
     }
-
-    setActiveDetailTab(deltaX > 0 ? "studies" : "profiles");
   }
 
   function handleStudyShortcut(studyNumber: number) {
@@ -1804,12 +2062,42 @@ function PersonDetailPanel({
       studyNumber,
       focusKey: (current?.focusKey ?? 0) + 1,
     }));
-    setActiveDetailTab("studies");
   }
 
   function handleAssignClick() {
-    setActiveDetailTab("profiles");
-    setAssignmentFocusRequest((request) => request + 1);
+    if (selectedProfileIds.length === 0) {
+      setSelectedProfileIds(person?.assigned_profile_ids ?? []);
+    }
+    setAssignmentPopupOpen(true);
+  }
+
+  async function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file || !person || !activeProfile) {
+      return;
+    }
+
+    try {
+      const avatarUrl = await fileToAvatarDataUrl(file);
+
+      startAvatarTransition(async () => {
+        const result = await updatePersonAvatar(person.id, avatarUrl, activeProfile.id);
+
+        if (!result.ok || !result.data) {
+          onNotice(result.ok ? "Could not update contact photo." : result.error);
+          return;
+        }
+
+        onNotice(undefined);
+        onUpdated(result.data);
+      });
+    } catch (avatarError) {
+      onNotice(
+        avatarError instanceof Error ? avatarError.message : "Could not update contact photo."
+      );
+    }
   }
 
   const detailOwnerProfile = person
@@ -1836,7 +2124,7 @@ function PersonDetailPanel({
             type="button"
           />
           <motion.aside
-            className="fixed inset-2 z-50 overflow-y-auto rounded-[1.75rem] border bg-card shadow-[0_50px_120px_-40px_oklch(0.2_0.028_264_/_0.45)] md:inset-y-4 md:left-auto md:right-4 md:w-[30rem] xl:w-[48rem]"
+            className="soft-panel-strong fixed inset-2 z-50 overflow-y-auto rounded-[1.75rem] border md:inset-y-4 md:left-auto md:right-4 md:w-[30rem] xl:w-[48rem]"
             initial={{ opacity: 0, x: 40, scale: 0.99 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 40, scale: 0.99 }}
@@ -1851,85 +2139,116 @@ function PersonDetailPanel({
                 )}
               />
               <div className="relative flex items-start justify-between gap-4 border-b border-foreground/[0.07] px-6 pb-5 pt-6">
-                <div className="flex min-w-0 items-start gap-3">
-                  <ProfileAvatar profile={detailOwnerProfile} size="md" />
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-2 flex flex-wrap items-center gap-2 text-[0.62rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="sr-only"
+                  onChange={handleAvatarChange}
+                />
+                <div className="min-w-0 flex-1">
+                    <div className="mb-3 flex w-full flex-col items-center justify-center gap-2 text-center uppercase text-muted-foreground">
+                      <div className="flex max-w-full flex-wrap items-center justify-center gap-2 text-[0.66rem] font-semibold tracking-[0.28em] sm:tracking-[0.38em]">
                       <span
                         className={cn("size-1.5 rounded-full", stageTones[person.stage].dot)}
                       />
-                      <span>
+                      <span className="whitespace-nowrap">
                         {stageIndex[person.stage]} ·{" "}
                         {STAGES.find((s) => s.id === person.stage)?.label}
                       </span>
                       {detailOwnerProfile ? (
-                        <>
-                          <span className="text-foreground/25">/</span>
-                          <span className="inline-flex min-w-0 items-center gap-1.5">
-                            <span className="truncate">{detailOwnerProfile.name}</span>
+                        <span className="hidden text-foreground/25 sm:inline">/</span>
+                      ) : null}
+                      </div>
+                      {detailOwnerProfile ? (
+                        <div className="flex max-w-full flex-wrap items-center justify-center gap-2 text-[0.66rem] font-black tracking-[0.3em] sm:tracking-[0.38em]">
+                          <span className="max-w-[12rem] truncate sm:max-w-[18rem]">
+                            {detailOwnerProfile.name}
+                          </span>
                             <button
                               type="button"
                               aria-label={`Assign ${person.name}`}
-                              className="rounded-full border border-foreground/10 bg-background/55 px-2 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.14em] text-foreground/75 transition hover:border-foreground/20 hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                              className="soft-control group/assign inline-flex h-8 items-center gap-2 rounded-sm border px-2.5 pr-3 text-[0.58rem] font-black uppercase tracking-[0.22em] text-foreground transition hover:-translate-y-0.5 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
                               onClick={handleAssignClick}
                               title="Assign profiles"
                             >
-                              Assign
+                              <span className="baby-blue-button inline-flex size-5 items-center justify-center rounded-sm transition group-hover/assign:scale-105">
+                                <Plus className="size-3" />
+                              </span>
+                              <span>Assign</span>
                             </button>
-                          </span>
-                        </>
+                        </div>
                       ) : null}
                     </div>
-                    {isNameEditing ? (
-                      <input
-                        ref={nameInputRef}
-                        aria-label="Contact name"
-                        className="w-full min-w-0 rounded-xl border border-foreground/10 bg-background/70 px-2 py-1 font-display text-4xl leading-[0.95] tracking-display text-foreground outline-none transition focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/15"
-                        disabled={isPending}
-                        onBlur={() => {
-                          if (skipNextNameBlurRef.current) {
-                            skipNextNameBlurRef.current = false;
-                            return;
-                          }
+                    <div className="flex min-w-0 items-center gap-3">
+                      <button
+                        aria-label={`Change photo for ${person.name}`}
+                        className="group/avatar relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={isAvatarPending || !activeProfile}
+                        onClick={() => avatarInputRef.current?.click()}
+                        title="Add contact photo"
+                        type="button"
+                      >
+                        <ContactAvatar person={person} size="lg" />
+                        <span className="absolute -bottom-0.5 -right-0.5 inline-flex size-5 items-center justify-center rounded-full border-2 border-card bg-foreground text-background opacity-0 transition group-hover/avatar:opacity-100 group-focus-visible/avatar:opacity-100">
+                          <Camera className="size-3" />
+                        </span>
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        {isNameEditing ? (
+                          <input
+                            ref={nameInputRef}
+                            aria-label="Contact name"
+                            className="soft-inset w-full min-w-0 rounded-xl border px-2 py-1 font-display text-[clamp(1.8rem,4vw,2.45rem)] leading-none tracking-display text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring/15"
+                            disabled={isPending}
+                            onBlur={() => {
+                              if (skipNextNameBlurRef.current) {
+                                skipNextNameBlurRef.current = false;
+                                return;
+                              }
 
-                          commitNameEdit();
-                        }}
-                        onChange={(event) => setNameDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            commitNameEdit();
-                          }
+                              commitNameEdit();
+                            }}
+                            onChange={(event) => setNameDraft(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                commitNameEdit();
+                              }
 
-                          if (event.key === "Escape") {
-                            event.preventDefault();
-                            skipNextNameBlurRef.current = true;
-                            cancelNameEdit();
-                          }
-                        }}
-                        value={nameDraft}
-                      />
-                    ) : (
-                      <h2 className="font-display text-4xl leading-[0.95] tracking-display text-foreground">
-                        <button
-                          type="button"
-                          aria-label={`Rename ${person.name}`}
-                          className="-mx-1 rounded-xl px-1 text-left outline-none transition hover:bg-background/45 focus-visible:ring-2 focus-visible:ring-ring/20"
-                          onDoubleClick={startNameEdit}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              startNameEdit();
-                            }
-                          }}
-                          title="Double-click to rename"
-                        >
-                          {person.name}
-                        </button>
-                      </h2>
-                    )}
+                              if (event.key === "Escape") {
+                                event.preventDefault();
+                                skipNextNameBlurRef.current = true;
+                                cancelNameEdit();
+                              }
+                            }}
+                            value={nameDraft}
+                          />
+                        ) : (
+                          <h2 className="flex min-w-0 items-center gap-2 font-display text-[clamp(1.8rem,4vw,2.45rem)] leading-none tracking-display text-foreground">
+                            <button
+                              type="button"
+                              aria-label={`Rename ${person.name}`}
+                              className="-mx-1 block min-w-0 max-w-full truncate rounded-xl px-1 text-left outline-none transition hover:bg-background/45 focus-visible:ring-2 focus-visible:ring-ring/20"
+                              onDoubleClick={startNameEdit}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  startNameEdit();
+                                }
+                              }}
+                              title="Double-click to rename"
+                            >
+                              {person.name}
+                            </button>
+                            <span className="ml-auto shrink-0">
+                              <PipelineDaysLine days={daysInPipeline(person.created_at)} />
+                            </span>
+                          </h2>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
                 <Button onClick={onClose} size="icon" type="button" variant="ghost">
                   <X className="size-5" />
                 </Button>
@@ -1937,109 +2256,61 @@ function PersonDetailPanel({
 
               <div className="space-y-5 p-6">
                 <section
-                  className="overflow-hidden rounded-2xl border bg-background/70 p-4"
+                  className="relative overflow-visible"
                   onPointerDown={(event) => setSwipeStartX(event.clientX)}
                   onPointerUp={(event) => handleSwipeEnd(event.clientX)}
                   onPointerCancel={() => setSwipeStartX(null)}
                   onTouchStart={(event) => setSwipeStartX(event.touches[0]?.clientX ?? null)}
                   onTouchEnd={(event) => handleSwipeEnd(event.changedTouches[0]?.clientX ?? 0)}
                 >
-                  <div className="mb-4 flex justify-center">
-                    <div className="flex rounded-full border border-foreground/10 bg-card p-1">
-                      {[
-                        ["profiles", "Assigned profiles"],
-                        ["studies", "Bible studies"],
-                      ].map(([value, label]) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setActiveDetailTab(value as "profiles" | "studies")}
-                          className={cn(
-                            "rounded-full px-3 py-1.5 text-[0.62rem] font-medium uppercase tracking-[0.16em] transition",
-                            activeDetailTab === value
-                              ? "bg-foreground text-background"
-                              : "text-muted-foreground hover:text-foreground"
-                          )}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
+                  <div
+                    className={cn(
+                      "relative flex items-center justify-center",
+                      !detailTabsCollapsed && "mb-4"
+                    )}
+                  >
+                    <button
+                      aria-label={
+                        detailTabsCollapsed
+                          ? "Expand assigned profiles and Bible studies"
+                          : "Collapse assigned profiles and Bible studies"
+                      }
+                      aria-pressed={detailTabsCollapsed}
+                      className={cn(
+                        "absolute left-0 inline-flex size-7 shrink-0 items-center justify-center rounded-full border bg-card text-foreground/35 transition hover:border-amber-300 hover:text-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95",
+                        detailTabsCollapsed && "border-amber-400 text-amber-700"
+                      )}
+                      onClick={() => setDetailTabsCollapsed((value) => !value)}
+                      type="button"
+                    >
+                      <Star className={cn("size-3.5", detailTabsCollapsed && "fill-current")} />
+                    </button>
+                    <span className="px-10 text-center text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-foreground">
+                      Bible Study
+                    </span>
                   </div>
 
-                  <AnimatePresence mode="wait" initial={false}>
-                    {activeDetailTab === "profiles" ? (
-                      <motion.div
-                        key="profiles"
-                        initial={{ opacity: 0, x: -18 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 18 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                      >
-                        <div
-                          ref={assignmentSectionRef}
-                          className="space-y-3"
-                          onFocus={() => {
-                            if (selectedProfileIds.length === 0) {
-                              setSelectedProfileIds(person.assigned_profile_ids);
-                            }
-                          }}
-                          tabIndex={-1}
-                        >
-                          <ProfileAssignmentPicker
-                            profiles={profiles}
-                            selectedIds={
-                              selectedProfileIds.length > 0
-                                ? selectedProfileIds
-                                : person.assigned_profile_ids
-                            }
-                            onChange={(ids) => {
-                              setSelectedProfileIds(ids);
-                              saveContactDetails(detailNotes, ids);
-                            }}
-                          />
-                          <textarea
-                            name="notes"
-                            value={detailNotes}
-                            onBlur={() => saveContactDetails()}
-                            onChange={(event) => {
-                              const nextNotes = event.target.value;
-
-                              setDetailNotes(nextNotes);
-                              detailDraftRef.current = {
-                                ...detailDraftRef.current,
-                                notes: nextNotes,
-                              };
-                            }}
-                            rows={4}
-                            placeholder="Care notes"
-                            className="w-full resize-none rounded-xl border border-foreground/10 bg-card px-3 py-2 text-sm leading-5 outline-none transition focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/15"
-                          />
-                        </div>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="studies"
-                        initial={{ opacity: 0, x: 18 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -18 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                      >
-                        <StudySlotsCard
-                          key={studySelection?.focusKey ?? "study-slots"}
-                          person={person}
-                          profiles={profiles}
-                          activeProfile={activeProfile}
-                          configured={configured}
-                          onNotice={onNotice}
-                          onStudyLogged={onStudyLogged}
-                          selectedStudyNumber={studySelection?.studyNumber}
-                          focusOnMount={studySelection !== null}
-                          embedded
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {!detailTabsCollapsed ? (
+                    <motion.div
+                      key="studies"
+                      initial={{ opacity: 0, x: 18 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -18 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                    >
+                      <StudySlotsCard
+                        key={studySelection?.focusKey ?? "study-slots"}
+                        person={person}
+                        activeProfile={activeProfile}
+                        configured={configured}
+                        onNotice={onNotice}
+                        onStudyLogged={onStudyLogged}
+                        onStudyDeleted={onStudyDeleted}
+                        selectedStudyNumber={studySelection?.studyNumber}
+                        embedded
+                      />
+                    </motion.div>
+                  ) : null}
                 </section>
                 <TimelineTabs
                   events={person.events.filter(
@@ -2058,6 +2329,64 @@ function PersonDetailPanel({
               </div>
             </div>
           </motion.aside>
+          {assignmentPopupOpen
+            ? createPortal(
+                <div
+                  aria-modal="true"
+                  className="fixed inset-0 z-[80] flex items-center justify-center bg-foreground/35 px-4 py-6 backdrop-blur-sm"
+                  onClick={() => setAssignmentPopupOpen(false)}
+                  role="dialog"
+                >
+                  <div
+                    className="w-full max-w-md"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="mb-3 flex justify-end">
+                      <button
+                        aria-label="Close assigned profiles"
+                        className="flex size-9 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                        onClick={() => setAssignmentPopupOpen(false)}
+                        type="button"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                    <ProfileAssignmentPicker
+                      hideHeader
+                      profiles={profiles}
+                      selectedIds={
+                        selectedProfileIds.length > 0
+                          ? selectedProfileIds
+                          : person.assigned_profile_ids
+                      }
+                      onChange={(ids) => {
+                        setSelectedProfileIds(ids);
+                        saveContactDetails(detailNotes, ids);
+                      }}
+                      onProfilesChange={onProfilesChange}
+                    />
+                    <textarea
+                      name="notes"
+                      value={detailNotes}
+                      onBlur={() => saveContactDetails()}
+                      onChange={(event) => {
+                        const nextNotes = event.target.value;
+
+                        setDetailNotes(nextNotes);
+                        detailDraftRef.current = {
+                          ...detailDraftRef.current,
+                          notes: nextNotes,
+                        };
+                      }}
+                      rows={4}
+                      placeholder="Care notes"
+                      className="mt-3 w-full resize-none rounded-xl border border-foreground/10 bg-card px-3 py-2 text-sm leading-5 outline-none transition focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/15"
+                    />
+                  </div>
+                </div>,
+                document.body
+              )
+            : null}
         </>
       ) : null}
     </AnimatePresence>
@@ -2083,7 +2412,40 @@ function ContactReactionControls({
 }) {
   const [selectedChannel, setSelectedChannel] =
     useState<ContactReactionChannel | null>(null);
+  const [compactMenuPosition, setCompactMenuPosition] = useState<{
+    right: number;
+    top: number;
+  } | null>(null);
+  const compactControlsRef = useRef<HTMLDivElement>(null);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!compact || !selectedChannel) {
+      return;
+    }
+
+    function updatePosition() {
+      const rect = compactControlsRef.current?.getBoundingClientRect();
+
+      if (!rect) {
+        return;
+      }
+
+      setCompactMenuPosition({
+        right: Math.max(12, window.innerWidth - rect.right),
+        top: Math.max(12, rect.top - 8),
+      });
+    }
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [compact, selectedChannel]);
 
   function logReaction(
     channel: ContactReactionChannel,
@@ -2115,6 +2477,7 @@ function ContactReactionControls({
       onReactionLogged(person.id, result.data);
       onNotice(undefined);
       setSelectedChannel(null);
+      setCompactMenuPosition(null);
     });
   }
 
@@ -2132,7 +2495,7 @@ function ContactReactionControls({
 
   if (compact) {
     return (
-      <div className="relative flex shrink-0 items-center gap-1">
+      <div ref={compactControlsRef} className="relative flex shrink-0 items-center gap-1">
         <div className="flex items-center">
           <button
             aria-label="Text reaction"
@@ -2163,21 +2526,30 @@ function ContactReactionControls({
             <Phone className="size-3.5" />
           </button>
         </div>
-        {selectedChannel ? (
-          <div className="absolute right-0 top-8 z-20 flex overflow-hidden rounded-full border border-foreground/10 bg-card shadow-xl">
-            {options.map(([outcome, label]) => (
-              <button
-                key={outcome}
-                className="whitespace-nowrap px-3 py-2 text-[0.58rem] font-medium uppercase tracking-[0.14em] text-muted-foreground transition hover:bg-foreground/[0.06] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={busy}
-                onClick={() => logReaction(selectedChannel, outcome)}
-                type="button"
+        {selectedChannel && compactMenuPosition
+          ? createPortal(
+              <div
+                className="fixed z-[120] flex -translate-y-full overflow-hidden rounded-full border border-foreground/10 bg-card shadow-[0_18px_45px_-22px_oklch(0.2_0.028_264_/_0.45)]"
+                style={{
+                  right: compactMenuPosition.right,
+                  top: compactMenuPosition.top,
+                }}
               >
-                {label}
-              </button>
-            ))}
-          </div>
-        ) : null}
+                {options.map(([outcome, label]) => (
+                  <button
+                    key={outcome}
+                    className="whitespace-nowrap px-3 py-2 text-[0.58rem] font-medium uppercase tracking-[0.14em] text-muted-foreground transition hover:bg-foreground/[0.06] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={busy}
+                    onClick={() => logReaction(selectedChannel, outcome)}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>,
+              document.body
+            )
+          : null}
       </div>
     );
   }
@@ -2235,17 +2607,15 @@ function ContactReactionControls({
 
 function StudySlotsCard({
   person,
-  profiles,
   activeProfile,
   configured,
   onNotice,
   onStudyLogged,
+  onStudyDeleted,
   selectedStudyNumber,
-  focusOnMount = false,
   embedded = false,
 }: {
   person: BoardPerson;
-  profiles: BoardProfile[];
   activeProfile: BoardProfile | null;
   configured: boolean;
   onNotice: (message?: string) => void;
@@ -2254,131 +2624,140 @@ function StudySlotsCard({
     study: PersonStudy,
     event: PersonEvent
   ) => void;
+  onStudyDeleted: (personId: string, studyId: string) => void;
   selectedStudyNumber?: number;
-  focusOnMount?: boolean;
   embedded?: boolean;
 }) {
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const initialStudyNumber = selectedStudyNumber ?? getNextStudyNumber(person.studies);
   const initialStudy = person.studies.find(
     (study) => study.study_number === initialStudyNumber
   );
+  const [logTab, setLogTab] = useState<"bible" | "cm">("bible");
+  const [studyPickerOpen, setStudyPickerOpen] = useState<"bible" | "cm" | null>(null);
   const [studyNumber, setStudyNumber] = useState(() =>
     initialStudyNumber
   );
-  const [studyMonth, setStudyMonth] = useState(() =>
-    getMonthValue(
-      initialStudy?.studied_at ?? sortStudies(person.studies).at(-1)?.studied_at ?? person.created_at
-    )
+  const initialStudyDate = getDateValue(
+    initialStudy?.studied_at ?? sortStudies(person.studies).at(-1)?.studied_at ?? person.created_at
   );
-  const [studyNotes, setStudyNotes] = useState(
-    () => initialStudy?.notes ?? ""
+  const [studyDate, setStudyDate] = useState(() => initialStudyDate);
+  const [calendarRange, setCalendarRange] = useState(() => ({
+    startDate: shiftDateValue(getWeekStartDateValue(initialStudyDate), -28),
+    dayCount: 91,
+  }));
+  const [pendingStudyNumbers, setPendingStudyNumbers] = useState<Set<number>>(
+    () => new Set()
   );
-  const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const savedStudyNotesRef = useRef(initialStudy?.notes ?? "");
-  const isSavingStudyRef = useRef(false);
-  const copiedResetTimeoutRef = useRef<number | null>(null);
-  const [studyTimelineCopied, setStudyTimelineCopied] = useState(false);
+  const pendingStudyNumbersRef = useRef<Set<number>>(new Set());
+  const calendarStripRef = useRef<HTMLDivElement>(null);
+  const isExtendingCalendarRef = useRef(false);
+  const pendingCalendarScrollWidthRef = useRef<number | null>(null);
   const completedStudies = sortStudies(person.studies);
   const completedNumbers = new Set(
     completedStudies.map((study) => study.study_number)
   );
+  const completedCmNumbers = new Set(
+    completedStudies
+      .filter((study) => study.study_number > TOTAL_STUDIES)
+      .map((study) => study.study_number - TOTAL_STUDIES)
+  );
+  const calendarWeeks = Array.from(
+    { length: Math.ceil(calendarRange.dayCount / WEEKDAY_LABELS.length) },
+    (_, weekIndex) =>
+      getDateRangeValues(
+        shiftDateValue(calendarRange.startDate, weekIndex * WEEKDAY_LABELS.length),
+        WEEKDAY_LABELS.length
+      )
+  );
 
-  async function copyStudyTimeline() {
-    if (completedStudies.length === 0) {
-      setStudyTimelineCopied(false);
-      onNotice("No study timeline to copy yet.");
+  function setStudyPending(number: number, pending: boolean) {
+    const next = new Set(pendingStudyNumbersRef.current);
+
+    if (pending) {
+      next.add(number);
+    } else {
+      next.delete(number);
+    }
+
+    pendingStudyNumbersRef.current = next;
+    setPendingStudyNumbers(next);
+  }
+
+  function selectCatalogStudy(number: number, title: string) {
+    if (pendingStudyNumbersRef.current.has(number)) {
       return;
     }
 
-    if (!navigator.clipboard) {
-      setStudyTimelineCopied(false);
-      onNotice("Clipboard is not available in this browser.");
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(
-        buildStudyTimelineCopy(person, completedStudies, profiles)
-      );
-      setStudyTimelineCopied(true);
-
-      if (copiedResetTimeoutRef.current !== null) {
-        window.clearTimeout(copiedResetTimeoutRef.current);
-      }
-
-      copiedResetTimeoutRef.current = window.setTimeout(() => {
-        setStudyTimelineCopied(false);
-        copiedResetTimeoutRef.current = null;
-      }, 1800);
-    } catch {
-      setStudyTimelineCopied(false);
-      onNotice("The study timeline could not be copied.");
-    }
-  }
-
-  function focusCareNotes() {
-    window.requestAnimationFrame(() => {
-      notesTextareaRef.current?.focus();
-    });
-  }
-
-  function selectStudy(number: number, options: { focus?: boolean } = {}) {
-    const completedStudy = person.studies.find((study) => study.study_number === number);
+    const completedStudy = person.studies.find(
+      (study) => study.study_number === number
+    );
 
     setStudyNumber(number);
 
     if (completedStudy) {
-      setStudyNotes(completedStudy.notes ?? "");
-      savedStudyNotesRef.current = completedStudy.notes ?? "";
-
-      const monthValue = getMonthValue(completedStudy.studied_at);
-
-      if (monthValue) {
-        setStudyMonth(monthValue);
-      }
+      deleteStudy(completedStudy);
     } else {
-      setStudyNotes("");
-      savedStudyNotesRef.current = "";
-    }
-
-    if (options.focus) {
-      focusCareNotes();
+      saveStudy({
+        nextStudyNumber: number,
+        nextStudyTitle: title,
+      });
     }
   }
 
-  useEffect(() => {
-    if (!focusOnMount) {
+  function selectStudy(number: number) {
+    selectCatalogStudy(number, getStudyCatalogTitle(number));
+  }
+
+  function deleteStudy(study: PersonStudy) {
+    if (!configured) {
+      onNotice("Connect Supabase before updating studies.");
       return;
     }
 
-    const frame = window.requestAnimationFrame(() => {
-      notesTextareaRef.current?.focus();
-    });
+    if (!activeProfile) {
+      onNotice("Choose your profile before updating studies.");
+      return;
+    }
 
-    return () => window.cancelAnimationFrame(frame);
-  }, [focusOnMount]);
+    if (pendingStudyNumbersRef.current.has(study.study_number)) {
+      return;
+    }
 
-  useEffect(() => {
-    return () => {
-      if (copiedResetTimeoutRef.current !== null) {
-        window.clearTimeout(copiedResetTimeoutRef.current);
+    setStudyPending(study.study_number, true);
+    startTransition(async () => {
+      const result = await deletePersonStudy({
+        id: study.id,
+        actorProfileId: activeProfile.id,
+      });
+
+      setStudyPending(study.study_number, false);
+
+      if (!result.ok) {
+        onNotice(result.error);
+        return;
       }
-    };
-  }, []);
+
+      onNotice(undefined);
+      onStudyDeleted(person.id, study.id);
+    });
+  }
+
+  function getStudyTitleForNumber(number: number) {
+    const completedStudy = person.studies.find((study) => study.study_number === number);
+    return completedStudy ? getStudyTitle(completedStudy) : getStudyCatalogTitle(number);
+  }
 
   function saveStudy({
     nextStudyNumber = studyNumber,
-    nextStudiedAt = `${studyMonth}-01`,
-    nextNotes = studyNotes,
-    force = false,
-    refocus = false,
+    nextStudyTitle = getStudyTitleForNumber(nextStudyNumber),
+    nextStudiedAt = studyDate,
+    nextNotes = "",
   }: {
     nextStudyNumber?: number;
+    nextStudyTitle?: string;
     nextStudiedAt?: string;
     nextNotes?: string;
-    force?: boolean;
-    refocus?: boolean;
   } = {}) {
     if (!configured) {
       onNotice("Connect Supabase before logging studies.");
@@ -2390,26 +2769,22 @@ function StudySlotsCard({
       return;
     }
 
-    if (!force && nextNotes.trim() === savedStudyNotesRef.current.trim()) {
+    if (pendingStudyNumbersRef.current.has(nextStudyNumber)) {
       return;
     }
 
-    if (isSavingStudyRef.current) {
-      return;
-    }
-
-    isSavingStudyRef.current = true;
-
+    setStudyPending(nextStudyNumber, true);
     startTransition(async () => {
       const result = await addPersonStudy({
         id: person.id,
         studyNumber: nextStudyNumber,
+        title: nextStudyTitle,
         studiedAt: nextStudiedAt,
         notes: nextNotes,
         actorProfileId: activeProfile.id,
       });
 
-      isSavingStudyRef.current = false;
+      setStudyPending(nextStudyNumber, false);
 
       if (!result.ok || !result.data) {
         onNotice(result.ok ? "The study could not be saved." : result.error);
@@ -2420,28 +2795,94 @@ function StudySlotsCard({
       const loggedStudy = result.data.study;
       onStudyLogged(person.id, loggedStudy, result.data.event);
       setStudyNumber(loggedStudy.study_number);
-      setStudyNotes(loggedStudy.notes ?? "");
-      savedStudyNotesRef.current = loggedStudy.notes ?? "";
-
-      const loggedMonth = getMonthValue(loggedStudy.studied_at);
-
-      if (loggedMonth) {
-        setStudyMonth(loggedMonth);
-      }
-      if (refocus) {
-        focusCareNotes();
-      }
+      setStudyDate(getDateValue(loggedStudy.studied_at));
     });
   }
 
-  function handleSubmit(formData: FormData) {
-    saveStudy({
-      nextStudyNumber: Number(formData.get("studyNumber") ?? studyNumber),
-      nextStudiedAt: String(formData.get("studiedAt") ?? ""),
-      nextNotes: String(formData.get("notes") ?? ""),
-      force: true,
-      refocus: true,
+  function selectStudyDate(dateValue: string) {
+    setStudyDate(dateValue);
+    setCalendarRange((current) => {
+      const rangeEndDate = shiftDateValue(current.startDate, current.dayCount - 1);
+
+      if (dateValue >= current.startDate && dateValue <= rangeEndDate) {
+        return current;
+      }
+
+      return {
+        startDate: shiftDateValue(getWeekStartDateValue(dateValue), -28),
+        dayCount: 91,
+      };
     });
+  }
+
+  function handleStudyDateClick(dateValue: string) {
+    selectStudyDate(dateValue);
+    setStudyPickerOpen(logTab);
+  }
+
+  function shiftCalendar(offsetDays: number) {
+    selectStudyDate(shiftDateValue(studyDate, offsetDays));
+  }
+
+  function handleCalendarScroll(strip: HTMLDivElement) {
+    if (isExtendingCalendarRef.current) {
+      return;
+    }
+
+    const edgeThreshold = 96;
+
+    if (strip.scrollLeft < edgeThreshold) {
+      isExtendingCalendarRef.current = true;
+      pendingCalendarScrollWidthRef.current = strip.scrollWidth;
+      setCalendarRange((current) => ({
+        startDate: shiftDateValue(current.startDate, -28),
+        dayCount: current.dayCount + 28,
+      }));
+      return;
+    }
+
+    if (strip.scrollLeft + strip.clientWidth > strip.scrollWidth - edgeThreshold) {
+      isExtendingCalendarRef.current = true;
+      pendingCalendarScrollWidthRef.current = null;
+      setCalendarRange((current) => ({
+        ...current,
+        dayCount: current.dayCount + 28,
+      }));
+    }
+  }
+
+  useEffect(() => {
+    const strip = calendarStripRef.current;
+    const previousScrollWidth = pendingCalendarScrollWidthRef.current;
+
+    if (!strip || previousScrollWidth === null) {
+      isExtendingCalendarRef.current = false;
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      strip.scrollLeft += strip.scrollWidth - previousScrollWidth;
+      pendingCalendarScrollWidthRef.current = null;
+      isExtendingCalendarRef.current = false;
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [calendarRange]);
+
+  useEffect(() => {
+    const selectedWeek = calendarStripRef.current?.querySelector(
+      `[data-week-start="${getWeekStartDateValue(studyDate)}"]`
+    );
+
+    selectedWeek?.scrollIntoView({
+      block: "nearest",
+      inline: "start",
+    });
+  }, [studyDate]);
+
+  function handleCmSelect(title: string, index: number) {
+    const studyNumber = TOTAL_STUDIES + index + 1;
+    selectCatalogStudy(studyNumber, `CM: ${title}`);
   }
 
   return (
@@ -2450,125 +2891,250 @@ function StudySlotsCard({
         "flex h-full min-h-0 flex-col",
         embedded
           ? "border-t border-foreground/[0.07] pt-4"
-          : "rounded-2xl border bg-background/70 p-4"
+          : "soft-panel rounded-2xl border p-4"
       )}
     >
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <div className="flex items-center rounded-full border border-foreground/10 bg-card p-0.5">
+      <div className="grid gap-2">
+        <div className="grid grid-cols-[2rem_1fr_2rem] items-center">
           <button
-            aria-label="Previous study month"
-            className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background hover:text-foreground"
-            onClick={() => setStudyMonth((current) => shiftMonth(current, -1))}
+            aria-label="Previous study dates"
+            className="flex size-7 items-center justify-start text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            onClick={() => shiftCalendar(-14)}
             type="button"
           >
-            <ChevronLeft className="size-3.5" />
+            <ChevronLeft className="size-4" />
           </button>
-          <span className="min-w-20 px-1 text-center text-[0.68rem] font-medium uppercase tracking-[0.14em] text-foreground">
-            {getMonthLabel(studyMonth)}
+          <span className="text-center text-xl font-medium tracking-tight text-muted-foreground">
+            {formatCalendarTitle(studyDate)}
           </span>
           <button
-            aria-label="Next study month"
-            className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background hover:text-foreground"
-            onClick={() => setStudyMonth((current) => shiftMonth(current, 1))}
+            aria-label="Next study dates"
+            className="flex size-7 items-center justify-end text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            onClick={() => shiftCalendar(14)}
             type="button"
           >
-            <ChevronRight className="size-3.5" />
+            <ChevronRight className="size-4" />
           </button>
         </div>
-        <span className="rounded-full border border-foreground/10 bg-background px-2.5 py-1 font-display text-lg leading-none tracking-display text-foreground">
-          {completedStudies.length}
-        </span>
-        <button
-          aria-label={studyTimelineCopied ? "Study timeline copied" : "Copy study timeline"}
-          className={cn(
-            "flex size-8 items-center justify-center rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
-            studyTimelineCopied
-              ? "border-blue-900 bg-blue-900 text-white hover:border-blue-950 hover:bg-blue-950 hover:text-white"
-              : "border-foreground/10 bg-background text-muted-foreground hover:border-foreground/20 hover:text-foreground"
-          )}
-          onClick={copyStudyTimeline}
-          type="button"
+
+        <div
+          className="-mx-1 flex snap-x snap-mandatory overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          onScroll={(event) => handleCalendarScroll(event.currentTarget)}
+          ref={calendarStripRef}
         >
-          {studyTimelineCopied ? (
-            <Check className="size-3.5" />
-          ) : (
-            <Share2 className="size-3.5" />
-          )}
-        </button>
-      </div>
-
-      <div className="mt-3 grid grid-cols-10 gap-1.5">
-        {Array.from({ length: TOTAL_STUDIES }, (_, index) => {
-          const number = index + 1;
-          const completed = completedNumbers.has(number);
-
-          return (
-            <button
-              key={number}
-              type="button"
-              onClick={() => selectStudy(number, { focus: true })}
-              className={cn(
-                "h-7 rounded-lg border text-[0.62rem] font-medium tabular-nums transition",
-                completed
-                  ? "border-foreground/20 bg-foreground text-background"
-                  : "border-foreground/10 bg-card text-muted-foreground hover:border-foreground/25 hover:text-foreground",
-                studyNumber === number && "ring-2 ring-ring/25 ring-offset-1 ring-offset-card"
-              )}
-              aria-label={`Study ${number}${completed ? " completed" : ""}`}
+          {calendarWeeks.map((weekDates) => (
+            <div
+              className="grid min-w-full snap-start grid-cols-7"
+              data-week-start={weekDates[0]}
+              key={weekDates[0]}
             >
-              {number}
-            </button>
-          );
-        })}
+              {weekDates.map((dateValue) => {
+                const selected = dateValue === studyDate;
+                const hasStudy = completedStudies.some(
+                  (study) => getDateValue(study.studied_at) === dateValue
+                );
+                const date = dateValueToUtcDate(dateValue);
+                const day = date.getUTCDate();
+                const weekday = WEEKDAY_LABELS[date.getUTCDay()];
+
+                return (
+                  <button
+                    aria-label={`Select ${formatCalendarTitle(dateValue)}`}
+                    className="flex flex-col items-center gap-1 rounded-2xl px-1 py-1.5 text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                    data-study-date={dateValue}
+                    key={dateValue}
+                    onClick={() => handleStudyDateClick(dateValue)}
+                    type="button"
+                  >
+                    <span className="text-[0.62rem] font-medium uppercase tracking-[0.12em]">
+                      {weekday}
+                    </span>
+                    <span
+                      className={cn(
+                        "flex size-8 items-center justify-center rounded-full text-base font-medium tabular-nums",
+                        selected && "bg-muted-foreground text-background"
+                      )}
+                    >
+                      {day}
+                    </span>
+                    {hasStudy ? (
+                      <span className="block size-1 rounded-full bg-muted-foreground" />
+                    ) : (
+                      <span className="block size-1" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
 
-      <form action={handleSubmit} className="mt-3 grid gap-2">
-        <input name="studiedAt" type="hidden" value={`${studyMonth}-01`} />
-        <div className="grid grid-cols-[5rem_auto] gap-2">
-          <select
-            name="studyNumber"
-            value={studyNumber}
-            onChange={(event) =>
-              selectStudy(Number(event.target.value), { focus: true })
-            }
-            className="h-10 rounded-xl border border-foreground/10 bg-card px-2 text-sm font-medium tracking-tight outline-none transition focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/15"
-            aria-label="Study number"
-          >
-            {Array.from({ length: TOTAL_STUDIES }, (_, index) => index + 1).map(
-              (number) => (
-                <option key={number} value={number}>
-                  #{number}
-                </option>
-              )
-            )}
-          </select>
-          <Button disabled={isPending || !configured} type="submit" size="sm" className="h-10">
-            <Send className="size-3.5" />
-            Log
-          </Button>
-        </div>
-        <label className="block overflow-hidden rounded-xl border border-foreground/10 bg-card transition focus-within:border-foreground/30 focus-within:ring-2 focus-within:ring-ring/15">
-          <span className="sr-only">Care notes</span>
-          <textarea
-            ref={notesTextareaRef}
-            name="notes"
-            rows={2}
-            placeholder="Care notes for this study"
-            value={studyNotes}
-            onChange={(event) => setStudyNotes(event.target.value)}
-            onBlur={(event) => {
-              const nextFocus = event.relatedTarget;
+      {studyPickerOpen
+        ? createPortal(
+            <div
+              aria-modal="true"
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm"
+              onClick={() => setStudyPickerOpen(null)}
+              role="dialog"
+            >
+              <div
+                className="flex max-h-[78vh] w-full max-w-md flex-col overflow-hidden"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="relative isolate flex flex-1 gap-2">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "pointer-events-none absolute inset-y-0 z-0 w-1/2 rounded-full bg-sky-300/55 blur-2xl transition-all duration-300",
+                        studyPickerOpen === "cm" ? "left-1/2" : "left-0"
+                      )}
+                    />
+                    {[
+                      ["bible", "Bible Study"],
+                      ["cm", "CM"],
+                    ].map(([value, label]) => (
+                      <button
+                        aria-pressed={studyPickerOpen === value}
+                        className={cn(
+                          "relative z-10 flex-1 rounded-full px-3 py-2 text-[0.66rem] font-medium uppercase tracking-[0.16em] transition",
+                          studyPickerOpen === value
+                            ? "baby-blue-button"
+                            : "soft-control text-foreground hover:text-sky-700"
+                        )}
+                        key={value}
+                        onClick={() => {
+                          const nextTab = value as "bible" | "cm";
+                          setLogTab(nextTab);
+                          setStudyPickerOpen(nextTab);
+                        }}
+                        type="button"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    aria-label="Close study picker"
+                    className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                    onClick={() => setStudyPickerOpen(null)}
+                    type="button"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
 
-              if (nextFocus instanceof Node && event.currentTarget.form?.contains(nextFocus)) {
-                return;
-              }
+                <div className="relative min-h-0">
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute left-5 right-5 top-1/2 z-10 h-16 -translate-y-1/2 border-y border-foreground/10"
+                  />
+                  <div
+                    aria-label={studyPickerOpen === "bible" ? "Bible study list" : "CM list"}
+                    className="h-[min(58vh,30rem)] snap-y snap-mandatory overflow-y-auto py-24 [mask-image:linear-gradient(to_bottom,transparent,black_17%,black_83%,transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    role="listbox"
+                  >
+                    {studyPickerOpen === "bible"
+                      ? STUDY_TITLES.map((title, index) => {
+                          const number = index + 1;
+                          const completed = completedNumbers.has(number);
+                          const pending = pendingStudyNumbers.has(number);
+                          const selected = studyNumber === number;
+                          const active = selected || completed || pending;
 
-              saveStudy();
-            }}
-            className="min-h-20 w-full resize-none bg-transparent px-3 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground/65"
-          />
-        </label>
-      </form>
+                          return (
+                            <button
+                              aria-label={`Select ${title}`}
+                              aria-selected={selected}
+                              className={cn(
+                                "flex min-h-16 w-full snap-center items-center gap-3 px-3 py-3 text-left text-foreground/55 transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
+                                active && "text-foreground"
+                              )}
+                              key={title}
+                              onClick={() => selectStudy(number)}
+                              role="option"
+                              type="button"
+                            >
+                              <span
+                                className={cn(
+                                  "min-w-7 rounded-full border px-1.5 py-0.5 text-center text-[0.64rem] font-black tabular-nums",
+                                  selected
+                                    ? "border-foreground/60 text-foreground"
+                                    : "border-foreground/30 text-foreground",
+                                  active &&
+                                    "border-white/90 bg-white/15 text-white drop-shadow-[0_0_9px_rgba(255,255,255,0.95)] shadow-[0_0_18px_rgba(255,255,255,0.55)]"
+                                )}
+                              >
+                                {number}
+                              </span>
+                              <span
+                                className={cn(
+                                  "min-w-0 flex-1 text-[0.95rem] font-black leading-5",
+                                  active &&
+                                    "text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.95)]"
+                                )}
+                              >
+                                {title}
+                              </span>
+                            </button>
+                          );
+                        })
+                      : CM_TITLES.map((title, index) => {
+                          const number = index + 1;
+                          const cmStudyNumber = TOTAL_STUDIES + number;
+                          const completed = completedCmNumbers.has(number);
+                          const pending = pendingStudyNumbers.has(cmStudyNumber);
+                          const selected = studyNumber === cmStudyNumber;
+                          const active = selected || completed || pending;
+
+                          return (
+                            <button
+                              aria-label={`Select ${title}`}
+                              aria-selected={selected}
+                              className={cn(
+                                "flex min-h-16 w-full snap-center items-center gap-3 px-3 py-3 text-left text-foreground/55 transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
+                                active && "text-foreground"
+                              )}
+                              key={title}
+                              onClick={() => handleCmSelect(title, index)}
+                              role="option"
+                              type="button"
+                            >
+                              <span
+                                className={cn(
+                                  "min-w-7 rounded-full border px-1.5 py-0.5 text-center text-[0.64rem] font-black tabular-nums",
+                                  selected
+                                    ? "border-foreground/60 text-foreground"
+                                    : "border-foreground/30 text-foreground",
+                                  active &&
+                                    "border-white/90 bg-white/15 text-white drop-shadow-[0_0_9px_rgba(255,255,255,0.95)] shadow-[0_0_18px_rgba(255,255,255,0.55)]"
+                                )}
+                              >
+                                {number}
+                              </span>
+                              <span
+                                className={cn(
+                                  "min-w-0 flex-1 text-[0.95rem] font-black leading-5",
+                                  active &&
+                                    "text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.95)]"
+                                )}
+                              >
+                                {title}
+                              </span>
+                              {completed ? (
+                                <Check className="size-4 shrink-0 stroke-[3] text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.9)]" />
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                  </div>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
 
     </section>
   );
@@ -2620,16 +3186,16 @@ function TimelineTabs({
     : recentStudies;
 
   return (
-    <section className="rounded-2xl border bg-background/70 p-4">
+    <section>
       <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
-        <div className="flex rounded-full border border-foreground/10 bg-card p-1">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setActiveTab("activity")}
             className={cn(
               "rounded-full px-3 py-1.5 text-[0.62rem] font-medium uppercase tracking-[0.16em] transition",
               activeTab === "activity"
-                ? "bg-foreground text-background"
+                ? "baby-blue-button"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -2642,7 +3208,7 @@ function TimelineTabs({
             className={cn(
               "rounded-full px-3 py-1.5 text-[0.62rem] font-medium uppercase tracking-[0.16em] transition",
               activeTab === "studies"
-                ? "bg-foreground text-background"
+                ? "baby-blue-button"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -2670,7 +3236,7 @@ function TimelineTabs({
         <AnimatePresence initial={false}>
           {studySearchOpen ? (
             <motion.label
-              className="flex h-9 w-full max-w-56 items-center gap-2 rounded-full border border-foreground/10 bg-card px-3 text-muted-foreground shadow-[0_10px_35px_-28px_oklch(0.2_0.028_264_/_0.45)] sm:w-56"
+              className="soft-inset flex h-9 w-full max-w-56 items-center gap-2 rounded-full border px-3 text-muted-foreground sm:w-56"
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: "14rem" }}
               exit={{ opacity: 0, width: 0 }}
@@ -2734,9 +3300,11 @@ function ActivityTimelineList({
   events: PersonEvent[];
   profiles: BoardProfile[];
 }) {
+  const [visibleTimestampId, setVisibleTimestampId] = useState("");
+
   if (events.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-foreground/15 bg-background p-4 text-center text-[0.78rem] italic text-muted-foreground">
+      <p className="soft-inset rounded-xl border border-dashed p-4 text-center text-[0.78rem] italic text-muted-foreground">
         Notes, moves, and updates will appear here.
       </p>
     );
@@ -2755,27 +3323,36 @@ function ActivityTimelineList({
           );
           return (
             <li key={event.id} className="relative">
-              <span
-                aria-hidden
-                className="absolute -left-[14px] top-3 size-2 rounded-full border-2 border-card bg-foreground/70"
+              <button
+                aria-label={`Show date and time for ${displayStageCopy(event.title)}`}
+                aria-pressed={visibleTimestampId === event.id}
+                className={cn(
+                  "absolute -left-[16px] z-10 size-3 rounded-full border-2 border-card bg-foreground/70 transition hover:scale-125 hover:bg-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
+                  visibleTimestampId === event.id ? "top-[1.15rem]" : "top-2.5"
+                )}
+                onClick={() =>
+                  setVisibleTimestampId((current) =>
+                    current === event.id ? "" : event.id
+                  )
+                }
+                type="button"
               />
-              <div className="rounded-xl border border-foreground/10 bg-card p-3">
-                <div className="flex items-start gap-2.5">
-                  <ProfileAvatar profile={actor ?? null} size="xs" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[0.85rem] font-medium tracking-tight text-foreground">
-                      {displayStageCopy(event.title)}
-                    </p>
-                    <p className="mt-0.5 text-[0.7rem] text-muted-foreground">
-                      {actor?.name ?? "System"} · {formatDate(event.created_at)}
-                    </p>
-                  </div>
-                </div>
-                {event.body ? (
-                  <p className="mt-2 border-l-2 border-foreground/10 pl-3 text-[0.78rem] leading-5 text-muted-foreground">
-                    {displayStageCopy(event.body)}
+              <div className="soft-control rounded-xl border p-3">
+                {visibleTimestampId === event.id ? (
+                  <p className="mb-2 rounded-full bg-background px-2.5 py-1 text-[0.64rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                    {formatDateTime(event.created_at)}
                   </p>
                 ) : null}
+                <div className="flex items-center gap-2.5">
+                  <ProfileAvatar profile={actor ?? null} size="xs" />
+                  <div className="min-w-0 flex-1">
+                    {event.body ? (
+                      <p className="border-l-2 border-foreground/10 pl-3 text-[0.78rem] leading-5 text-muted-foreground">
+                        {displayStageCopy(event.body)}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             </li>
           );
@@ -2810,7 +3387,7 @@ function StudyTimelineList({
 }) {
   if (studies.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-foreground/15 bg-background p-4 text-center text-[0.78rem] italic text-muted-foreground">
+      <p className="soft-inset rounded-xl border border-dashed p-4 text-center text-[0.78rem] italic text-muted-foreground">
         {emptyMessage}
       </p>
     );
@@ -2871,6 +3448,7 @@ function StudyTimelineItem({
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(getStudyTitle(study));
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [timestampVisible, setTimestampVisible] = useState(false);
   const [isPending, startTransition] = useTransition();
   const studyTitle = getStudyTitle(study);
 
@@ -2946,13 +3524,24 @@ function StudyTimelineItem({
 
   return (
     <li className="relative">
-      <span
-        aria-hidden
-        className="absolute -left-[17px] top-2 flex size-4 items-center justify-center rounded-full border border-card bg-foreground text-[0.52rem] font-medium text-background"
+      <button
+        aria-label={`Show date and time for ${studyTitle}`}
+        aria-pressed={timestampVisible}
+        className={cn(
+          "absolute -left-[17px] z-10 flex size-4 items-center justify-center rounded-full border border-card bg-foreground text-[0.52rem] font-medium text-background transition hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
+          timestampVisible ? "top-4" : "top-2"
+        )}
+        onClick={() => setTimestampVisible((value) => !value)}
+        type="button"
       >
         {study.study_number}
-      </span>
-      <div className="rounded-xl border border-foreground/10 bg-card p-3">
+      </button>
+      <div className="soft-control rounded-xl border p-3">
+        {timestampVisible ? (
+          <p className="mb-2 rounded-full bg-background px-2.5 py-1 text-[0.64rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Logged {formatDateTime(study.created_at)}
+          </p>
+        ) : null}
         <div className="flex items-start gap-2.5">
           <ProfileAvatar profile={actor} size="xs" />
           <div className="min-w-0 flex-1">
@@ -2960,7 +3549,7 @@ function StudyTimelineItem({
               <form action={handleRename} className="flex min-w-0 items-center gap-1.5">
                 <input
                   autoFocus
-                  className="h-8 min-w-0 flex-1 rounded-lg border border-foreground/10 bg-background px-2 text-[0.82rem] font-medium tracking-tight outline-none transition focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/15"
+                  className="soft-inset h-8 min-w-0 flex-1 rounded-lg border px-2 text-[0.82rem] font-medium tracking-tight outline-none transition focus-visible:ring-2 focus-visible:ring-ring/15"
                   maxLength={80}
                   name="title"
                   onChange={(event) => setTitle(event.target.value)}
@@ -3006,9 +3595,6 @@ function StudyTimelineItem({
                 >
                   <Pencil className="size-3.5" />
                 </button>
-                <p className="min-w-0 max-w-32 shrink truncate text-[0.7rem] text-muted-foreground sm:max-w-40">
-                  {actor?.name ?? "System"} · {formatDate(study.studied_at)}
-                </p>
               </div>
             )}
           </div>
@@ -3075,17 +3661,16 @@ function StudyTimelineItem({
   );
 }
 
-function ProfileAvatar({
-  profile,
+function ContactAvatar({
+  person,
   size = "md",
 }: {
-  profile: BoardProfile | null;
-  size?: "xs" | "sm" | "md";
+  person: BoardPerson | null;
+  size?: "md" | "lg";
 }) {
   const sizeClass = {
-    xs: "size-6 text-[0.62rem]",
-    sm: "size-8 text-[0.7rem]",
     md: "size-10 text-sm",
+    lg: "size-14 text-lg",
   }[size];
 
   return (
@@ -3094,7 +3679,71 @@ function ProfileAvatar({
         "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-foreground/15 bg-card font-display tracking-display text-foreground/80 shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset]",
         sizeClass
       )}
-      title={profile?.name ?? "No profile"}
+      title={person?.name ?? "Contact photo"}
+    >
+      {person?.avatar_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          alt=""
+          className="size-full object-cover"
+          draggable={false}
+          src={person.avatar_url}
+        />
+      ) : (
+        person?.name.slice(0, 1).toUpperCase() ?? "·"
+      )}
+    </span>
+  );
+}
+
+function PipelineDaysLine({ days }: { days: number }) {
+  const digits = String(days).padStart(2, "0").split("");
+
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 font-sans tracking-normal"
+      title={`${days} days in the pipeline`}
+      aria-label={`${days} days in the pipeline`}
+    >
+      {digits.map((digit, index) => (
+        <span
+          key={`${digit}-${index}`}
+          className="relative inline-flex h-10 w-8 items-center justify-center overflow-hidden rounded-md border border-slate-950/40 bg-slate-900 text-lg font-black leading-none text-white shadow-[0_2px_0_oklch(0.13_0.02_264),0_10px_20px_-14px_oklch(0.2_0.028_264_/_0.6)]"
+        >
+          <span className="absolute inset-x-0 top-1/2 h-px bg-white/12" />
+          <span className="absolute inset-x-0 top-0 h-1/2 bg-white/[0.04]" />
+          <span className="relative">{digit}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function ProfileAvatar({
+  live = false,
+  profile,
+  size = "md",
+}: {
+  live?: boolean;
+  profile: BoardProfile | null;
+  size?: "xs" | "sm" | "md" | "icon";
+}) {
+  const sizeClass = {
+    xs: "size-6 text-[0.62rem]",
+    icon: "size-7 text-[0.65rem]",
+    sm: "size-8 text-[0.7rem]",
+    md: "size-10 text-sm",
+  }[size];
+
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-foreground/15 bg-card font-display tracking-display text-foreground/80 shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset]",
+        live &&
+          "border-sky-300/95 ring-2 ring-white/90 shadow-[0_0_0_3px_oklch(0.82_0.105_244_/_0.28),0_0_16px_oklch(0.76_0.13_244_/_0.68),0_0_28px_oklch(1_0_0_/_0.92)]",
+        sizeClass
+      )}
+      title={profile ? (live ? `${profile.name} is live` : profile.name) : "No profile"}
     >
       {profile?.avatar_url ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -3109,6 +3758,59 @@ function ProfileAvatar({
       )}
     </span>
   );
+}
+
+function fileToAvatarDataUrl(file: File) {
+  if (!file.type.startsWith("image/")) {
+    return Promise.reject(new Error("Choose an image file."));
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    return Promise.reject(new Error("Photo must be under 5 MB."));
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const canvas = document.createElement("canvas");
+      const outputSize = 192;
+      const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+      const sourceX = Math.max(0, (image.naturalWidth - sourceSize) / 2);
+      const sourceY = Math.max(0, (image.naturalHeight - sourceSize) / 2);
+
+      canvas.width = outputSize;
+      canvas.height = outputSize;
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        reject(new Error("Could not prepare photo."));
+        return;
+      }
+
+      context.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        sourceSize,
+        sourceSize,
+        0,
+        0,
+        outputSize,
+        outputSize
+      );
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Could not read photo."));
+    };
+
+    image.src = objectUrl;
+  });
 }
 
 function ProfileStack({
@@ -3135,32 +3837,53 @@ function ProfileStack({
 }
 
 function ProfileAssignmentPicker({
+  hideHeader = false,
   profiles,
   selectedIds,
   onChange,
+  onProfilesChange,
+  shape = "soft",
 }: {
+  hideHeader?: boolean;
   profiles: BoardProfile[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
+  onProfilesChange: (profiles: BoardProfile[]) => void;
+  shape?: "soft" | "square";
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customError, setCustomError] = useState("");
+  const [deleteOptionProfileId, setDeleteOptionProfileId] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [isCreatingCustom, startCustomTransition] = useTransition();
+  const [isDeletingProfile, startDeleteTransition] = useTransition();
+  const deleteRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const selectedProfiles = selectedIds
     .map((id) => profiles.find((profile) => profile.id === id))
     .filter(Boolean) as BoardProfile[];
   const visibleProfiles = profiles.filter((profile) =>
     profile.name.toLowerCase().includes(query.trim().toLowerCase())
   );
+  const isSquare = shape === "square";
+
+  useEffect(() => {
+    return () => {
+      if (deleteRevealTimerRef.current) {
+        clearTimeout(deleteRevealTimerRef.current);
+      }
+    };
+  }, []);
 
   function toggle(profileId: string) {
     const selected = selectedIds.includes(profileId);
+    setDeleteOptionProfileId("");
+    setDeleteError("");
 
     if (selected) {
-      if (selectedIds.length === 1) {
-        return;
-      }
-
-      onChange(selectedIds.filter((id) => id !== profileId));
+      removeProfile(profileId);
       return;
     }
 
@@ -3171,40 +3894,151 @@ function ProfileAssignmentPicker({
     onChange([...selectedIds, profileId]);
   }
 
+  function removeProfile(profileId: string) {
+    if (selectedIds.length === 1) {
+      return;
+    }
+
+    onChange(selectedIds.filter((id) => id !== profileId));
+  }
+
+  function cancelDeleteReveal() {
+    if (deleteRevealTimerRef.current) {
+      clearTimeout(deleteRevealTimerRef.current);
+      deleteRevealTimerRef.current = null;
+    }
+  }
+
+  function startDeleteReveal(profileId: string) {
+    cancelDeleteReveal();
+    setDeleteError("");
+    deleteRevealTimerRef.current = setTimeout(() => {
+      setDeleteOptionProfileId(profileId);
+      deleteRevealTimerRef.current = null;
+    }, 3000);
+  }
+
+  function handleDeleteProfile(profile: BoardProfile) {
+    setDeleteError("");
+
+    if (selectedIds.includes(profile.id) && selectedIds.length === 1) {
+      setDeleteError("Add another branch before deleting this one.");
+      return;
+    }
+
+    startDeleteTransition(async () => {
+      const result = await deleteProfile(profile.id);
+
+      if (!result.ok) {
+        setDeleteError(result.error);
+        return;
+      }
+
+      onProfilesChange(profiles.filter((item) => item.id !== profile.id));
+      onChange(selectedIds.filter((id) => id !== profile.id));
+      setDeleteOptionProfileId("");
+    });
+  }
+
+  function handleCreateCustom() {
+    const name = customName.trim();
+
+    setCustomError("");
+
+    if (!name) {
+      setCustomError("Add a name for the custom person.");
+      return;
+    }
+
+    if (selectedIds.length >= 3) {
+      setCustomError("Remove one profile before adding a custom person.");
+      return;
+    }
+
+    startCustomTransition(async () => {
+      const result = await createProfile(name);
+
+      if (!result.ok || !result.data) {
+        setCustomError(result.ok ? "Could not add custom person." : result.error);
+        return;
+      }
+
+      const nextProfiles = [...profiles, result.data].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+      onProfilesChange(nextProfiles);
+      onChange([...selectedIds, result.data.id]);
+      setCustomName("");
+      setCustomOpen(false);
+    });
+  }
+
   return (
-    <div className="rounded-xl border border-foreground/10 bg-card/80 p-2.5">
+    <div
+      className={cn(
+        "soft-panel border p-2.5",
+        isSquare ? "rounded-md" : "rounded-xl"
+      )}
+    >
       <div className="grid grid-cols-3 gap-2">
         {Array.from({ length: 3 }, (_, index) => {
           const profile = selectedProfiles[index] ?? null;
 
           return (
-            <button
+            <div
               key={profile?.id ?? `empty-${index}`}
-              type="button"
-              onClick={() => setOpen(true)}
               className={cn(
-                "flex min-h-[4.5rem] flex-col items-center justify-center rounded-xl border border-foreground/10 bg-background/70 px-2 py-2 text-center transition hover:border-foreground/25",
-                profile && "bg-background"
+                "soft-control relative min-h-[4.5rem] border text-center transition hover:cyan-accent",
+                isSquare ? "rounded-md" : "rounded-xl",
+                profile && "soft-inset"
               )}
             >
               {profile ? (
                 <>
-                  <ProfileAvatar profile={profile} size="sm" />
-                  <span className="mt-1.5 max-w-full truncate text-[0.72rem] font-medium tracking-tight text-foreground">
-                    {profile.name}
-                  </span>
+                  {selectedProfiles.length > 1 ? (
+                    <button
+                      aria-label={`Remove ${profile.name}`}
+                      className={cn(
+                        "soft-control absolute right-1.5 top-1.5 z-10 inline-flex size-5 items-center justify-center border text-foreground/55 transition hover:border-destructive/30 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
+                        isSquare ? "rounded-md" : "rounded-full"
+                      )}
+                      onClick={() => removeProfile(profile.id)}
+                      type="button"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  ) : null}
+                  <button
+                    className="flex min-h-[4.5rem] w-full flex-col items-center justify-center px-2 py-2"
+                    onClick={() => setOpen(true)}
+                    type="button"
+                  >
+                    <ProfileAvatar profile={profile} size="sm" />
+                    <span className="mt-1.5 max-w-full truncate text-[0.72rem] font-medium tracking-tight text-foreground">
+                      {profile.name}
+                    </span>
+                  </button>
                 </>
               ) : (
-                <>
-                  <span className="flex size-8 items-center justify-center rounded-full border border-dashed border-foreground/20 text-muted-foreground">
+                <button
+                  className="flex min-h-[4.5rem] w-full flex-col items-center justify-center px-2 py-2"
+                  onClick={() => setOpen(true)}
+                  type="button"
+                >
+                  <span
+                    className={cn(
+                      "flex size-8 items-center justify-center border border-dashed border-foreground/20 text-muted-foreground",
+                      isSquare ? "rounded-md" : "rounded-full"
+                    )}
+                  >
                     <Plus className="size-3.5" />
                   </span>
                   <span className="mt-1.5 text-[0.65rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                     Branch {index + 1}
                   </span>
-                </>
+                </button>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
@@ -3222,7 +4056,10 @@ function ProfileAssignmentPicker({
               type="button"
             />
             <motion.div
-              className="relative z-10 flex max-h-[86vh] w-full max-w-lg flex-col rounded-t-[2rem] border bg-card p-4 shadow-2xl sm:rounded-[2rem]"
+              className={cn(
+                "relative z-10 flex max-h-[86vh] w-full max-w-lg flex-col border bg-card p-4 shadow-2xl",
+                isSquare ? "rounded-md" : "rounded-t-[2rem] sm:rounded-[2rem]"
+              )}
               initial={{ opacity: 0, y: 72, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 72, scale: 0.98 }}
@@ -3232,17 +4069,18 @@ function ProfileAssignmentPicker({
               aria-label="Assign profiles"
             >
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[0.62rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                    Assign profiles
-                  </p>
-                  <h3 className="mt-1.5 font-display text-3xl leading-[0.95] tracking-display">
-                    Choose 1 to 3 people
-                  </h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Search the registered profiles and tap to assign or remove.
-                  </p>
-                </div>
+                {!hideHeader ? (
+                  <div>
+                    <h3 className="flex flex-wrap items-baseline gap-3 font-display text-3xl leading-[0.95] tracking-display">
+                      <span>Branches</span>
+                      <span className="text-3xl text-muted-foreground">
+                        {selectedIds.length} of 3
+                      </span>
+                    </h3>
+                  </div>
+                ) : (
+                  <span className="sr-only">{selectedIds.length} of 3 selected</span>
+                )}
                 <Button
                   onClick={() => setOpen(false)}
                   size="icon"
@@ -3261,61 +4099,178 @@ function ProfileAssignmentPicker({
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search profiles"
-                  className="h-11 w-full rounded-2xl border bg-background pl-11 pr-4 text-sm outline-none focus-visible:ring-4 focus-visible:ring-ring/25"
+                  className={cn(
+                    "h-11 w-full border bg-background pl-11 pr-4 text-sm outline-none focus-visible:ring-4 focus-visible:ring-ring/25",
+                    isSquare ? "rounded-md" : "rounded-2xl"
+                  )}
                 />
               </label>
 
-              <ProfileStack profiles={selectedProfiles} className="mt-3 rounded-2xl bg-background p-3" />
+              {customOpen ? (
+                <form
+                  action={handleCreateCustom}
+                  className={cn(
+                    "mt-3 border border-foreground/10 bg-background p-3",
+                    isSquare ? "rounded-md" : "rounded-2xl"
+                  )}
+                >
+                  <label className="block">
+                    <span className="sr-only">Custom person name</span>
+                    <input
+                      autoFocus
+                      value={customName}
+                      onChange={(event) => setCustomName(event.target.value)}
+                      placeholder="Custom person name"
+                      className={cn(
+                        "h-10 w-full border bg-card px-3 text-sm outline-none focus-visible:ring-4 focus-visible:ring-ring/25",
+                        isSquare ? "rounded-md" : "rounded-xl"
+                      )}
+                    />
+                  </label>
+                  {customError ? (
+                    <p className="mt-2 text-xs font-medium text-destructive">
+                      {customError}
+                    </p>
+                  ) : null}
+                  <div className="mt-2 flex justify-end gap-2">
+                    <Button
+                      disabled={isCreatingCustom}
+                      onClick={() => {
+                        setCustomOpen(false);
+                        setCustomError("");
+                        setCustomName("");
+                      }}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      Cancel
+                    </Button>
+                    <Button disabled={isCreatingCustom} size="sm" type="submit">
+                      Add
+                    </Button>
+                  </div>
+                </form>
+              ) : null}
+              {deleteError ? (
+                <p
+                  className={cn(
+                    "mt-3 border border-destructive/20 bg-destructive/10 p-3 text-sm font-medium text-destructive",
+                    isSquare ? "rounded-md" : "rounded-2xl"
+                  )}
+                >
+                  {deleteError}
+                </p>
+              ) : null}
 
-              <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+              {hideHeader ? (
+                <div className="mt-3 flex items-end justify-between px-1">
+                  <h3 className="font-display text-2xl leading-none tracking-display text-foreground">
+                    Branches
+                  </h3>
+                  <span className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-muted-foreground">
+                    {selectedIds.length} of 3
+                  </span>
+                </div>
+              ) : null}
+
+              <div className="mt-3 grid min-h-0 flex-1 grid-cols-4 gap-3 overflow-y-auto pr-1">
+                <button
+                  aria-label="Add custom person"
+                  className={cn(
+                    "flex aspect-square items-center justify-center border border-dashed border-foreground/20 bg-background text-muted-foreground transition hover:border-foreground/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-45",
+                    isSquare ? "rounded-md" : "rounded-2xl"
+                  )}
+                  disabled={selectedIds.length >= 3}
+                  onClick={() => {
+                    setCustomOpen(true);
+                    setCustomError("");
+                  }}
+                  title="Custom"
+                  type="button"
+                >
+                  <span className="flex flex-col items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "inline-flex size-10 items-center justify-center border border-foreground/15",
+                        isSquare ? "rounded-md" : "rounded-full"
+                      )}
+                    >
+                      <Plus className="size-4" />
+                    </span>
+                    <span className="text-[0.58rem] font-black uppercase tracking-[0.14em]">
+                      Custom
+                    </span>
+                  </span>
+                </button>
                 {visibleProfiles.length > 0 ? (
                   visibleProfiles.map((profile) => {
                     const selected = selectedIds.includes(profile.id);
                     const disabled = !selected && selectedIds.length >= 3;
 
                     return (
-                      <button
-                        key={profile.id}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-2xl border bg-background p-3 text-left transition",
-                          selected && "border-primary bg-primary/10",
-                          disabled && "cursor-not-allowed opacity-45"
-                        )}
-                        disabled={disabled}
-                        onClick={() => toggle(profile.id)}
-                        type="button"
-                      >
-                        <ProfileAvatar profile={profile} size="sm" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-black">
+                      <div key={profile.id} className="relative aspect-square">
+                        <button
+                          aria-label={`${selected ? "Remove" : "Assign"} ${profile.name}`}
+                          title={`${profile.name}. Hold for 3 seconds to show delete.`}
+                          className={cn(
+                            "flex size-full flex-col items-center justify-center gap-2 border bg-background px-1.5 transition hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
+                            isSquare ? "rounded-md" : "rounded-2xl",
+                            selected && "border-primary bg-primary/10 shadow-[0_0_0_1px_oklch(0.22_0.028_264_/_0.22)]",
+                            disabled && "cursor-not-allowed opacity-45"
+                          )}
+                          disabled={disabled || isDeletingProfile}
+                          onClick={(event) => {
+                            if (deleteOptionProfileId === profile.id) {
+                              event.preventDefault();
+                              return;
+                            }
+
+                            toggle(profile.id);
+                          }}
+                          onContextMenu={(event) => event.preventDefault()}
+                          onPointerCancel={cancelDeleteReveal}
+                          onPointerDown={() => startDeleteReveal(profile.id)}
+                          onPointerLeave={cancelDeleteReveal}
+                          onPointerUp={cancelDeleteReveal}
+                          type="button"
+                        >
+                          <ProfileAvatar profile={profile} size="md" />
+                          <span className="max-w-full truncate text-[0.72rem] font-medium tracking-tight text-foreground">
                             {profile.name}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            {profile.active_contacts} active contacts
-                          </span>
-                        </span>
-                        <span
-                          className={cn(
-                            "rounded-full border px-2 py-1 text-[0.65rem] font-black uppercase tracking-[0.12em]",
-                            selected
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "text-muted-foreground"
-                          )}
-                        >
-                          {selected ? "Selected" : "Add"}
-                        </span>
-                      </button>
+                        </button>
+                        {deleteOptionProfileId === profile.id ? (
+                          <button
+                            aria-label={`Delete ${profile.name}`}
+                            className={cn(
+                              "absolute inset-x-2 bottom-2 bg-destructive px-2 py-1 text-[0.58rem] font-black uppercase tracking-[0.12em] text-white shadow-lg transition hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-60",
+                              isSquare ? "rounded-md" : "rounded-full"
+                            )}
+                            disabled={isDeletingProfile}
+                            onClick={() => handleDeleteProfile(profile)}
+                            type="button"
+                          >
+                            Delete
+                          </button>
+                        ) : null}
+                      </div>
                     );
                   })
                 ) : (
-                  <p className="rounded-2xl border border-dashed bg-background p-4 text-center text-sm text-muted-foreground">
+                  <p
+                    className={cn(
+                      "col-span-4 border border-dashed bg-background p-4 text-center text-sm text-muted-foreground",
+                      isSquare ? "rounded-md" : "rounded-2xl"
+                    )}
+                  >
                     No profiles match that search.
                   </p>
                 )}
               </div>
 
               <Button
-                className="mt-4 w-full"
+                className={cn("mt-4 w-full", isSquare && "rounded-md")}
                 disabled={selectedIds.length < 1}
                 onClick={() => setOpen(false)}
                 type="button"
