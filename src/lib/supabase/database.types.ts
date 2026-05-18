@@ -20,6 +20,7 @@ export type Database = {
           teacher: string | null;
           notes: string | null;
           avatar_url: string | null;
+          life_status: "student" | "worker" | null;
           assigned_profile_ids: string[];
           sort_order: number;
           baptized_at: string | null;
@@ -37,6 +38,7 @@ export type Database = {
           teacher?: string | null;
           notes?: string | null;
           avatar_url?: string | null;
+          life_status?: "student" | "worker" | null;
           assigned_profile_ids?: string[];
           sort_order?: number;
           baptized_at?: string | null;
@@ -54,6 +56,7 @@ export type Database = {
           teacher?: string | null;
           notes?: string | null;
           avatar_url?: string | null;
+          life_status?: "student" | "worker" | null;
           assigned_profile_ids?: string[];
           sort_order?: number;
           baptized_at?: string | null;

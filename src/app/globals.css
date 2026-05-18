@@ -158,18 +158,179 @@
     letter-spacing: -0.02em;
   }
 
+  .profile-avatar-shell {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 31% 18%, oklch(1 0 0 / 0.82) 0 10%, transparent 28%),
+      linear-gradient(145deg, oklch(0.82 0.15 223), oklch(0.63 0.23 249) 42%, oklch(0.69 0.2 232) 72%, oklch(0.47 0.2 258));
+    box-shadow:
+      0 1px 0 oklch(1 0 0 / 0.86) inset,
+      0 -2px 5px oklch(0.42 0.18 252 / 0.42) inset,
+      0 0 0 1px oklch(0.95 0.02 230 / 0.86),
+      0 4px 12px oklch(0.58 0.18 240 / 0.24);
+    isolation: isolate;
+  }
+
+  .profile-avatar-shell::before {
+    content: "";
+    position: absolute;
+    inset: 9%;
+    z-index: 0;
+    border-radius: inherit;
+    background:
+      linear-gradient(145deg, oklch(1 0 0 / 0.95), oklch(0.9 0.01 235) 48%, oklch(1 0 0 / 0.9)),
+      radial-gradient(circle at 34% 18%, oklch(1 0 0 / 0.96), transparent 38%);
+    box-shadow:
+      0 1px 2px oklch(1 0 0 / 0.9) inset,
+      0 -2px 5px oklch(0.72 0.02 240 / 0.32) inset,
+      0 0 0 1px oklch(1 0 0 / 0.9);
+  }
+
+  .profile-avatar-inner {
+    position: absolute;
+    inset: 18%;
+    z-index: 1;
+    overflow: hidden;
+    border-radius: inherit;
+    background:
+      radial-gradient(circle at 40% 22%, oklch(0.94 0.005 240), oklch(0.82 0.006 240) 54%, oklch(0.99 0 0) 55%),
+      linear-gradient(145deg, oklch(0.96 0 0), oklch(0.88 0.006 240));
+    box-shadow:
+      0 1px 2px oklch(1 0 0 / 0.8) inset,
+      0 7px 10px oklch(0.12 0.01 250 / 0.18);
+  }
+
+  .profile-avatar-photo {
+    position: absolute;
+    inset: 2%;
+    z-index: 1;
+    width: 96%;
+    height: 96%;
+    border-radius: inherit;
+    object-fit: cover;
+    filter: saturate(0.86) contrast(0.96);
+  }
+
+  .profile-avatar-glyph {
+    position: absolute;
+    inset: 14%;
+    z-index: 1;
+    fill: oklch(0.48 0 0);
+    filter:
+      drop-shadow(0 1px 0 oklch(1 0 0 / 0.5))
+      drop-shadow(0 2px 4px oklch(0.12 0 0 / 0.2));
+  }
+
+  .profile-avatar-gloss {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    background:
+      linear-gradient(135deg, oklch(1 0 0 / 0.5) 0 20%, transparent 42%),
+      radial-gradient(circle at 68% 22%, oklch(1 0 0 / 0.58), transparent 26%);
+    mix-blend-mode: screen;
+    pointer-events: none;
+  }
+
+  .profile-avatar-live {
+    box-shadow:
+      0 1px 0 oklch(1 0 0 / 0.9) inset,
+      0 -2px 5px oklch(0.42 0.18 252 / 0.42) inset,
+      0 0 0 1px oklch(1 0 0 / 0.95),
+      0 0 0 4px oklch(0.82 0.105 244 / 0.26),
+      0 0 18px oklch(0.76 0.13 244 / 0.72),
+      0 0 30px oklch(1 0 0 / 0.88);
+  }
+
+  .s-drive-header-mark {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    overflow: visible;
+    isolation: isolate;
+    filter:
+      drop-shadow(0 1px 0 oklch(1 0 0 / 0.72))
+      drop-shadow(0 8px 14px oklch(0.58 0.18 240 / 0.18));
+  }
+
+  .s-drive-header-mark::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 31% 18%, oklch(1 0 0 / 0.82) 0 10%, transparent 31%),
+      linear-gradient(145deg, oklch(0.82 0.15 223 / 0.9), oklch(0.63 0.23 249 / 0.68) 48%, oklch(0.47 0.2 258 / 0.56));
+    box-shadow:
+      0 1px 0 oklch(1 0 0 / 0.86) inset,
+      0 -2px 5px oklch(0.42 0.18 252 / 0.26) inset,
+      0 0 0 1px oklch(0.95 0.02 230 / 0.72);
+    opacity: 0.42;
+  }
+
+  .s-drive-header-mark__letters {
+    position: relative;
+    display: inline-block;
+    color: transparent;
+    background:
+      linear-gradient(155deg, oklch(1 0 0) 4%, oklch(0.9 0.02 226) 29%, oklch(0.67 0.17 244) 54%, oklch(0.45 0.2 256) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    font-family: "Snell Roundhand", "Brush Script MT", "Segoe Script", "Apple Chancery", cursive;
+    font-size: 1.92rem;
+    font-style: italic;
+    font-weight: 900;
+    letter-spacing: -0.26em;
+    line-height: 0.82;
+    padding-right: 0.22em;
+    transform: translate(-0.04em, 0.02em) rotate(-3deg);
+    -webkit-text-stroke: 0.045em oklch(0.98 0.012 220 / 0.88);
+    text-shadow:
+      0 1px 0 oklch(1 0 0 / 0.9),
+      0 -1px 0 oklch(0.42 0.18 252 / 0.32),
+      0 3px 7px oklch(0.12 0.01 250 / 0.18);
+  }
+
+  .s-drive-header-mark__letters::before {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    color: transparent;
+    background:
+      linear-gradient(118deg, transparent 20%, oklch(1 0 0 / 0.9) 42%, oklch(0.96 0.025 225 / 0.72) 50%, transparent 66%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    mix-blend-mode: screen;
+    opacity: 0.72;
+    pointer-events: none;
+    transform: translate(-0.03em, -0.08em);
+    -webkit-text-stroke: 0;
+  }
+
   .s-drive-wordmark {
     position: relative;
     display: inline-block;
-    overflow: hidden;
-    padding: 0 0.34em 0.18em 0.18em;
+    overflow: visible;
+    padding: 0.16em 0.42em 0.28em 0.24em;
     color: oklch(0.68 0.15 248);
     font-family: "Snell Roundhand", "Brush Script MT", "Segoe Script", "Apple Chancery", cursive;
     font-size: clamp(2.8rem, 9vw, 5.8rem);
     font-style: italic;
     font-weight: 700;
     letter-spacing: -0.09em;
-    line-height: 0.76;
+    line-height: 0.9;
     text-shadow:
       0 1px 0 oklch(1 0 0 / 0.88),
       0 12px 24px oklch(0.68 0.15 248 / 0.22);
@@ -223,6 +384,76 @@
     100% {
       transform: translateX(62%) skewX(-16deg);
       opacity: 0;
+    }
+  }
+
+  .quick-actions-diamond-shine {
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 31% 18%, oklch(1 0 0 / 0.78), transparent 27%),
+      linear-gradient(145deg, oklch(1 0 0 / 0.38), oklch(0.86 0.045 230 / 0.18) 48%, oklch(1 0 0 / 0.5));
+    box-shadow:
+      0 1px 0 oklch(1 0 0 / 0.82) inset,
+      0 -8px 16px oklch(0.64 0.08 244 / 0.12) inset,
+      0 0 0 1px oklch(1 0 0 / 0.38) inset;
+  }
+
+  .quick-actions-diamond-shine::before {
+    content: "";
+    position: absolute;
+    inset: 18%;
+    opacity: 0.7;
+    background:
+      linear-gradient(135deg, transparent 43%, oklch(1 0 0 / 0.48) 44% 46%, transparent 47%),
+      linear-gradient(45deg, transparent 45%, oklch(0.78 0.12 244 / 0.2) 46% 50%, transparent 51%),
+      linear-gradient(160deg, oklch(1 0 0 / 0.72), oklch(0.88 0.045 232 / 0.22) 52%, oklch(1 0 0 / 0.42));
+    border: 1px solid oklch(1 0 0 / 0.42);
+    box-shadow:
+      0 1px 3px oklch(1 0 0 / 0.58) inset,
+      0 4px 10px oklch(0.48 0.08 244 / 0.08);
+    clip-path: polygon(50% 3%, 88% 35%, 70% 88%, 30% 88%, 12% 35%);
+  }
+
+  .quick-actions-diamond-shine::after {
+    content: "";
+    position: absolute;
+    inset: -42%;
+    background: linear-gradient(
+      105deg,
+      transparent 36%,
+      oklch(1 0 0 / 0.08) 44%,
+      oklch(1 0 0 / 0.62) 50%,
+      oklch(0.86 0.08 235 / 0.2) 55%,
+      transparent 64%
+    );
+    mix-blend-mode: screen;
+    transform: translateX(-64%) skewX(-18deg);
+    animation: quick-actions-diamond-shimmer 5.8s ease-in-out infinite;
+  }
+
+  @keyframes quick-actions-diamond-shimmer {
+    0%,
+    62% {
+      transform: translateX(-64%) skewX(-18deg);
+      opacity: 0;
+    }
+    72% {
+      opacity: 0.56;
+    }
+    86%,
+    100% {
+      transform: translateX(64%) skewX(-18deg);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .quick-actions-diamond-shine::after {
+      animation: none;
+      opacity: 0.16;
+      transform: translateX(8%) skewX(-18deg);
     }
   }
 

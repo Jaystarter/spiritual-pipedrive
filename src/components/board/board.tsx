@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
   useTransition,
   type ChangeEvent,
+  type ReactNode,
   type WheelEvent,
 } from "react";
 import { createPortal } from "react-dom";
@@ -32,6 +33,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Briefcase,
   Camera,
   Check,
   ChevronLeft,
@@ -41,6 +43,8 @@ import {
   Pencil,
   Plus,
   Search,
+  School,
+  Settings,
   SlidersHorizontal,
   Star,
   Trash2,
@@ -63,6 +67,7 @@ import {
   type ContactReactionChannel,
   type ContactReactionOutcome,
   type PersonEvent,
+  type PersonLifeStatus,
   type PersonStudy,
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
@@ -295,6 +300,48 @@ function daysInPipeline(createdAt: string) {
   return Math.max(1, elapsedDays);
 }
 
+function daysSinceDate(value: string) {
+  const timestamp = Date.parse(value);
+
+  if (Number.isNaN(timestamp)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor((Date.now() - timestamp) / 86_400_000));
+}
+
+function getLatestActivitySnapshot(person: BoardPerson) {
+  const candidates = [
+    {
+      label: "Created",
+      value: person.created_at,
+    },
+    {
+      label: "Contacted",
+      value: person.last_contacted_at,
+    },
+    ...person.events.map((event) => ({
+      label: event.title || "Activity logged",
+      value: event.created_at,
+    })),
+    ...person.studies.map((study) => ({
+      label: `Study: ${getStudyTitle(study)}`,
+      value: study.studied_at ?? study.created_at,
+    })),
+  ].filter((item): item is { label: string; value: string } => Boolean(item.value));
+
+  return candidates.reduce((latest, item) => {
+    const latestTime = Date.parse(latest.value);
+    const itemTime = Date.parse(item.value);
+
+    if (Number.isNaN(itemTime)) {
+      return latest;
+    }
+
+    return Number.isNaN(latestTime) || itemTime > latestTime ? item : latest;
+  }, candidates[0]);
+}
+
 function getAssignedProfiles(person: BoardPerson, profiles: BoardProfile[]) {
   return person.assigned_profile_ids
     .map((id) => profiles.find((profile) => profile.id === id))
@@ -524,6 +571,7 @@ export function BibleStudyBoard({
   configured,
   error,
 }: BoardProps) {
+  const [mounted, setMounted] = useState(false);
   const [people, setPeople] = useState(initialPeople);
   const [profiles, setProfiles] = useState(initialProfiles);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -540,6 +588,12 @@ export function BibleStudyBoard({
     getActiveProfileServerSnapshot
   );
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -768,6 +822,17 @@ export function BibleStudyBoard({
     );
   }
 
+  if (!mounted) {
+    return (
+      <main className="relative min-h-screen overflow-hidden bg-background text-foreground grain">
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 -z-10 [background:radial-gradient(70rem_44rem_at_18%_-10%,oklch(1_0_0_/_0.92),transparent_58%),radial-gradient(54rem_38rem_at_95%_8%,oklch(0.82_0.105_244_/_0.2),transparent_58%),radial-gradient(48rem_38rem_at_8%_105%,oklch(0.86_0.06_210_/_0.24),transparent_62%),linear-gradient(145deg,oklch(0.985_0.004_215)_0%,var(--background)_46%,oklch(0.91_0.018_215)_100%)]"
+        />
+      </main>
+    );
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground grain">
       <div
@@ -789,6 +854,8 @@ export function BibleStudyBoard({
           onOpenProfiles={() => setProfileSheetOpen(true)}
           onSelectProfile={handleSelectProfile}
           onAddContact={() => setQuickAddOpen(true)}
+          graphPeople={filteredPeople}
+          graphProfiles={profiles}
           configured={configured}
           notice={notice}
         />
@@ -914,6 +981,8 @@ function AppShellHeader({
   onOpenProfiles,
   onSelectProfile,
   onAddContact,
+  graphPeople,
+  graphProfiles,
   configured,
   notice,
 }: {
@@ -926,12 +995,17 @@ function AppShellHeader({
   onOpenProfiles: () => void;
   onSelectProfile: (profileId: string) => void;
   onAddContact: () => void;
+  graphPeople: BoardPerson[];
+  graphProfiles: BoardProfile[];
   configured: boolean;
   notice?: string;
 }) {
-  const [openControl, setOpenControl] = useState<"search" | "filter" | null>(null);
+  const [openControl, setOpenControl] = useState<"search" | "filter" | "followup" | null>(null);
+  const [railExpanded, setRailExpanded] = useState(false);
+  const [settingsMode, setSettingsMode] = useState<"closed" | "menu" | "graphs">("closed");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const lastProfileWheelAtRef = useRef(0);
+  const lastRailToggleAtRef = useRef(0);
   const otherProfiles = profiles.filter((profile) => profile.id !== activeProfile?.id);
   const activeFilterLabel =
     profileFilter === "mine"
@@ -939,6 +1013,26 @@ function AppShellHeader({
       : profileFilter === "all"
         ? "All contacts"
         : profiles.find((profile) => profile.id === profileFilter)?.name ?? "All contacts";
+  const followUpItems = graphPeople
+    .map((person) => {
+      const latestActivity = getLatestActivitySnapshot(person);
+      const daysQuiet = daysSinceDate(latestActivity.value);
+      const assignedProfiles = getAssignedProfiles(person, profiles);
+      const ownerLabel =
+        assignedProfiles.length > 0
+          ? assignedProfiles.map((profile) => profile.name).join(", ")
+          : person.teacher || "Unassigned";
+
+      return {
+        person,
+        daysQuiet,
+        latestActivity,
+        ownerLabel,
+        stageLabel: STAGES.find((stage) => stage.id === person.stage)?.label ?? person.stage,
+      };
+    })
+    .filter((item) => item.daysQuiet >= 5)
+    .sort((a, b) => b.daysQuiet - a.daysQuiet);
 
   function handleProfileWheel(event: WheelEvent<HTMLDivElement>) {
     if (profiles.length < 2) {
@@ -976,6 +1070,24 @@ function AppShellHeader({
     onSelectProfile(nextProfile.id);
   }
 
+  function handleRailToggle() {
+    const now = Date.now();
+
+    if (now - lastRailToggleAtRef.current < 180) {
+      return;
+    }
+
+    lastRailToggleAtRef.current = now;
+    setRailExpanded((expanded) => {
+      if (expanded || openControl !== null) {
+        setOpenControl(null);
+        return false;
+      }
+
+      return true;
+    });
+  }
+
   useEffect(() => {
     if (openControl !== "search") {
       return;
@@ -986,98 +1098,193 @@ function AppShellHeader({
     return () => cancelAnimationFrame(frame);
   }, [openControl]);
 
+  const floatingActionButtonClass =
+    "relative inline-flex size-12 items-center justify-center rounded-full border border-white/75 bg-white/70 text-muted-foreground shadow-[0_12px_32px_-20px_oklch(0.45_0.05_245_/_0.55),0_1px_0_oklch(1_0_0_/_0.92)_inset] backdrop-blur-2xl transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.03] hover:border-sky-200/90 hover:bg-white/90 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:scale-100";
+  const floatingActionButtonActiveClass =
+    "border-sky-200/90 bg-sky-50/90 text-sky-600 shadow-[0_14px_36px_-18px_oklch(0.6_0.12_244_/_0.72),0_0_0_1px_oklch(0.76_0.13_244_/_0.25),0_1px_0_oklch(1_0_0_/_0.95)_inset]";
+  const railOpen = railExpanded || openControl !== null;
+
   return (
     <header className="relative isolate z-[70] overflow-visible">
       <div className="relative overflow-visible border-b border-foreground/10 py-2">
-        <div className="mb-2 flex items-center justify-center sm:justify-start">
-          <h1 className="s-drive-wordmark" aria-label="S-Drive">
-            S-Drive
-          </h1>
-        </div>
-        <div className="relative flex min-h-11 items-center overflow-visible">
-          <button
-            type="button"
-            aria-label={
-              activeProfile
-                ? `Open profile settings for ${activeProfile.name}`
-                : "Choose active profile"
-            }
-            onClick={onOpenProfiles}
-            className="group flex h-11 min-w-0 shrink-0 items-center gap-3 px-1 pr-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
-          >
-            <ProfileAvatar profile={activeProfile} size="sm" live={Boolean(activeProfile)} />
-            <span className="min-w-0 max-w-[8rem] truncate text-sm font-semibold leading-none tracking-tight sm:max-w-[10rem]">
-              {activeProfile ? activeProfile.name : "Choose profile"}
-            </span>
-          </button>
+        <button
+          type="button"
+          aria-label="Open settings"
+          aria-expanded={settingsMode !== "closed"}
+          onClick={() =>
+            setSettingsMode((mode) => (mode === "menu" ? "closed" : "menu"))
+          }
+          className="soft-control absolute right-0 top-[calc(50%-1.25rem)] inline-flex size-10 items-center justify-center rounded-full border text-sky-500 transition hover:scale-105 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95"
+        >
+          <Settings className="size-4" />
+        </button>
+        {settingsMode === "menu" ? (
+          <div className="soft-panel-strong absolute right-0 top-[calc(50%+1.75rem)] z-[90] min-w-36 rounded-2xl border p-2">
+            <button
+              type="button"
+              className="flex w-full items-center justify-center rounded-xl px-4 py-2 text-[0.7rem] font-black uppercase tracking-[0.22em] text-foreground transition hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+              onClick={() => setSettingsMode("graphs")}
+            >
+              Graphs
+            </button>
+          </div>
+        ) : null}
+        <div className="mb-2 flex min-w-0 items-center pr-12">
+          <h1 className="sr-only">S-Drive</h1>
+          <div className="relative flex min-h-11 min-w-0 flex-1 items-center self-stretch overflow-visible">
+            <button
+              type="button"
+              aria-label={
+                activeProfile
+                  ? `Open profile settings for ${activeProfile.name}`
+                  : "Choose active profile"
+              }
+              onClick={onOpenProfiles}
+              className="group flex h-[3.75rem] min-w-0 shrink-0 items-center gap-3 px-1 pr-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+            >
+              <ProfileAvatar profile={activeProfile} size="lg" live={Boolean(activeProfile)} />
+              <span className="min-w-0 max-w-[8rem] truncate text-sm font-semibold leading-none tracking-tight sm:max-w-[10rem]">
+                {activeProfile ? activeProfile.name : "Choose profile"}
+              </span>
+            </button>
 
-          {otherProfiles.length > 0 ? (
             <div
-              aria-label="Switch active profile"
+              aria-label={otherProfiles.length > 0 ? "Switch active profile" : undefined}
               className="flex min-w-0 flex-1 items-center overflow-x-auto overscroll-x-contain px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
               onWheel={handleProfileWheel}
-              role="group"
+              role={otherProfiles.length > 0 ? "group" : undefined}
             >
-              <div className="flex h-11 items-center gap-1.5">
+              <div className="flex h-[3.25rem] items-center gap-2">
                 {otherProfiles.map((profile) => (
                   <button
                     key={profile.id}
                     type="button"
                     aria-label={`Switch to ${profile.name}`}
                     onClick={() => onSelectProfile(profile.id)}
-                    className="group/avatar relative inline-flex size-9 shrink-0 items-center justify-center rounded-full opacity-40 transition duration-200 ease-out hover:scale-105 hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95"
+                    className="group/avatar relative inline-flex size-11 shrink-0 items-center justify-center rounded-full opacity-40 transition duration-200 ease-out hover:scale-105 hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95"
                   >
                     <span className="absolute inset-0 rounded-full bg-background/60 opacity-0 transition group-hover/avatar:opacity-100" />
-                    <ProfileAvatar profile={profile} size="sm" />
+                    <ProfileAvatar profile={profile} size="md" />
                   </button>
                 ))}
+                <HeaderSdMark />
               </div>
             </div>
-          ) : null}
 
-          <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-0 z-[80] flex flex-col items-end overflow-visible sm:bottom-8">
-            <button
-              type="button"
-              aria-label="Add contact"
-              disabled={!configured || !activeProfile}
-              onClick={() => {
-                setOpenControl(null);
-                onAddContact();
-              }}
-              className={cn(
-                "soft-control relative inline-flex size-11 items-center justify-center rounded-l-2xl rounded-r-md border border-r-0 text-muted-foreground backdrop-blur-xl transition hover:-translate-x-0.5 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 disabled:cursor-not-allowed disabled:opacity-45"
-              )}
-            >
-              <Plus className="size-4" />
-            </button>
-            <button
-              type="button"
-              aria-label="Open search"
-              aria-expanded={openControl === "search"}
-              onClick={() => setOpenControl((current) => (current === "search" ? null : "search"))}
-              className={cn(
-                "soft-control -mt-px relative inline-flex size-11 items-center justify-center rounded-l-2xl rounded-r-md border border-r-0 text-muted-foreground backdrop-blur-xl transition hover:-translate-x-0.5 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
-                search && "text-sky-600 cyan-accent"
-              )}
-            >
-              <Search className="size-4" />
-              {search ? (
-                <span className="absolute right-2 top-2 size-1.5 rounded-full bg-accent" />
+          <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(0.75rem+env(safe-area-inset-right))] z-[80] flex flex-col items-end gap-2 overflow-visible sm:bottom-8 sm:right-6">
+            <AnimatePresence initial={false}>
+              {railOpen ? (
+                <motion.div
+                  className="flex flex-col items-end gap-2"
+                  initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.96 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                >
+                  <button
+                    type="button"
+                    aria-label="Add contact"
+                    disabled={!configured || !activeProfile}
+                    onClick={() => {
+                      setOpenControl(null);
+                      setRailExpanded(false);
+                      onAddContact();
+                    }}
+                    className={floatingActionButtonClass}
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Open search"
+                    aria-expanded={openControl === "search"}
+                    aria-pressed={openControl === "search"}
+                    onClick={() => {
+                      setRailExpanded(true);
+                      setOpenControl((current) => (current === "search" ? null : "search"));
+                    }}
+                    className={cn(
+                      floatingActionButtonClass,
+                      (openControl === "search" || search) && floatingActionButtonActiveClass
+                    )}
+                  >
+                    <Search className="size-4" />
+                    {search ? (
+                      <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-sky-500 shadow-[0_0_10px_oklch(0.76_0.13_244_/_0.6)]" />
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Open contact filters"
+                    aria-expanded={openControl === "filter"}
+                    aria-pressed={openControl === "filter"}
+                    onClick={() => {
+                      setRailExpanded(true);
+                      setOpenControl((current) => (current === "filter" ? null : "filter"));
+                    }}
+                    className={cn(
+                      floatingActionButtonClass,
+                      (openControl === "filter" || profileFilter !== "all") &&
+                        floatingActionButtonActiveClass
+                    )}
+                  >
+                    <SlidersHorizontal className="size-4" />
+                    {profileFilter !== "all" ? (
+                      <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-sky-500 shadow-[0_0_10px_oklch(0.76_0.13_244_/_0.6)]" />
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Open follow-up tasks"
+                    aria-expanded={openControl === "followup"}
+                    aria-pressed={openControl === "followup"}
+                    onClick={() => {
+                      setRailExpanded(true);
+                      setOpenControl((current) => (current === "followup" ? null : "followup"));
+                    }}
+                    className={cn(
+                      floatingActionButtonClass,
+                      openControl === "followup" && floatingActionButtonActiveClass,
+                      followUpItems.length > 0 && "text-sky-600"
+                    )}
+                  >
+                    <NikeSwoosh className="size-5" />
+                    {followUpItems.length > 0 ? (
+                      <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full border border-white/80 bg-sky-500 px-1.5 text-[0.58rem] font-black leading-5 text-white shadow-[0_8px_18px_-8px_oklch(0.45_0.12_244_/_0.8),0_0_12px_oklch(0.76_0.13_244_/_0.5)]">
+                        {Math.min(followUpItems.length, 9)}
+                      </span>
+                    ) : null}
+                  </button>
+                </motion.div>
               ) : null}
-            </button>
+            </AnimatePresence>
             <button
               type="button"
-              aria-label="Open contact filters"
-              aria-expanded={openControl === "filter"}
-              onClick={() => setOpenControl((current) => (current === "filter" ? null : "filter"))}
+              aria-label={railOpen ? "Collapse quick actions" : "Expand quick actions"}
+              aria-expanded={railOpen}
+              onClick={handleRailToggle}
               className={cn(
-                "soft-control -mt-px relative inline-flex size-11 items-center justify-center rounded-l-2xl rounded-r-md border border-r-0 text-muted-foreground backdrop-blur-xl transition hover:-translate-x-0.5 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
-                profileFilter !== "all" && "text-sky-600 cyan-accent"
+                "relative inline-flex size-14 items-center justify-center rounded-full border border-white/80 bg-white/80 text-sky-600 shadow-[0_18px_42px_-22px_oklch(0.45_0.08_245_/_0.7),0_1px_0_oklch(1_0_0_/_0.95)_inset] backdrop-blur-2xl transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:scale-95",
+                railOpen && floatingActionButtonActiveClass
               )}
             >
-              <SlidersHorizontal className="size-4" />
-              {profileFilter !== "all" ? (
-                <span className="absolute right-2 top-2 size-1.5 rounded-full bg-accent" />
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "quick-actions-diamond-shine absolute inset-[0.22rem] rounded-full transition-opacity duration-200",
+                  railOpen ? "opacity-0" : "opacity-100"
+                )}
+              />
+              <Plus
+                className={cn("relative z-10 size-5 transition-transform duration-200", railOpen && "rotate-45")}
+              />
+              {followUpItems.length > 0 && !railOpen ? (
+                <span className="absolute -right-1 -top-1 z-20 inline-flex min-w-5 items-center justify-center rounded-full border border-white/80 bg-sky-500 px-1.5 text-[0.58rem] font-black leading-5 text-white shadow-[0_8px_18px_-8px_oklch(0.45_0.12_244_/_0.8),0_0_12px_oklch(0.76_0.13_244_/_0.5)]">
+                  {Math.min(followUpItems.length, 9)}
+                </span>
+              ) : null}
+              {(search || profileFilter !== "all") && followUpItems.length === 0 && !railOpen ? (
+                <span className="absolute right-2 top-2 z-20 size-2 rounded-full bg-sky-500 shadow-[0_0_10px_oklch(0.76_0.13_244_/_0.6)]" />
               ) : null}
             </button>
 
@@ -1168,7 +1375,116 @@ function AppShellHeader({
                 </p>
               </div>
             ) : null}
+
+            {openControl === "followup" ? (
+              <div className="absolute bottom-0 right-full z-[100] mr-3 w-[min(22rem,calc(100vw-5.5rem))] origin-bottom-right rounded-3xl border border-white/45 bg-white/40 p-3 shadow-[0_24px_70px_-38px_oklch(0.4_0.08_240_/_0.55)] backdrop-blur-2xl">
+                <div className="relative mb-3 px-8 text-center">
+                  <div className="pointer-events-none">
+                    <p className="text-[0.64rem] font-black tracking-[0.22em] text-sky-600">
+                      Notifications
+                    </p>
+                    <p className="mt-1 text-xs font-black text-sky-600">
+                      To-do list
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Close follow-up tasks"
+                    onClick={() => setOpenControl(null)}
+                    className="absolute right-1 top-0 z-10 rounded-full p-1 text-muted-foreground transition hover:bg-background/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+                <div className="max-h-[24rem] overflow-y-auto pr-1">
+                  {followUpItems.length > 0 ? (
+                    <motion.ul
+                      aria-label="People needing follow-up"
+                      className="space-y-2"
+                      initial="hidden"
+                      animate="visible"
+                      variants={{
+                        hidden: {},
+                        visible: {
+                          transition: {
+                            staggerChildren: 0.07,
+                          },
+                        },
+                      }}
+                    >
+                      {followUpItems.map((item, index) => {
+                        const typeDelay = 0.12 + index * 0.08;
+                        const typeDuration = Math.min(0.95, 0.38 + item.person.name.length * 0.018);
+
+                        return (
+                          <motion.li
+                            key={item.person.id}
+                            className="soft-inset grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 overflow-hidden rounded-2xl border bg-white/50 px-3 py-2.5"
+                            variants={{
+                              hidden: { opacity: 0, y: 8, scale: 0.98 },
+                              visible: { opacity: 1, y: 0, scale: 1 },
+                            }}
+                            transition={{ duration: 0.22, ease: "easeOut" }}
+                          >
+                            <span className="inline-flex size-6 items-center justify-center rounded-full bg-sky-500/90 text-[0.65rem] font-black text-white shadow-[0_0_16px_oklch(0.76_0.13_244_/_0.38)]">
+                              {index + 1}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="flex min-w-0 items-center text-sm font-black text-foreground">
+                                <motion.span
+                                  className="min-w-0 truncate"
+                                  initial={{ clipPath: "inset(0 100% 0 0)" }}
+                                  animate={{ clipPath: "inset(0 0% 0 0)" }}
+                                  transition={{
+                                    duration: typeDuration,
+                                    delay: typeDelay,
+                                    ease: "easeOut",
+                                  }}
+                                >
+                                  {item.person.name}
+                                </motion.span>
+                                <motion.span
+                                  aria-hidden="true"
+                                  className="ml-0.5 h-4 w-px shrink-0 rounded-full bg-sky-500/75"
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: [0, 1, 1, 0] }}
+                                  transition={{
+                                    duration: typeDuration + 0.22,
+                                    delay: typeDelay,
+                                    ease: "easeOut",
+                                    times: [0, 0.12, 0.78, 1],
+                                  }}
+                                />
+                              </p>
+                              <p className="truncate text-[0.68rem] font-bold text-muted-foreground">
+                                {item.stageLabel} · {item.ownerLabel}
+                              </p>
+                              <p className="truncate text-[0.62rem] font-semibold text-muted-foreground/80">
+                                Last: {item.latestActivity.label}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-black leading-none text-sky-600">
+                                {item.daysQuiet}
+                              </p>
+                              <p className="text-[0.55rem] font-black uppercase tracking-[0.14em] text-muted-foreground">
+                                days
+                              </p>
+                            </div>
+                          </motion.li>
+                        );
+                      })}
+                    </motion.ul>
+                  ) : (
+                    <div className="grid min-h-[9rem] place-items-center rounded-2xl border border-sky-200/45 bg-white/25 px-4 py-6 text-center">
+                      <Check className="size-6 text-sky-500" aria-hidden="true" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
           </div>
+        </div>
         </div>
       </div>
 
@@ -1188,7 +1504,553 @@ function AppShellHeader({
           <span>{notice}</span>
         </div>
       ) : null}
+      <GraphsModal
+        open={settingsMode === "graphs"}
+        people={graphPeople}
+        profiles={graphProfiles}
+        onClose={() => setSettingsMode("closed")}
+      />
     </header>
+  );
+}
+
+function NikeSwoosh({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      viewBox="0 0 32 22"
+    >
+      <path
+        d="M3.4 12.7c4.7 2.1 12.3-.7 24.8-8.4-8.5 8.9-17.7 14.3-23.3 14.3-2.4 0-3.9-.9-4.4-2.4-.4-1.3.5-2.7 2.9-3.5Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+const graphColors = [
+  "oklch(0.72 0.15 248)",
+  "oklch(0.76 0.13 224)",
+  "oklch(0.7 0.12 198)",
+  "oklch(0.65 0.13 260)",
+  "oklch(0.78 0.1 210)",
+  "oklch(0.6 0.12 238)",
+];
+
+function monthKey(value: string) {
+  return value.slice(0, 7);
+}
+
+function formatMonthLabel(value: string) {
+  const date = new Date(`${value}-01T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function GraphsModal({
+  open,
+  people,
+  profiles,
+  onClose,
+}: {
+  open: boolean;
+  people: BoardPerson[];
+  profiles: BoardProfile[];
+  onClose: () => void;
+}) {
+  const [monthFilter, setMonthFilter] = useState("all");
+  const [userFilter, setUserFilter] = useState("all");
+  const monthOptions = Array.from(
+    new Set([
+      ...people.map((person) => monthKey(person.created_at)),
+      ...people.flatMap((person) => person.studies.map((study) => monthKey(study.studied_at))),
+    ])
+  ).sort((a, b) => b.localeCompare(a));
+  const filteredGraphPeople = people.filter((person) => {
+    const matchesMonth =
+      monthFilter === "all" || monthKey(person.created_at) === monthFilter;
+    const matchesUser =
+      userFilter === "all" || person.assigned_profile_ids.includes(userFilter);
+
+    return matchesMonth && matchesUser;
+  });
+  const graphData = STAGES.map((stage, index) => ({
+    id: stage.id,
+    index: stageIndex[stage.id],
+    label: stage.label,
+    count: filteredGraphPeople.filter((person) => person.stage === stage.id).length,
+    color: graphColors[index % graphColors.length],
+  }));
+  const total = graphData.reduce((sum, item) => sum + item.count, 0);
+  const maxCount = Math.max(1, ...graphData.map((item) => item.count));
+  const topStage = graphData.reduce(
+    (top, item) => (item.count > top.count ? item : top),
+    graphData[0]
+  );
+  const filteredGraphStudies = filteredGraphPeople.flatMap((person) =>
+    person.studies.filter(
+      (study) => monthFilter === "all" || monthKey(study.studied_at) === monthFilter
+    )
+  );
+  const totalStudies = filteredGraphStudies.length;
+  const averageDays =
+    total === 0
+      ? 0
+      : Math.round(
+          filteredGraphPeople.reduce((sum, person) => sum + daysInPipeline(person.created_at), 0) /
+            total
+        );
+  const baptizedCount = filteredGraphPeople.filter((person) => person.stage === "baptized").length;
+  const activeUserCount = profiles.filter((profile) =>
+    filteredGraphPeople.some((person) => person.assigned_profile_ids.includes(profile.id))
+  ).length;
+  const dashboardMonthKeys =
+    monthFilter === "all"
+      ? monthOptions.slice(0, 6).reverse()
+      : [monthFilter];
+  const dashboardMonths =
+    dashboardMonthKeys.length > 0 ? dashboardMonthKeys : [monthKey(new Date().toISOString())];
+  const matchesUserFilter = (person: BoardPerson) =>
+    userFilter === "all" || person.assigned_profile_ids.includes(userFilter);
+  const trendData = dashboardMonths.map((month) => {
+    const monthPeople = people.filter(
+      (person) => matchesUserFilter(person) && monthKey(person.created_at) === month
+    );
+    const monthStudies = people
+      .filter(matchesUserFilter)
+      .flatMap((person) => person.studies)
+      .filter((study) => monthKey(study.studied_at) === month);
+
+    return {
+      month,
+      contacts: monthPeople.length,
+      studies: monthStudies.length,
+    };
+  });
+  const maxTrendValue = Math.max(
+    1,
+    ...trendData.flatMap((item) => [item.contacts, item.studies])
+  );
+  const contactTrendPoints = trendData
+    .map((item, index) => {
+      const x = trendData.length === 1 ? 50 : (index / (trendData.length - 1)) * 100;
+      const y = 92 - (item.contacts / maxTrendValue) * 76;
+
+      return `${x},${y}`;
+    })
+    .join(" ");
+  const studyTrendPoints = trendData
+    .map((item, index) => {
+      const x = trendData.length === 1 ? 50 : (index / (trendData.length - 1)) * 100;
+      const y = 92 - (item.studies / maxTrendValue) * 76;
+
+      return `${x},${y}`;
+    })
+    .join(" ");
+  const topStudyTitle =
+    sortStudies(filteredGraphStudies)
+      .at(-1)
+      ?.title?.trim() || "No studies logged";
+  const userRows = profiles
+    .map((profile) => {
+      const assignedPeople = filteredGraphPeople.filter((person) =>
+        person.assigned_profile_ids.includes(profile.id)
+      );
+      const studies = assignedPeople.flatMap((person) =>
+        person.studies.filter(
+          (study) => monthFilter === "all" || monthKey(study.studied_at) === monthFilter
+        )
+      );
+      const averageUserDays =
+        assignedPeople.length === 0
+          ? 0
+          : Math.round(
+              assignedPeople.reduce((sum, person) => sum + daysInPipeline(person.created_at), 0) /
+                assignedPeople.length
+            );
+
+      return {
+        profile,
+        contacts: assignedPeople.length,
+        studies: studies.length,
+        averageDays: averageUserDays,
+      };
+    })
+    .filter((item) => item.contacts > 0 || item.studies > 0)
+    .sort((a, b) => b.contacts + b.studies - (a.contacts + a.studies));
+  const summaryCards = [
+    {
+      label: "Contacts",
+      value: total,
+      detail: `${topStage?.label ?? "No stage"} leading`,
+      accent: "from-sky-400 to-blue-500",
+      spark: contactTrendPoints,
+    },
+    {
+      label: "Bible Studies",
+      value: totalStudies,
+      detail: topStudyTitle,
+      accent: "from-cyan-300 to-sky-500",
+      spark: studyTrendPoints,
+    },
+    {
+      label: "Avg Days",
+      value: averageDays,
+      detail: "in pipeline",
+      accent: "from-blue-300 to-cyan-500",
+      spark: contactTrendPoints,
+    },
+    {
+      label: "Active Users",
+      value: activeUserCount,
+      detail: `${baptizedCount} baptized`,
+      accent: "from-sky-500 to-cyan-300",
+      spark: studyTrendPoints,
+    },
+  ];
+
+  if (!open) {
+    return null;
+  }
+
+  return createPortal(
+            <motion.div
+              aria-modal="true"
+              className="fixed inset-0 z-[140] flex items-center justify-center bg-foreground/25 px-3 py-3 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              role="dialog"
+            >
+              <motion.div
+                className="soft-panel-strong flex max-h-[94vh] w-full max-w-[95rem] flex-col overflow-hidden rounded-[1.5rem] border"
+                initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="flex min-w-0 items-center gap-2 border-b border-foreground/10 px-3 py-2 md:gap-3 md:overflow-x-auto md:px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="flex min-w-0 shrink items-baseline gap-3">
+                    <span className="hidden text-[0.65rem] font-black uppercase tracking-[0.28em] text-sky-500 md:inline">
+                      Graphs
+                    </span>
+                    <h2 className="truncate font-display text-lg font-black leading-none tracking-display text-foreground md:text-2xl">
+                      Pipeline Data
+                    </h2>
+                  </div>
+                  <div className="ml-auto flex min-w-0 shrink-0 items-center gap-2 md:min-w-max md:gap-5">
+                    <label className="relative flex h-9 min-w-0 items-center md:gap-2">
+                      <span className="hidden text-[0.58rem] font-black uppercase tracking-[0.18em] text-sky-600 md:inline">
+                        Month
+                      </span>
+                      <select
+                        aria-label="Filter graphs by month"
+                        className="w-[5.9rem] appearance-none truncate bg-transparent pr-3 text-xs font-bold text-foreground outline-none focus-visible:text-sky-700 md:w-auto md:min-w-0 md:flex-1 md:pr-0"
+                        value={monthFilter}
+                        onChange={(event) => setMonthFilter(event.target.value)}
+                      >
+                        <option value="all">All months</option>
+                        {monthOptions.map((month) => (
+                          <option key={month} value={month}>
+                            {formatMonthLabel(month)}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronRight className="pointer-events-none absolute right-0 size-3 rotate-90 text-muted-foreground md:hidden" />
+                    </label>
+                    <label className="relative flex h-9 min-w-0 items-center md:gap-2">
+                      <span className="hidden text-[0.58rem] font-black uppercase tracking-[0.18em] text-sky-600 md:inline">
+                        User
+                      </span>
+                      <select
+                        aria-label="Filter graphs by user"
+                        className="w-[4.9rem] appearance-none truncate bg-transparent pr-3 text-xs font-bold text-foreground outline-none focus-visible:text-sky-700 md:w-auto md:min-w-0 md:flex-1 md:pr-0"
+                        value={userFilter}
+                        onChange={(event) => setUserFilter(event.target.value)}
+                      >
+                        <option value="all">All users</option>
+                        {profiles.map((profile) => (
+                          <option key={profile.id} value={profile.id}>
+                            {profile.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronRight className="pointer-events-none absolute right-0 size-3 rotate-90 text-muted-foreground md:hidden" />
+                    </label>
+                    <div className="hidden h-9 items-center gap-2 text-xs md:flex">
+                      <span className="font-black uppercase tracking-[0.18em] text-sky-600">
+                        Top Stage
+                      </span>
+                      <span className="font-bold text-muted-foreground">
+                        {topStage?.label ?? "None"} · {topStage?.count ?? 0}
+                      </span>
+                    </div>
+                    <span className="hidden h-9 items-center text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground md:inline-flex">
+                      {total} total
+                    </span>
+                    <Button
+                      aria-label="Close graphs"
+                      className="shrink-0"
+                      onClick={onClose}
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <X className="size-5" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-2 overflow-y-auto p-2.5">
+                  <div className="hidden gap-2 md:grid md:grid-cols-4">
+                    {summaryCards.map((card) => (
+                      <DashboardStatCard
+                        key={card.label}
+                        accent={card.accent}
+                        detail={card.detail}
+                        label={card.label}
+                        spark={card.spark}
+                        value={card.value}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="grid gap-2 md:grid-cols-[1.08fr_0.92fr]">
+                    <DashboardPanel
+                      action={dashboardMonths.length > 1 ? `${formatMonthLabel(dashboardMonths[0])} - ${formatMonthLabel(dashboardMonths.at(-1) ?? dashboardMonths[0])}` : formatMonthLabel(dashboardMonths[0])}
+                      className="hidden md:block"
+                      title="Pipeline Survey"
+                    >
+                      <div className="mb-1.5 flex flex-wrap items-center gap-3 text-[0.62rem] font-bold text-muted-foreground">
+                        <span className="flex items-center gap-2">
+                          <span className="size-2.5 rounded-full bg-sky-500" />
+                          New Contacts
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <span className="size-2.5 rounded-full bg-cyan-400" />
+                          Studies Logged
+                        </span>
+                      </div>
+                      <div className="relative h-32 overflow-hidden rounded-2xl bg-white/50 p-3">
+                        <svg className="h-full w-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+                          {[16, 35, 54, 73, 92].map((y) => (
+                            <line
+                              key={y}
+                              x1="0"
+                              x2="100"
+                              y1={y}
+                              y2={y}
+                              stroke="oklch(0.82 0.02 235 / 0.7)"
+                              strokeDasharray="2 2"
+                              strokeWidth="0.45"
+                            />
+                          ))}
+                          <polyline
+                            fill="none"
+                            points={contactTrendPoints}
+                            stroke="oklch(0.62 0.2 248)"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2.8"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                          <polyline
+                            fill="none"
+                            points={studyTrendPoints}
+                            stroke="oklch(0.76 0.13 224)"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2.8"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                          {trendData.map((item, index) => {
+                            const x = trendData.length === 1 ? 50 : (index / (trendData.length - 1)) * 100;
+                            const contactY = 92 - (item.contacts / maxTrendValue) * 76;
+                            const studyY = 92 - (item.studies / maxTrendValue) * 76;
+
+                            return (
+                              <g key={item.month}>
+                                <circle cx={x} cy={contactY} fill="white" r="2.3" stroke="oklch(0.62 0.2 248)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+                                <circle cx={x} cy={studyY} fill="white" r="2.3" stroke="oklch(0.76 0.13 224)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+                              </g>
+                            );
+                          })}
+                        </svg>
+                        <div className="pointer-events-none absolute inset-x-4 bottom-2 grid" style={{ gridTemplateColumns: `repeat(${trendData.length}, minmax(0, 1fr))` }}>
+                          {trendData.map((item) => (
+                            <span key={item.month} className="truncate text-center text-[0.6rem] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                              {formatMonthLabel(item.month).split(" ")[0]}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </DashboardPanel>
+
+                    <DashboardPanel action={`${total} contacts`} title="Stage Report">
+                      <div className="space-y-1">
+                        {graphData.map((item) => (
+                          <div key={item.id} className="grid grid-cols-[5.8rem_1fr_1.25rem] items-center gap-2">
+                            <span className="truncate text-[0.6rem] font-bold text-muted-foreground">
+                              {item.label}
+                            </span>
+                            <div className="soft-inset h-5 overflow-hidden rounded-xl border bg-white/45">
+                              <div
+                                className="flex h-full items-center rounded-xl px-2 text-[0.52rem] font-black text-white shadow-[0_0_18px_oklch(0.76_0.13_244_/_0.22)]"
+                                style={{
+                                  width: `${Math.max(10, (item.count / maxCount) * 100)}%`,
+                                  background: item.color,
+                                }}
+                              >
+                                {item.index}
+                              </div>
+                            </div>
+                            <span className="text-right text-xs font-black text-foreground">{item.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </DashboardPanel>
+                  </div>
+
+                  <div className="grid gap-2 md:grid-cols-[1.15fr_0.85fr]">
+                    <DashboardPanel action="all sections" title="Pipeline Sections">
+                      <div className="overflow-hidden rounded-2xl border border-foreground/10 bg-white/45">
+                        <div className="grid grid-cols-[1fr_3.5rem_3.5rem] bg-foreground/[0.035] px-3 py-1.5 text-[0.52rem] font-black uppercase tracking-[0.14em] text-muted-foreground">
+                          <span>Section</span>
+                          <span className="text-right">People</span>
+                          <span className="text-right">Share</span>
+                        </div>
+                        {graphData.map((item) => {
+                          const share = total === 0 ? 0 : Math.round((item.count / total) * 100);
+
+                          return (
+                            <div key={item.id} className="grid grid-cols-[1fr_3.5rem_3.5rem] items-center border-t border-foreground/10 px-3 py-1 text-[0.68rem]">
+                              <span className="flex min-w-0 items-center gap-2 font-bold text-foreground">
+                                <span className="size-2.5 rounded-full" style={{ background: item.color }} />
+                                <span className="truncate">{item.label}</span>
+                              </span>
+                              <span className="text-right font-black">{item.count}</span>
+                              <span className="text-right text-xs font-bold text-muted-foreground">{share}%</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </DashboardPanel>
+
+                    <DashboardPanel action={`${activeUserCount} active`} title="User Days This Month">
+                      <div className="space-y-1">
+                        {userRows.length > 0 ? (
+                          userRows.slice(0, 6).map((item) => (
+                            <div key={item.profile.id} className="soft-inset grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-xl border px-2 py-1">
+                              <ProfileAvatar profile={item.profile} size="xs" />
+                              <div className="min-w-0">
+                                <p className="truncate text-[0.68rem] font-black text-foreground">{item.profile.name}</p>
+                                <p className="text-[0.58rem] font-bold text-muted-foreground">
+                                  {item.contacts} contacts · {item.studies} studies
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-black leading-none text-sky-600">{item.averageDays}</p>
+                                <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-muted-foreground">
+                                  days
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="soft-inset rounded-2xl border px-4 py-8 text-center text-sm font-bold text-muted-foreground">
+                            No user activity for this filter.
+                          </div>
+                        )}
+                      </div>
+                    </DashboardPanel>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>,
+            document.body
+  );
+}
+
+function DashboardStatCard({
+  accent,
+  detail,
+  label,
+  spark,
+  value,
+}: {
+  accent: string;
+  detail: string;
+  label: string;
+  spark: string;
+  value: number;
+}) {
+  return (
+    <section className="soft-panel relative min-h-[5.1rem] overflow-hidden rounded-[1rem] border p-2.5">
+      <div className="flex items-center gap-2">
+        <div className={cn("inline-flex size-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-[0_12px_24px_-16px_oklch(0.62_0.2_248_/_0.8)]", accent)}>
+          <span className="size-2.5 rounded-full bg-white/85 shadow-[0_0_14px_oklch(1_0_0_/_0.9)]" />
+        </div>
+        <p className="min-w-0 truncate text-[0.62rem] font-bold text-muted-foreground">
+          {label}
+        </p>
+      </div>
+      <div className="mt-0.5 flex items-end justify-between gap-2">
+        <p className="font-sans text-lg font-black leading-none tracking-tight text-foreground">
+          {value.toLocaleString()}
+        </p>
+        <svg className="h-6 w-14 overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <polyline
+            fill="none"
+            points={spark}
+            stroke="oklch(0.62 0.2 248)"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="5"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      </div>
+      <p className="mt-0.5 line-clamp-1 text-[0.58rem] font-bold text-muted-foreground">
+        {detail}
+      </p>
+    </section>
+  );
+}
+
+function DashboardPanel({
+  action,
+  className,
+  title,
+  children,
+}: {
+  action?: string;
+  className?: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className={cn("soft-panel rounded-[1.1rem] border p-2.5", className)}>
+      <div className="mb-1.5 flex items-start justify-between gap-3">
+        <h3 className="text-xs font-black tracking-tight text-foreground">{title}</h3>
+        {action ? (
+          <span className="soft-inset shrink-0 rounded-xl border px-2 py-0.5 text-[0.54rem] font-black uppercase tracking-[0.13em] text-muted-foreground">
+            {action}
+          </span>
+        ) : null}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -1570,6 +2432,7 @@ function SortablePersonCard({
   const hasFollowUp = Boolean(person.next_follow_up_at);
   const latestReaction = getLatestContactReaction(person.events);
   const latestStudy = getLatestCompletedStudy(person.studies);
+  const totalStudies = person.studies.length;
   const overdueReaction = isReactionOverdue(latestReaction);
   const collapsedProfile = assignedProfiles[0] ?? activeProfile;
   const collapseButton = (
@@ -1616,7 +2479,7 @@ function SortablePersonCard({
       />
 
       {collapsed ? (
-        <div className="relative flex min-h-14 items-center justify-start py-2 pl-12 pr-3">
+        <div className="relative flex min-h-14 items-center gap-3 py-2 pl-12 pr-3">
           <button
             aria-label={`Expand ${person.name}`}
             aria-pressed={collapsed}
@@ -1626,7 +2489,7 @@ function SortablePersonCard({
           >
             <Star className="size-3.5 fill-current" />
           </button>
-          <div className="flex min-w-0 items-center justify-start gap-3">
+          <div className="flex min-w-0 flex-1 items-center justify-start gap-3">
             <ProfileAvatar profile={collapsedProfile} size="icon" />
             <button
               className="min-w-0 text-left"
@@ -1638,6 +2501,16 @@ function SortablePersonCard({
               </h3>
             </button>
           </div>
+          <span
+            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-sky-200/80 bg-white/75 px-3 py-1 text-[0.62rem] font-black uppercase tracking-[0.14em] text-sky-700 shadow-[0_1px_0_oklch(1_0_0_/_0.8)_inset,0_8px_18px_oklch(0.62_0.15_235_/_0.16)]"
+            title={`${totalStudies} total studies`}
+            aria-label={`${totalStudies} total studies`}
+          >
+            <span className="font-sans text-base leading-none tracking-tight text-sky-600">
+              {totalStudies}
+            </span>
+            <span className="hidden sm:inline">Studies</span>
+          </span>
         </div>
       ) : (
         <>
@@ -1828,6 +2701,9 @@ function PersonDetailPanel({
     person?.assigned_profile_ids ?? []
   );
   const [detailNotes, setDetailNotes] = useState(person?.notes ?? "");
+  const [lifeStatus, setLifeStatus] = useState<PersonLifeStatus | null>(
+    person?.life_status ?? null
+  );
   const [detailTabsCollapsed, setDetailTabsCollapsed] = useState(false);
   const [assignmentPopupOpen, setAssignmentPopupOpen] = useState(false);
   const [isNameEditing, setIsNameEditing] = useState(false);
@@ -1873,6 +2749,7 @@ function PersonDetailPanel({
     const frame = window.requestAnimationFrame(() => {
       setSelectedProfileIds(person.assigned_profile_ids);
       setDetailNotes(notes);
+      setLifeStatus(person.life_status);
     });
 
     savedDetailNotesRef.current = notes;
@@ -1982,6 +2859,34 @@ function PersonDetailPanel({
 
     setNameDraft(person.name);
     setIsNameEditing(true);
+  }
+
+  function selectLifeStatus(nextStatus: PersonLifeStatus) {
+    if (!canEditPerson() || !person || !activeProfile) {
+      return;
+    }
+
+    const previousStatus = lifeStatus;
+    const nextLifeStatus = previousStatus === nextStatus ? null : nextStatus;
+
+    setLifeStatus(nextLifeStatus);
+    startTransition(async () => {
+      const result = await updatePerson({
+        id: person.id,
+        lifeStatus: nextLifeStatus,
+        actorProfileId: activeProfile.id,
+      });
+
+      if (!result.ok || !result.data) {
+        setLifeStatus(previousStatus);
+        onNotice(result.ok ? "The person could not be updated." : result.error);
+        return;
+      }
+
+      onNotice(undefined);
+      setLifeStatus(result.data.life_status);
+      onUpdated(result.data);
+    });
   }
 
   function cancelNameEdit() {
@@ -2147,8 +3052,8 @@ function PersonDetailPanel({
                   onChange={handleAvatarChange}
                 />
                 <div className="min-w-0 flex-1">
-                    <div className="mb-3 flex w-full flex-col items-center justify-center gap-2 text-center uppercase text-muted-foreground">
-                      <div className="flex max-w-full flex-wrap items-center justify-center gap-2 text-[0.66rem] font-semibold tracking-[0.28em] sm:tracking-[0.38em]">
+                    <div className="mb-3 flex w-full flex-col items-start justify-start gap-2 text-left uppercase text-muted-foreground">
+                      <div className="flex max-w-full flex-wrap items-center justify-start gap-2 text-[0.66rem] font-semibold tracking-[0.28em] sm:tracking-[0.38em]">
                       <span
                         className={cn("size-1.5 rounded-full", stageTones[person.stage].dot)}
                       />
@@ -2161,7 +3066,7 @@ function PersonDetailPanel({
                       ) : null}
                       </div>
                       {detailOwnerProfile ? (
-                        <div className="flex max-w-full flex-wrap items-center justify-center gap-2 text-[0.66rem] font-black tracking-[0.3em] sm:tracking-[0.38em]">
+                        <div className="flex max-w-full flex-wrap items-center justify-start gap-2 text-[0.66rem] font-black tracking-[0.3em] sm:tracking-[0.38em]">
                           <span className="max-w-[12rem] truncate sm:max-w-[18rem]">
                             {detailOwnerProfile.name}
                           </span>
@@ -2241,17 +3146,45 @@ function PersonDetailPanel({
                             >
                               {person.name}
                             </button>
-                            <span className="ml-auto shrink-0">
-                              <PipelineDaysLine days={daysInPipeline(person.created_at)} />
-                            </span>
                           </h2>
                         )}
                       </div>
                     </div>
                   </div>
-                <Button onClick={onClose} size="icon" type="button" variant="ghost">
-                  <X className="size-5" />
-                </Button>
+                <div className="flex shrink-0 items-start gap-2">
+                  <PipelineDaysLine days={daysInPipeline(person.created_at)} />
+                  <span className="flex shrink-0 items-center gap-1.5 text-sky-500">
+                    <button
+                      type="button"
+                      aria-label="Mark as university student"
+                      aria-pressed={lifeStatus === "student"}
+                      className={cn(
+                        "soft-control inline-flex size-7 items-center justify-center rounded-full border transition hover:-translate-y-0.5 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95",
+                        lifeStatus === "student" &&
+                          "border-white/90 bg-white/45 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.95)] shadow-[0_0_0_2px_oklch(1_0_0_/_0.72),0_0_20px_oklch(1_0_0_/_0.9),0_0_28px_oklch(0.76_0.13_244_/_0.38)]"
+                      )}
+                      onClick={() => selectLifeStatus("student")}
+                    >
+                      <School className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Mark as worker"
+                      aria-pressed={lifeStatus === "worker"}
+                      className={cn(
+                        "soft-control inline-flex size-7 items-center justify-center rounded-full border transition hover:-translate-y-0.5 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95",
+                        lifeStatus === "worker" &&
+                          "border-white/90 bg-white/45 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.95)] shadow-[0_0_0_2px_oklch(1_0_0_/_0.72),0_0_20px_oklch(1_0_0_/_0.9),0_0_28px_oklch(0.76_0.13_244_/_0.38)]"
+                      )}
+                      onClick={() => selectLifeStatus("worker")}
+                    >
+                      <Briefcase className="size-3.5" />
+                    </button>
+                  </span>
+                  <Button onClick={onClose} size="icon" type="button" variant="ghost">
+                    <X className="size-5" />
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-5 p-6">
@@ -2628,6 +3561,18 @@ function StudySlotsCard({
   selectedStudyNumber?: number;
   embedded?: boolean;
 }) {
+  const pickerInactiveText =
+    "text-slate-950/90 [text-shadow:0_1px_1px_rgba(255,255,255,0.85)] hover:text-slate-950 dark:text-foreground/90 dark:hover:text-foreground";
+  const pickerInactiveNumber =
+    "border-slate-950/35 text-slate-950/95 [text-shadow:0_1px_1px_rgba(255,255,255,0.9)] dark:border-foreground/40 dark:text-foreground";
+  const pickerActiveNumber =
+    "border-white/90 bg-white/15 text-white drop-shadow-[0_0_9px_rgba(255,255,255,0.95)] shadow-[0_0_18px_rgba(255,255,255,0.55)] [text-shadow:0_1px_7px_rgba(15,23,42,0.55)]";
+  const pickerLabelText =
+    "text-slate-950/95 [text-shadow:0_1px_1px_rgba(255,255,255,0.85)] dark:text-foreground";
+  const pickerActiveLabel =
+    "text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.95)] [text-shadow:0_1px_7px_rgba(15,23,42,0.55)]";
+  const getPickerItemActive = (completed: boolean, pending: boolean) =>
+    pending ? !completed : completed;
   const [, startTransition] = useTransition();
   const initialStudyNumber = selectedStudyNumber ?? getNextStudyNumber(person.studies);
   const initialStudy = person.studies.find(
@@ -2898,18 +3843,18 @@ function StudySlotsCard({
         <div className="grid grid-cols-[2rem_1fr_2rem] items-center">
           <button
             aria-label="Previous study dates"
-            className="flex size-7 items-center justify-start text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            className="flex size-7 items-center justify-start text-foreground/65 transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
             onClick={() => shiftCalendar(-14)}
             type="button"
           >
             <ChevronLeft className="size-4" />
           </button>
-          <span className="text-center text-xl font-medium tracking-tight text-muted-foreground">
+          <span className="text-center text-xl font-medium tracking-tight text-foreground/75">
             {formatCalendarTitle(studyDate)}
           </span>
           <button
             aria-label="Next study dates"
-            className="flex size-7 items-center justify-end text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            className="flex size-7 items-center justify-end text-foreground/65 transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
             onClick={() => shiftCalendar(14)}
             type="button"
           >
@@ -2940,25 +3885,25 @@ function StudySlotsCard({
                 return (
                   <button
                     aria-label={`Select ${formatCalendarTitle(dateValue)}`}
-                    className="flex flex-col items-center gap-1 rounded-2xl px-1 py-1.5 text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                    className="flex flex-col items-center gap-1 rounded-2xl px-1 py-1.5 text-foreground/65 transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
                     data-study-date={dateValue}
                     key={dateValue}
                     onClick={() => handleStudyDateClick(dateValue)}
                     type="button"
                   >
-                    <span className="text-[0.62rem] font-medium uppercase tracking-[0.12em]">
+                    <span className="text-[0.62rem] font-medium uppercase tracking-[0.12em] text-foreground/60">
                       {weekday}
                     </span>
                     <span
                       className={cn(
-                        "flex size-8 items-center justify-center rounded-full text-base font-medium tabular-nums",
-                        selected && "bg-muted-foreground text-background"
+                        "flex size-8 items-center justify-center rounded-full text-base font-medium tabular-nums text-foreground/75",
+                        selected && "bg-foreground/85 text-background"
                       )}
                     >
                       {day}
                     </span>
                     {hasStudy ? (
-                      <span className="block size-1 rounded-full bg-muted-foreground" />
+                      <span className="block size-1 rounded-full bg-foreground/70" />
                     ) : (
                       <span className="block size-1" />
                     )}
@@ -3001,7 +3946,7 @@ function StudySlotsCard({
                           "relative z-10 flex-1 rounded-full px-3 py-2 text-[0.66rem] font-medium uppercase tracking-[0.16em] transition",
                           studyPickerOpen === value
                             ? "baby-blue-button"
-                            : "soft-control text-foreground hover:text-sky-700"
+                            : "soft-control text-slate-950 hover:text-sky-800 dark:text-foreground dark:hover:text-sky-200"
                         )}
                         key={value}
                         onClick={() => {
@@ -3041,15 +3986,15 @@ function StudySlotsCard({
                           const completed = completedNumbers.has(number);
                           const pending = pendingStudyNumbers.has(number);
                           const selected = studyNumber === number;
-                          const active = selected || completed || pending;
+                          const active = getPickerItemActive(completed, pending);
 
                           return (
                             <button
                               aria-label={`Select ${title}`}
                               aria-selected={selected}
                               className={cn(
-                                "flex min-h-16 w-full snap-center items-center gap-3 px-3 py-3 text-left text-foreground/55 transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
-                                active && "text-foreground"
+                                "flex min-h-16 w-full snap-center items-center gap-3 px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
+                                active ? "text-foreground" : pickerInactiveText
                               )}
                               key={title}
                               onClick={() => selectStudy(number)}
@@ -3059,11 +4004,7 @@ function StudySlotsCard({
                               <span
                                 className={cn(
                                   "min-w-7 rounded-full border px-1.5 py-0.5 text-center text-[0.64rem] font-black tabular-nums",
-                                  selected
-                                    ? "border-foreground/60 text-foreground"
-                                    : "border-foreground/30 text-foreground",
-                                  active &&
-                                    "border-white/90 bg-white/15 text-white drop-shadow-[0_0_9px_rgba(255,255,255,0.95)] shadow-[0_0_18px_rgba(255,255,255,0.55)]"
+                                  active ? pickerActiveNumber : pickerInactiveNumber
                                 )}
                               >
                                 {number}
@@ -3071,8 +4012,7 @@ function StudySlotsCard({
                               <span
                                 className={cn(
                                   "min-w-0 flex-1 text-[0.95rem] font-black leading-5",
-                                  active &&
-                                    "text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.95)]"
+                                  active ? pickerActiveLabel : pickerLabelText
                                 )}
                               >
                                 {title}
@@ -3086,15 +4026,15 @@ function StudySlotsCard({
                           const completed = completedCmNumbers.has(number);
                           const pending = pendingStudyNumbers.has(cmStudyNumber);
                           const selected = studyNumber === cmStudyNumber;
-                          const active = selected || completed || pending;
+                          const active = getPickerItemActive(completed, pending);
 
                           return (
                             <button
                               aria-label={`Select ${title}`}
                               aria-selected={selected}
                               className={cn(
-                                "flex min-h-16 w-full snap-center items-center gap-3 px-3 py-3 text-left text-foreground/55 transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
-                                active && "text-foreground"
+                                "flex min-h-16 w-full snap-center items-center gap-3 px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
+                                active ? "text-foreground" : pickerInactiveText
                               )}
                               key={title}
                               onClick={() => handleCmSelect(title, index)}
@@ -3104,11 +4044,7 @@ function StudySlotsCard({
                               <span
                                 className={cn(
                                   "min-w-7 rounded-full border px-1.5 py-0.5 text-center text-[0.64rem] font-black tabular-nums",
-                                  selected
-                                    ? "border-foreground/60 text-foreground"
-                                    : "border-foreground/30 text-foreground",
-                                  active &&
-                                    "border-white/90 bg-white/15 text-white drop-shadow-[0_0_9px_rgba(255,255,255,0.95)] shadow-[0_0_18px_rgba(255,255,255,0.55)]"
+                                  active ? pickerActiveNumber : pickerInactiveNumber
                                 )}
                               >
                                 {number}
@@ -3116,13 +4052,12 @@ function StudySlotsCard({
                               <span
                                 className={cn(
                                   "min-w-0 flex-1 text-[0.95rem] font-black leading-5",
-                                  active &&
-                                    "text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.95)]"
+                                  active ? pickerActiveLabel : pickerLabelText
                                 )}
                               >
                                 {title}
                               </span>
-                              {completed ? (
+                              {completed && !pending ? (
                                 <Check className="size-4 shrink-0 stroke-[3] text-red-600 drop-shadow-[0_0_8px_rgba(220,38,38,0.9)]" />
                               ) : null}
                             </button>
@@ -3719,6 +4654,16 @@ function PipelineDaysLine({ days }: { days: number }) {
   );
 }
 
+function HeaderSdMark() {
+  return (
+    <span aria-hidden="true" className="s-drive-header-mark" title="S-Drive">
+      <span className="s-drive-header-mark__letters" data-text="SD">
+        SD
+      </span>
+    </span>
+  );
+}
+
 function ProfileAvatar({
   live = false,
   profile,
@@ -3726,36 +4671,47 @@ function ProfileAvatar({
 }: {
   live?: boolean;
   profile: BoardProfile | null;
-  size?: "xs" | "sm" | "md" | "icon";
+  size?: "xs" | "sm" | "md" | "lg" | "icon";
 }) {
   const sizeClass = {
-    xs: "size-6 text-[0.62rem]",
-    icon: "size-7 text-[0.65rem]",
-    sm: "size-8 text-[0.7rem]",
-    md: "size-10 text-sm",
+    xs: "size-6",
+    icon: "size-7",
+    sm: "size-9",
+    md: "size-10",
+    lg: "size-[3.25rem]",
   }[size];
 
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-foreground/15 bg-card font-display tracking-display text-foreground/80 shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset]",
+        "profile-avatar-shell",
         live &&
-          "border-sky-300/95 ring-2 ring-white/90 shadow-[0_0_0_3px_oklch(0.82_0.105_244_/_0.28),0_0_16px_oklch(0.76_0.13_244_/_0.68),0_0_28px_oklch(1_0_0_/_0.92)]",
+          "profile-avatar-live ring-2 ring-white/90",
         sizeClass
       )}
       title={profile ? (live ? `${profile.name} is live` : profile.name) : "No profile"}
     >
+      <span className="profile-avatar-inner">
       {profile?.avatar_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           alt=""
-          className="size-full object-cover"
+          className="profile-avatar-photo"
           draggable={false}
           src={profile.avatar_url}
         />
       ) : (
-        profile?.name.slice(0, 1).toUpperCase() ?? "·"
+        <svg
+          aria-hidden="true"
+          className="profile-avatar-glyph"
+          viewBox="0 0 100 100"
+        >
+          <circle cx="50" cy="33" r="17" />
+          <path d="M20 80c2-20 15-34 30-34s28 14 30 34c.6 6-3.5 10-9.5 10h-41C23.5 90 19.4 86 20 80Z" />
+        </svg>
       )}
+        <span className="profile-avatar-gloss" />
+      </span>
     </span>
   );
 }

@@ -23,6 +23,7 @@ export type BoardPerson = PersonRow & {
   events: PersonEvent[];
   studies: PersonStudy[];
 };
+export type PersonLifeStatus = NonNullable<PersonRow["life_status"]>;
 
 export type BoardState = {
   people: BoardPerson[];
@@ -48,6 +49,7 @@ type PersonInput = {
 type UpdatePersonInput = Partial<Omit<PersonInput, "stage" | "actorProfileId">> & {
   id: string;
   stage?: StageId;
+  lifeStatus?: PersonLifeStatus | null;
   lastContactedAt?: string;
   actorProfileId: string;
 };
@@ -174,6 +176,14 @@ function cleanAvatarUrl(value?: string | null) {
   }
 
   return avatarUrl;
+}
+
+function cleanLifeStatus(value: PersonLifeStatus | null) {
+  if (value === null || value === "student" || value === "worker") {
+    return value;
+  }
+
+  return undefined;
 }
 
 function currentMonthWindow() {
@@ -738,6 +748,16 @@ export async function updatePerson(
 
   if (input.notes !== undefined) {
     patch.notes = cleanOptional(input.notes);
+  }
+
+  if (input.lifeStatus !== undefined) {
+    const lifeStatus = cleanLifeStatus(input.lifeStatus);
+
+    if (lifeStatus === undefined) {
+      return { ok: false, error: "Choose student, worker, or clear the status." };
+    }
+
+    patch.life_status = lifeStatus;
   }
 
   if (input.nextFollowUpAt !== undefined) {
