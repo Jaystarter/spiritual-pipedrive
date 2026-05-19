@@ -9,6 +9,8 @@ import {
   useSyncExternalStore,
   useTransition,
   type ChangeEvent,
+  type PointerEvent,
+  type RefObject,
   type ReactNode,
   type WheelEvent,
 } from "react";
@@ -44,7 +46,6 @@ import {
   Plus,
   Search,
   Settings,
-  SlidersHorizontal,
   Star,
   Trash2,
   X,
@@ -59,6 +60,7 @@ import {
   deletePersonStudy,
   deleteProfile,
   movePerson,
+  saveStages,
   updatePersonAvatar,
   updatePersonStudyNote,
   updatePerson,
@@ -72,17 +74,35 @@ import {
 import { Button } from "@/components/ui/button";
 import { ProfileSheet } from "@/components/profiles/profile-sheet";
 import {
+  getBoardView,
+  getBoardViewServerSnapshot,
+  onBoardViewChange,
+  setBoardView,
+  type BoardView,
+} from "@/lib/board-view-client";
+import {
   getActiveProfileId,
   getActiveProfileServerSnapshot,
   onActiveProfileChange,
   setActiveProfileId,
 } from "@/lib/profiles-client";
 import { cn } from "@/lib/utils";
-import { isStageId, STAGES, type StageId } from "@/lib/stages";
+import {
+  createStageId,
+  getAutomaticStudyStageId,
+  getFallbackTone,
+  getVisibleStages,
+  isManualOnlyStage,
+  normalizeStages,
+  type Stage,
+  type StageId,
+  type StageToneName,
+} from "@/lib/stages";
 
 type BoardProps = {
   initialPeople: BoardPerson[];
   initialProfiles: BoardProfile[];
+  initialStages: Stage[];
   configured: boolean;
   error?: string;
 };
@@ -102,8 +122,28 @@ type StageTone = {
   glow: string;
 };
 
-const stageTones: Record<StageId, StageTone> = {
-  hunting: {
+type FollowUpItem = {
+  person: BoardPerson;
+  daysQuiet: number;
+  latestActivity: {
+    label: string;
+    value: string;
+  };
+  ownerLabel: string;
+  stageLabel: string;
+  followUpDueAt: string;
+  missedAt: string;
+};
+
+type AssignmentNotificationItem = {
+  event: PersonEvent;
+  person: BoardPerson;
+  assignedProfile: BoardProfile;
+  actorProfile: BoardProfile | null;
+};
+
+const stageTones: Record<StageToneName, StageTone> = {
+  amber: {
     text: "text-sky-700",
     soft: "soft-control text-sky-700",
     ring: "ring-sky-300/60",
@@ -112,7 +152,7 @@ const stageTones: Record<StageId, StageTone> = {
     edge: "via-sky-300/55",
     glow: "from-sky-100/60 via-white/0 to-transparent",
   },
-  first_bible_study: {
+  sky: {
     text: "text-blue-700",
     soft: "soft-control text-blue-700",
     ring: "ring-blue-300/60",
@@ -121,7 +161,7 @@ const stageTones: Record<StageId, StageTone> = {
     edge: "via-blue-300/50",
     glow: "from-blue-100/55 via-white/0 to-transparent",
   },
-  third_bible_study: {
+  indigo: {
     text: "text-cyan-700",
     soft: "soft-control text-cyan-700",
     ring: "ring-cyan-300/60",
@@ -130,7 +170,7 @@ const stageTones: Record<StageId, StageTone> = {
     edge: "via-cyan-300/50",
     glow: "from-cyan-100/55 via-white/0 to-transparent",
   },
-  seventh_bible_study: {
+  violet: {
     text: "text-sky-800",
     soft: "soft-control text-sky-800",
     ring: "ring-sky-300/60",
@@ -139,7 +179,7 @@ const stageTones: Record<StageId, StageTone> = {
     edge: "via-sky-300/50",
     glow: "from-sky-100/55 via-white/0 to-transparent",
   },
-  ready_for_baptism: {
+  emerald: {
     text: "text-blue-800",
     soft: "soft-control text-blue-800",
     ring: "ring-blue-300/60",
@@ -148,7 +188,7 @@ const stageTones: Record<StageId, StageTone> = {
     edge: "via-blue-300/50",
     glow: "from-blue-100/55 via-white/0 to-transparent",
   },
-  baptized: {
+  green: {
     text: "text-cyan-800",
     soft: "soft-control text-cyan-800",
     ring: "ring-cyan-300/60",
@@ -159,22 +199,13 @@ const stageTones: Record<StageId, StageTone> = {
   },
 };
 
-const emptyMessages: Record<StageId, string> = {
+const emptyMessages: Record<string, string> = {
   hunting: "Sow the first seed with prayer, care, or an invitation.",
   first_bible_study: "Schedule the first open-Bible conversation.",
   third_bible_study: "Move consistent early studies here.",
   seventh_bible_study: "Track steady studies that need continued care.",
   ready_for_baptism: "Keep final preparation visible and personal.",
   baptized: "This month’s baptisms will glow here.",
-};
-
-const stageIndex: Record<StageId, string> = {
-  hunting: "01",
-  first_bible_study: "02",
-  third_bible_study: "03",
-  seventh_bible_study: "04",
-  ready_for_baptism: "05",
-  baptized: "06",
 };
 
 const STUDY_TITLES = [
@@ -251,6 +282,8 @@ const CM_TITLES = [
   "FI: (Gal 4:10) The Sabbath and the Feast Were Abolished",
 ] as const;
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const FOLLOW_UP_QUIET_DAYS = 3;
+const FOLLOW_UP_REMINDER_VISIBLE_MS = 15_000;
 
 function sortPeople(people: BoardPerson[]) {
   return [...people].sort((a, b) => {
@@ -309,6 +342,33 @@ function daysSinceDate(value: string) {
   return Math.max(0, Math.floor((Date.now() - timestamp) / 86_400_000));
 }
 
+function addDays(value: string, days: number) {
+  const timestamp = Date.parse(value);
+
+  if (Number.isNaN(timestamp)) {
+    return value;
+  }
+
+  const date = new Date(timestamp);
+  date.setDate(date.getDate() + days);
+
+  return date.toISOString();
+}
+
+function getMissedFollowUpDate(nextFollowUpAt: string | null, quietDueAt: string) {
+  if (!nextFollowUpAt) {
+    return quietDueAt;
+  }
+
+  const nextFollowUpTime = Date.parse(nextFollowUpAt);
+
+  if (Number.isNaN(nextFollowUpTime) || nextFollowUpTime > Date.now()) {
+    return quietDueAt;
+  }
+
+  return nextFollowUpAt;
+}
+
 function getLatestActivitySnapshot(person: BoardPerson) {
   const candidates = [
     {
@@ -319,10 +379,12 @@ function getLatestActivitySnapshot(person: BoardPerson) {
       label: "Contacted",
       value: person.last_contacted_at,
     },
-    ...person.events.map((event) => ({
-      label: event.title || "Activity logged",
-      value: event.created_at,
-    })),
+    ...person.events
+      .filter((event) => event.event_type !== "assigned")
+      .map((event) => ({
+        label: event.title || "Activity logged",
+        value: event.created_at,
+      })),
     ...person.studies.map((study) => ({
       label: `Study: ${getStudyTitle(study)}`,
       value: study.studied_at ?? study.created_at,
@@ -341,6 +403,22 @@ function getLatestActivitySnapshot(person: BoardPerson) {
   }, candidates[0]);
 }
 
+function getTopActivePreviewPeople(people: BoardPerson[]) {
+  return [...people]
+    .sort((a, b) => {
+      const activityDifference =
+        Date.parse(getLatestActivitySnapshot(b).value) -
+        Date.parse(getLatestActivitySnapshot(a).value);
+
+      if (activityDifference !== 0 && !Number.isNaN(activityDifference)) {
+        return activityDifference;
+      }
+
+      return a.sort_order - b.sort_order;
+    })
+    .slice(0, 7);
+}
+
 function getAssignedProfiles(person: BoardPerson, profiles: BoardProfile[]) {
   return person.assigned_profile_ids
     .map((id) => profiles.find((profile) => profile.id === id))
@@ -357,8 +435,113 @@ function profileNames(person: BoardPerson, profiles: BoardProfile[]) {
   return assigned.map((profile) => profile.name).join(", ");
 }
 
+function normalizeContactSearch(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function matchesContactName(person: BoardPerson, query: string) {
+  return person.name.toLowerCase().includes(query);
+}
+
+function getActiveProfileFilterId(profileFilter: string, activeProfileId: string) {
+  return profileFilter === "mine"
+    ? activeProfileId
+    : profileFilter === "all"
+      ? ""
+      : profileFilter;
+}
+
+function filterPeopleForProfile(
+  people: BoardPerson[],
+  profileFilter: string,
+  activeProfileId: string
+) {
+  const activeFilterId = getActiveProfileFilterId(profileFilter, activeProfileId);
+
+  return activeFilterId
+    ? people.filter((person) => person.assigned_profile_ids.includes(activeFilterId))
+    : people;
+}
+
+function getStageLabel(stages: Stage[], stageId: StageId) {
+  return stages.find((stage) => stage.id === stageId)?.label ?? "No stack";
+}
+
+function getFollowUpItems(
+  people: BoardPerson[],
+  profiles: BoardProfile[],
+  stages: Stage[]
+): FollowUpItem[] {
+  return people
+    .map((person) => {
+      const latestActivity = getLatestActivitySnapshot(person);
+      const daysQuiet = daysSinceDate(latestActivity.value);
+      const assignedProfiles = getAssignedProfiles(person, profiles);
+      const followUpDueAt = addDays(latestActivity.value, FOLLOW_UP_QUIET_DAYS);
+      const ownerLabel =
+        assignedProfiles.length > 0
+          ? assignedProfiles.map((profile) => profile.name).join(", ")
+          : person.teacher || "Unassigned";
+
+      return {
+        person,
+        daysQuiet,
+        latestActivity,
+        ownerLabel,
+        stageLabel: displayStageCopy(getStageById(stages, person.stage).label),
+        followUpDueAt,
+        missedAt: getMissedFollowUpDate(person.next_follow_up_at, followUpDueAt),
+      };
+    })
+    .filter((item) => item.daysQuiet >= FOLLOW_UP_QUIET_DAYS)
+    .sort((a, b) => b.daysQuiet - a.daysQuiet);
+}
+
+function getAssignmentNotificationItems(
+  people: BoardPerson[],
+  profiles: BoardProfile[],
+  activeProfile: BoardProfile | null
+): AssignmentNotificationItem[] {
+  if (!activeProfile) {
+    return [];
+  }
+
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
+
+  return people
+    .flatMap((person) =>
+      person.events
+        .filter(
+          (event) =>
+            event.event_type === "assigned" &&
+            event.notification_profile_id === activeProfile.id
+        )
+        .map((event) => ({
+          event,
+          person,
+          assignedProfile: profileById.get(event.notification_profile_id ?? "") ?? activeProfile,
+          actorProfile: profileById.get(event.actor_profile_id ?? "") ?? null,
+        }))
+    )
+    .sort((a, b) => {
+      const aTime = Date.parse(a.event.created_at);
+      const bTime = Date.parse(b.event.created_at);
+
+      return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+    });
+}
+
 function displayStageCopy(value: string) {
   return value.replaceAll("Hunting", "Sowing Seeds");
+}
+
+function sortEventsByNewest(events: PersonEvent[]) {
+  return [...events].sort((a, b) => {
+    const aTime = Date.parse(a.created_at);
+    const bTime = Date.parse(b.created_at);
+
+    return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+  });
 }
 
 function sortStudies(studies: PersonStudy[]) {
@@ -451,6 +634,35 @@ function getNextStudyNumber(studies: PersonStudy[]) {
   }
 
   return TOTAL_STUDIES;
+}
+
+function getNextSortOrderForStage(
+  people: BoardPerson[],
+  personId: string,
+  stage: StageId
+) {
+  return (
+    Math.max(
+      0,
+      ...people
+        .filter((person) => person.id !== personId && person.stage === stage)
+        .map((person) => person.sort_order)
+    ) + 1000
+  );
+}
+
+function getClientAutomaticStudyStage(
+  person: BoardPerson,
+  studyCount: number,
+  visibleStageIds: Set<StageId>
+) {
+  if (isManualOnlyStage(person.stage)) {
+    return person.stage;
+  }
+
+  const targetStage = getAutomaticStudyStageId(studyCount);
+
+  return visibleStageIds.has(targetStage) ? targetStage : person.stage;
 }
 
 function getDateValue(value: string | null | undefined) {
@@ -557,22 +769,76 @@ function buildMovePreview(
   };
 }
 
-function getNextStage(stage: StageId, direction: -1 | 1) {
-  const index = STAGES.findIndex((item) => item.id === stage);
-  const next = STAGES[index + direction];
+function getStageById(stages: Stage[], stageId: StageId) {
+  return (
+    stages.find((stage) => stage.id === stageId) ?? {
+      id: stageId,
+      label: stageId,
+      shortLabel: stageId,
+      description: "",
+      tone: "sky" as StageToneName,
+      sortOrder: 0,
+      isHidden: false,
+      isSystem: false,
+    }
+  );
+}
+
+function getStageTone(stages: Stage[], stageId: StageId) {
+  const stage = getStageById(stages, stageId);
+
+  return stageTones[stage.tone] ?? stageTones.sky;
+}
+
+function getStageIndex(stages: Stage[], stageId: StageId) {
+  const index = stages.findIndex((stage) => stage.id === stageId);
+
+  return String(index === -1 ? stages.length + 1 : index + 1).padStart(2, "0");
+}
+
+function getEmptyStageMessage(stage: Stage) {
+  return emptyMessages[stage.id] ?? `No contacts in ${stage.label} yet.`;
+}
+
+function getNextStage(stages: Stage[], stage: StageId, direction: -1 | 1) {
+  const index = stages.findIndex((item) => item.id === stage);
+  const next = stages[index + direction];
 
   return next?.id;
+}
+
+type StackExpandedState = Partial<Record<StageId, boolean>>;
+const MOBILE_STACK_MEDIA_QUERY = "(max-width: 39.999rem)";
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(() => {
+    return typeof window !== "undefined" ? window.matchMedia(query).matches : false;
+  });
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(query);
+    const updateMatches = () => setMatches(mediaQuery.matches);
+
+    updateMatches();
+    mediaQuery.addEventListener("change", updateMatches);
+
+    return () => mediaQuery.removeEventListener("change", updateMatches);
+  }, [query]);
+
+  return matches;
 }
 
 export function BibleStudyBoard({
   initialPeople,
   initialProfiles,
+  initialStages,
   configured,
   error,
 }: BoardProps) {
   const [mounted, setMounted] = useState(false);
   const [people, setPeople] = useState(initialPeople);
   const [profiles, setProfiles] = useState(initialProfiles);
+  const [stages, setStages] = useState(() => normalizeStages(initialStages));
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notice, setNotice] = useState(error);
@@ -580,11 +846,18 @@ export function BibleStudyBoard({
   const [profileFilter, setProfileFilter] = useState("all");
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const [pendingProfileSwitchId, setPendingProfileSwitchId] = useState<string | null>(null);
+  const [followUpReminderVisible, setFollowUpReminderVisible] = useState(false);
+  const followUpReminderRef = useRef<HTMLDivElement>(null);
+  const followUpReminderTimeoutRef = useRef<number | null>(null);
   const activeProfileId = useSyncExternalStore(
     onActiveProfileChange,
     getActiveProfileId,
     getActiveProfileServerSnapshot
+  );
+  const boardView = useSyncExternalStore(
+    onBoardViewChange,
+    getBoardView,
+    getBoardViewServerSnapshot
   );
   const [isPending, startTransition] = useTransition();
 
@@ -592,6 +865,15 @@ export function BibleStudyBoard({
     const frame = window.requestAnimationFrame(() => setMounted(true));
 
     return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (followUpReminderTimeoutRef.current !== null) {
+        window.clearTimeout(followUpReminderTimeoutRef.current);
+        followUpReminderTimeoutRef.current = null;
+      }
+    };
   }, []);
 
   const sensors = useSensors(
@@ -606,32 +888,27 @@ export function BibleStudyBoard({
   );
 
   const filteredPeople = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const activeFilterId =
-      profileFilter === "mine" ? activeProfileId : profileFilter === "all" ? "" : profileFilter;
-    const profileFilteredPeople = activeFilterId
-      ? people.filter((person) => person.assigned_profile_ids.includes(activeFilterId))
-      : people;
+    const query = normalizeContactSearch(search);
+    const profileFilteredPeople = filterPeopleForProfile(
+      people,
+      profileFilter,
+      activeProfileId
+    );
 
     if (!query) {
       return profileFilteredPeople;
     }
 
-    return profileFilteredPeople.filter((person) =>
-      [
-        person.name,
-        person.phone,
-        person.teacher,
-        person.notes,
-        profileNames(person, profiles),
-      ]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(query))
-    );
-  }, [activeProfileId, people, profileFilter, profiles, search]);
+    return profileFilteredPeople.filter((person) => matchesContactName(person, query));
+  }, [activeProfileId, people, profileFilter, search]);
 
   const activeProfile =
     profiles.find((profile) => profile.id === activeProfileId) ?? null;
+  const visibleStages = useMemo(() => getVisibleStages(stages), [stages]);
+  const visibleStageIds = useMemo(
+    () => new Set(visibleStages.map((stage) => stage.id)),
+    [visibleStages]
+  );
   const requireProfile = configured && !activeProfile;
   const activePerson = activeId
     ? people.find((person) => person.id === activeId) ?? null
@@ -639,9 +916,14 @@ export function BibleStudyBoard({
   const selectedPerson = selectedId
     ? people.find((person) => person.id === selectedId) ?? null
     : null;
-  const pendingProfileSwitch = pendingProfileSwitchId
-    ? profiles.find((profile) => profile.id === pendingProfileSwitchId) ?? null
-    : null;
+  const followUpItems = useMemo(
+    () => getFollowUpItems(filteredPeople, profiles, visibleStages),
+    [filteredPeople, profiles, visibleStages]
+  );
+  const assignmentNotificationItems = useMemo(
+    () => getAssignmentNotificationItems(people, profiles, activeProfile),
+    [activeProfile, people, profiles]
+  );
 
   function requireActiveProfile() {
     if (!activeProfile) {
@@ -654,19 +936,8 @@ export function BibleStudyBoard({
   }
 
   function handleSelectProfile(profileId: string) {
-    if (activeProfileId && profileId !== activeProfileId) {
-      setPendingProfileSwitchId(profileId);
-      setProfileSheetOpen(false);
-      return;
-    }
-
-    confirmProfileSwitch(profileId);
-  }
-
-  function confirmProfileSwitch(profileId: string) {
     setActiveProfileId(profileId);
     setProfileSheetOpen(false);
-    setPendingProfileSwitchId(null);
     setNotice(undefined);
   }
 
@@ -700,7 +971,7 @@ export function BibleStudyBoard({
     const personId = String(event.active.id);
     const overId = String(event.over.id);
     const overPerson = people.find((person) => person.id === overId);
-    const targetStage = isStageId(overId) ? overId : overPerson?.stage;
+    const targetStage = visibleStageIds.has(overId) ? overId : overPerson?.stage;
 
     if (!targetStage) {
       return;
@@ -750,7 +1021,20 @@ export function BibleStudyBoard({
     setPeople((current) =>
       current.map((item) =>
         item.id === person.id
-          ? { ...person, events: item.events, studies: item.studies }
+          ? {
+              ...person,
+              events:
+                person.events.length > 0
+                  ? sortEventsByNewest([
+                      ...person.events,
+                      ...item.events.filter(
+                        (event) =>
+                          !person.events.some((incomingEvent) => incomingEvent.id === event.id)
+                      ),
+                    ])
+                  : item.events,
+              studies: item.studies,
+            }
           : item
       )
     );
@@ -781,22 +1065,37 @@ export function BibleStudyBoard({
     study: PersonStudy,
     event: PersonEvent
   ) {
-    setPeople((current) =>
-      current.map((person) =>
-        person.id === personId
-          ? {
-              ...person,
-              studies: sortStudies([
-                ...person.studies.filter(
-                  (item) => item.study_number !== study.study_number
-                ),
-                study,
-              ]),
-              events: [event, ...person.events],
-            }
-          : person
-      )
-    );
+    setPeople((current) => {
+      return current.map((person) => {
+        if (person.id !== personId) {
+          return person;
+        }
+
+        const nextStudies = sortStudies([
+          ...person.studies.filter(
+            (item) => item.study_number !== study.study_number
+          ),
+          study,
+        ]);
+        const nextStage = getClientAutomaticStudyStage(
+          person,
+          nextStudies.length,
+          visibleStageIds
+        );
+        const stageChanged = nextStage !== person.stage;
+
+        return {
+          ...person,
+          stage: nextStage,
+          sort_order: stageChanged
+            ? getNextSortOrderForStage(current, person.id, nextStage)
+            : person.sort_order,
+          baptized_at: stageChanged ? null : person.baptized_at,
+          studies: nextStudies,
+          events: [event, ...person.events],
+        };
+      });
+    });
   }
 
   function handleStudyRenamed(personId: string, study: PersonStudy) {
@@ -815,16 +1114,31 @@ export function BibleStudyBoard({
   }
 
   function handleStudyDeleted(personId: string, studyId: string) {
-    setPeople((current) =>
-      current.map((person) =>
-        person.id === personId
-          ? {
-              ...person,
-              studies: person.studies.filter((study) => study.id !== studyId),
-            }
-          : person
-      )
-    );
+    setPeople((current) => {
+      return current.map((person) => {
+        if (person.id !== personId) {
+          return person;
+        }
+
+        const nextStudies = person.studies.filter((study) => study.id !== studyId);
+        const nextStage = getClientAutomaticStudyStage(
+          person,
+          nextStudies.length,
+          visibleStageIds
+        );
+        const stageChanged = nextStage !== person.stage;
+
+        return {
+          ...person,
+          stage: nextStage,
+          sort_order: stageChanged
+            ? getNextSortOrderForStage(current, person.id, nextStage)
+            : person.sort_order,
+          baptized_at: stageChanged ? null : person.baptized_at,
+          studies: nextStudies,
+        };
+      });
+    });
   }
 
   function handleReactionLogged(personId: string, event: PersonEvent) {
@@ -839,6 +1153,29 @@ export function BibleStudyBoard({
           : person
       )
     );
+  }
+
+  function handleFocusFollowUps() {
+    if (followUpReminderTimeoutRef.current !== null) {
+      window.clearTimeout(followUpReminderTimeoutRef.current);
+      followUpReminderTimeoutRef.current = null;
+    }
+
+    setFollowUpReminderVisible(true);
+    const timeout = window.setTimeout(() => {
+      if (followUpReminderTimeoutRef.current !== timeout) {
+        return;
+      }
+
+      setFollowUpReminderVisible(false);
+      followUpReminderTimeoutRef.current = null;
+    }, FOLLOW_UP_REMINDER_VISIBLE_MS);
+    followUpReminderTimeoutRef.current = timeout;
+
+    window.requestAnimationFrame(() => {
+      followUpReminderRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      followUpReminderRef.current?.focus({ preventScroll: true });
+    });
   }
 
   if (!mounted) {
@@ -858,6 +1195,7 @@ export function BibleStudyBoard({
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10 [background:radial-gradient(70rem_44rem_at_18%_-10%,oklch(1_0_0_/_0.92),transparent_58%),radial-gradient(54rem_38rem_at_95%_8%,oklch(0.82_0.105_244_/_0.2),transparent_58%),radial-gradient(48rem_38rem_at_8%_105%,oklch(0.86_0.06_210_/_0.24),transparent_62%),linear-gradient(145deg,oklch(0.985_0.004_215)_0%,var(--background)_46%,oklch(0.91_0.018_215)_100%)]"
       />
+      {boardView === "stack" ? <div aria-hidden className="stack-view-ambient" /> : null}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-px bg-[linear-gradient(90deg,transparent,oklch(0.76_0.13_244_/_0.28),transparent)]"
@@ -872,11 +1210,28 @@ export function BibleStudyBoard({
           onProfileFilterChange={setProfileFilter}
           onOpenProfiles={() => setProfileSheetOpen(true)}
           onSelectProfile={handleSelectProfile}
+          onSelectContact={setSelectedId}
           onAddContact={() => setQuickAddOpen(true)}
+          allPeople={people}
           graphPeople={filteredPeople}
           graphProfiles={profiles}
+          stages={visibleStages}
+          allStages={stages}
+          onStagesChange={setStages}
           configured={configured}
           notice={notice}
+          followUpItems={followUpItems}
+          assignmentNotificationItems={assignmentNotificationItems}
+          onFocusFollowUps={handleFocusFollowUps}
+          boardView={boardView}
+          onBoardViewChange={setBoardView}
+        />
+
+        <FollowUpReminderList
+          isVisible={followUpReminderVisible}
+          items={followUpItems}
+          assignmentItems={assignmentNotificationItems}
+          reminderRef={followUpReminderRef}
         />
 
         <DndContext
@@ -886,21 +1241,38 @@ export function BibleStudyBoard({
           onDragEnd={handleDragEnd}
           onDragCancel={() => setActiveId(null)}
         >
-          <JourneyBoard
-            people={filteredPeople}
-            profiles={profiles}
-            activeProfile={activeProfile}
-            configured={configured}
-            isPending={isPending}
-            onMove={moveWithButtons}
-            onNotice={setNotice}
-            onSelect={setSelectedId}
-            onReactionLogged={handleReactionLogged}
-          />
+          {boardView === "pipeline" ? (
+            <JourneyBoard
+              people={filteredPeople}
+              stages={visibleStages}
+              profiles={profiles}
+              activeProfile={activeProfile}
+              configured={configured}
+              isPending={isPending}
+              onMove={moveWithButtons}
+              onNotice={setNotice}
+              onSelect={setSelectedId}
+              onReactionLogged={handleReactionLogged}
+            />
+          ) : (
+            <StackBoard
+              people={filteredPeople}
+              stages={visibleStages}
+              profiles={profiles}
+              activeProfile={activeProfile}
+              configured={configured}
+              isPending={isPending}
+              searchActive={search.trim().length > 0}
+              onMove={moveWithButtons}
+              onNotice={setNotice}
+              onSelect={setSelectedId}
+              onReactionLogged={handleReactionLogged}
+            />
+          )}
 
           <DragOverlay>
-            {activePerson ? (
-              <CardPreview person={activePerson} profiles={profiles} />
+            {boardView === "pipeline" && activePerson ? (
+              <CardPreview person={activePerson} profiles={profiles} stages={visibleStages} />
             ) : null}
           </DragOverlay>
         </DndContext>
@@ -911,6 +1283,7 @@ export function BibleStudyBoard({
         person={selectedPerson}
         profiles={profiles}
         activeProfile={activeProfile}
+        stages={visibleStages}
         configured={configured}
         onClose={() => setSelectedId(null)}
         onUpdated={handleUpdated}
@@ -925,6 +1298,7 @@ export function BibleStudyBoard({
         open={quickAddOpen}
         profiles={profiles}
         activeProfile={activeProfile}
+        stages={visibleStages}
         configured={configured}
         onClose={() => setQuickAddOpen(false)}
         onCreated={handleCreated}
@@ -940,53 +1314,6 @@ export function BibleStudyBoard({
         onProfilesChange={setProfiles}
         onSelectProfile={handleSelectProfile}
       />
-      <AnimatePresence>
-        {pendingProfileSwitch ? (
-          <motion.div
-            aria-modal="true"
-            className="fixed inset-0 z-[130] flex items-center justify-center bg-foreground/25 px-4 py-6 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            role="dialog"
-          >
-            <motion.div
-              className="soft-panel-strong w-full max-w-xs rounded-[1.5rem] border p-5 text-center"
-              initial={{ opacity: 0, y: 12, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.96 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-            >
-              <div className="mx-auto mb-3 flex justify-center">
-                <ProfileAvatar profile={pendingProfileSwitch} size="md" />
-              </div>
-              <h2 className="font-display text-2xl leading-none tracking-display text-foreground">
-                Switch profile?
-              </h2>
-              <p className="mt-2 text-sm leading-5 text-muted-foreground">
-                Do you want to switch to {pendingProfileSwitch.name}?
-              </p>
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <Button
-                  className="h-10 rounded-full"
-                  onClick={() => setPendingProfileSwitchId(null)}
-                  type="button"
-                  variant="outline"
-                >
-                  No
-                </Button>
-                <Button
-                  className="baby-blue-button h-10 rounded-full"
-                  onClick={() => confirmProfileSwitch(pendingProfileSwitch.id)}
-                  type="button"
-                >
-                  Yes
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
     </main>
   );
 }
@@ -1000,11 +1327,21 @@ function AppShellHeader({
   onProfileFilterChange,
   onOpenProfiles,
   onSelectProfile,
+  onSelectContact,
   onAddContact,
+  allPeople,
   graphPeople,
   graphProfiles,
+  stages,
+  allStages,
+  onStagesChange,
   configured,
   notice,
+  followUpItems,
+  assignmentNotificationItems,
+  onFocusFollowUps,
+  boardView,
+  onBoardViewChange,
 }: {
   search: string;
   onSearch: (value: string) => void;
@@ -1014,45 +1351,75 @@ function AppShellHeader({
   onProfileFilterChange: (value: string) => void;
   onOpenProfiles: () => void;
   onSelectProfile: (profileId: string) => void;
+  onSelectContact: (personId: string) => void;
   onAddContact: () => void;
+  allPeople: BoardPerson[];
   graphPeople: BoardPerson[];
   graphProfiles: BoardProfile[];
+  stages: Stage[];
+  allStages: Stage[];
+  onStagesChange: (stages: Stage[]) => void;
   configured: boolean;
   notice?: string;
+  followUpItems: FollowUpItem[];
+  assignmentNotificationItems: AssignmentNotificationItem[];
+  onFocusFollowUps: () => void;
+  boardView: BoardView;
+  onBoardViewChange: (view: BoardView) => void;
 }) {
-  const [openControl, setOpenControl] = useState<"search" | "filter" | "followup" | null>(null);
+  const [openControl, setOpenControl] = useState<"search" | null>(null);
+  const [searchPanelMode, setSearchPanelMode] = useState<"name" | "profile">("name");
   const [railExpanded, setRailExpanded] = useState(false);
-  const [settingsMode, setSettingsMode] = useState<"closed" | "menu" | "graphs">("closed");
+  const [settingsMode, setSettingsMode] = useState<"closed" | "menu" | "graphs" | "edit">("closed");
+  const nameSearchPanelId = useId();
+  const profileFilterPanelId = useId();
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const profileSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const lastProfileWheelAtRef = useRef(0);
   const lastRailToggleAtRef = useRef(0);
-  const otherProfiles = profiles.filter((profile) => profile.id !== activeProfile?.id);
+  const activeProfileIndex = activeProfile
+    ? profiles.findIndex((profile) => profile.id === activeProfile.id)
+    : -1;
+  const normalizedContactSearch = normalizeContactSearch(search);
+  const profileScopedPeople = useMemo(
+    () => filterPeopleForProfile(allPeople, profileFilter, activeProfile?.id ?? ""),
+    [activeProfile?.id, allPeople, profileFilter]
+  );
+  const contactSearchMatches = useMemo(() => {
+    if (!normalizedContactSearch) {
+      return [];
+    }
+
+    return sortPeople(
+      profileScopedPeople.filter((person) =>
+        matchesContactName(person, normalizedContactSearch)
+      )
+    );
+  }, [normalizedContactSearch, profileScopedPeople]);
+  const contactSearchPreview = contactSearchMatches.slice(0, 6);
   const activeFilterLabel =
     profileFilter === "mine"
       ? "My contacts"
       : profileFilter === "all"
         ? "All contacts"
         : profiles.find((profile) => profile.id === profileFilter)?.name ?? "All contacts";
-  const followUpItems = graphPeople
-    .map((person) => {
-      const latestActivity = getLatestActivitySnapshot(person);
-      const daysQuiet = daysSinceDate(latestActivity.value);
-      const assignedProfiles = getAssignedProfiles(person, profiles);
-      const ownerLabel =
-        assignedProfiles.length > 0
-          ? assignedProfiles.map((profile) => profile.name).join(", ")
-          : person.teacher || "Unassigned";
+  const notificationCount = followUpItems.length + assignmentNotificationItems.length;
 
-      return {
-        person,
-        daysQuiet,
-        latestActivity,
-        ownerLabel,
-        stageLabel: STAGES.find((stage) => stage.id === person.stage)?.label ?? person.stage,
-      };
-    })
-    .filter((item) => item.daysQuiet >= 5)
-    .sort((a, b) => b.daysQuiet - a.daysQuiet);
+  function selectRelativeProfile(direction: 1 | -1) {
+    if (profiles.length < 2) {
+      return;
+    }
+
+    const currentIndex = activeProfileIndex >= 0 ? activeProfileIndex : 0;
+    const nextProfile =
+      profiles[(currentIndex + direction + profiles.length) % profiles.length];
+
+    if (!nextProfile || nextProfile.id === activeProfile?.id) {
+      return;
+    }
+
+    onSelectProfile(nextProfile.id);
+  }
 
   function handleProfileWheel(event: WheelEvent<HTMLDivElement>) {
     if (profiles.length < 2) {
@@ -1072,22 +1439,37 @@ function AppShellHeader({
       return;
     }
 
-    const activeIndex = activeProfile
-      ? profiles.findIndex((profile) => profile.id === activeProfile.id)
-      : -1;
-    const direction = horizontalDelta > 0 ? 1 : -1;
-    const nextIndex =
-      activeIndex === -1
-        ? 0
-        : (activeIndex + direction + profiles.length) % profiles.length;
-    const nextProfile = profiles[nextIndex];
+    lastProfileWheelAtRef.current = now;
+    selectRelativeProfile(horizontalDelta > 0 ? 1 : -1);
+  }
 
-    if (!nextProfile || nextProfile.id === activeProfile?.id) {
+  function handleProfilePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (profiles.length < 2) {
       return;
     }
 
-    lastProfileWheelAtRef.current = now;
-    onSelectProfile(nextProfile.id);
+    profileSwipeStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+    };
+  }
+
+  function handleProfilePointerUp(event: PointerEvent<HTMLDivElement>) {
+    const start = profileSwipeStartRef.current;
+    profileSwipeStartRef.current = null;
+
+    if (!start || profiles.length < 2) {
+      return;
+    }
+
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+
+    if (Math.abs(deltaX) < 54 || Math.abs(deltaX) < Math.abs(deltaY) * 1.1) {
+      return;
+    }
+
+    selectRelativeProfile(deltaX < 0 ? 1 : -1);
   }
 
   function handleRailToggle() {
@@ -1109,24 +1491,53 @@ function AppShellHeader({
   }
 
   useEffect(() => {
-    if (openControl !== "search") {
+    if (openControl !== "search" || searchPanelMode !== "name") {
       return;
     }
 
     const frame = requestAnimationFrame(() => searchInputRef.current?.focus());
 
     return () => cancelAnimationFrame(frame);
-  }, [openControl]);
+  }, [openControl, searchPanelMode]);
 
   const floatingActionButtonClass =
-    "relative inline-flex size-12 items-center justify-center rounded-full border border-white/75 bg-white/70 text-muted-foreground shadow-[0_12px_32px_-20px_oklch(0.45_0.05_245_/_0.55),0_1px_0_oklch(1_0_0_/_0.92)_inset] backdrop-blur-2xl transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.03] hover:border-sky-200/90 hover:bg-white/90 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:scale-100";
+    "relative inline-flex size-10 items-center justify-center rounded-full border border-white/75 bg-white/70 text-muted-foreground shadow-[0_12px_32px_-20px_oklch(0.45_0.05_245_/_0.55),0_1px_0_oklch(1_0_0_/_0.92)_inset] backdrop-blur-2xl transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.03] hover:border-sky-200/90 hover:bg-white/90 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:scale-100";
   const floatingActionButtonActiveClass =
     "border-sky-200/90 bg-sky-50/90 text-sky-600 shadow-[0_14px_36px_-18px_oklch(0.6_0.12_244_/_0.72),0_0_0_1px_oklch(0.76_0.13_244_/_0.25),0_1px_0_oklch(1_0_0_/_0.95)_inset]";
   const railOpen = railExpanded || openControl !== null;
 
   return (
     <header className="relative isolate z-[70] overflow-visible">
-      <div className="relative overflow-visible border-b border-foreground/10 py-2">
+      <div
+        className="profile-hero-bg relative -mx-4 -mt-5 min-h-[15rem] overflow-hidden border-b border-white/55 bg-sky-200 text-white shadow-[0_24px_60px_-42px_oklch(0.3_0.12_244_/_0.82)] sm:-mx-6 sm:-mt-7 sm:min-h-[18rem] sm:rounded-b-[2.5rem]"
+        onPointerCancel={() => {
+          profileSwipeStartRef.current = null;
+        }}
+        onPointerDown={handleProfilePointerDown}
+        onPointerUp={handleProfilePointerUp}
+        onWheel={handleProfileWheel}
+      >
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_32%_18%,oklch(1_0_0_/_0.8),transparent_24%),linear-gradient(135deg,oklch(0.83_0.08_231),oklch(0.66_0.16_248)_54%,oklch(0.48_0.15_254))]"
+        >
+          <span className="font-display text-[7rem] leading-none tracking-display text-white/35 sm:text-[10rem]">
+            {activeProfile?.name.slice(0, 1).toUpperCase() ?? "S"}
+          </span>
+        </div>
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.08_0.02_250_/_0.2),transparent_33%,oklch(0.08_0.02_250_/_0.54)),linear-gradient(90deg,oklch(0.1_0.02_250_/_0.54),transparent_42%,oklch(0.1_0.02_250_/_0.28))]"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(circle_at_48%_12%,oklch(1_0_0_/_0.2),transparent_30%),radial-gradient(circle_at_82%_24%,oklch(1_0_0_/_0.12),transparent_24%)]"
+        />
+        <div aria-hidden="true" className="profile-hero-light" />
+        <h1 className="sr-only">S-Drive</h1>
+        <p className="gospel-worker-carve pointer-events-none absolute left-1/2 top-8 z-10 -translate-x-1/2 font-display text-2xl italic leading-none tracking-display text-white sm:top-10 sm:text-3xl">
+          Gospel Worker
+        </p>
         <button
           type="button"
           aria-label="Open settings"
@@ -1134,64 +1545,136 @@ function AppShellHeader({
           onClick={() =>
             setSettingsMode((mode) => (mode === "menu" ? "closed" : "menu"))
           }
-          className="soft-control absolute right-0 top-[calc(50%-1.25rem)] inline-flex size-10 items-center justify-center rounded-full border text-sky-500 transition hover:scale-105 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95"
+          className="absolute right-5 top-5 z-20 inline-flex size-10 items-center justify-center rounded-full border border-white/45 bg-white/20 text-white shadow-[0_14px_30px_-18px_oklch(0.08_0.02_250_/_0.72),0_1px_0_oklch(1_0_0_/_0.5)_inset] backdrop-blur-md transition hover:scale-105 hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 active:scale-95 sm:right-7 sm:top-7"
         >
           <Settings className="size-4" />
         </button>
-        {settingsMode === "menu" ? (
-          <div className="soft-panel-strong absolute right-0 top-[calc(50%+1.75rem)] z-[90] min-w-36 rounded-2xl border p-2">
+        <AnimatePresence initial={false}>
+          {settingsMode === "menu" ? (
+            <motion.div
+              className="fixed right-5 top-20 z-[220] flex flex-col items-end gap-2 sm:right-7 sm:top-24"
+              initial={{ opacity: 0, y: -8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+            >
+              <button
+                type="button"
+                aria-label="Open graphs"
+                className={cn(floatingActionButtonClass, "size-11")}
+                onClick={() => setSettingsMode("graphs")}
+                title="Graphs"
+              >
+                <span aria-hidden="true" className="flex h-4 items-end gap-0.5">
+                  <span className="h-2 w-1 rounded-full bg-current opacity-55" />
+                  <span className="h-3.5 w-1 rounded-full bg-current" />
+                  <span className="h-2.5 w-1 rounded-full bg-current opacity-75" />
+                </span>
+              </button>
+              <button
+                type="button"
+                aria-label={boardView === "stack" ? "Switch to pipeline view" : "Switch to stack view"}
+                aria-pressed={boardView === "stack"}
+                className={cn(
+                  floatingActionButtonClass,
+                  "size-11",
+                  boardView === "stack" && floatingActionButtonActiveClass
+                )}
+                onClick={() => {
+                  onBoardViewChange(boardView === "stack" ? "pipeline" : "stack");
+                  setSettingsMode("closed");
+                }}
+                title={boardView === "stack" ? "Switch to pipeline view" : "Stack View"}
+              >
+                <span aria-hidden="true" className="relative block size-5">
+                  <span className="absolute left-1 top-0.5 h-3.5 w-3.5 rounded-md border border-current/55 bg-white/50" />
+                  <span className="absolute left-0.5 top-1.5 h-3.5 w-3.5 rounded-md border border-current/70 bg-white/65" />
+                  <span className="absolute left-0 top-2.5 h-3.5 w-3.5 rounded-md border border-current bg-white/80" />
+                </span>
+                {boardView === "stack" ? (
+                  <span className="absolute -right-0.5 -top-0.5 inline-flex size-5 items-center justify-center rounded-full border border-white/85 bg-sky-500 text-white shadow-[0_8px_18px_-8px_oklch(0.45_0.12_244_/_0.8),0_0_12px_oklch(0.76_0.13_244_/_0.5)]">
+                    <Check className="size-3" />
+                  </span>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                aria-label="Edit stack"
+                className={cn(floatingActionButtonClass, "size-11")}
+                onClick={() => setSettingsMode("edit")}
+                title="Edit Stack"
+              >
+                <Pencil className="size-4" />
+              </button>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        {profiles.length > 1 ? (
+          <>
             <button
               type="button"
-              className="flex w-full items-center justify-center rounded-xl px-4 py-2 text-[0.7rem] font-black uppercase tracking-[0.22em] text-foreground transition hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
-              onClick={() => setSettingsMode("graphs")}
+              aria-label="Previous profile"
+              className="absolute left-4 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-white/15 text-white backdrop-blur-md transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:inline-flex"
+              onClick={() => selectRelativeProfile(-1)}
             >
-              Graphs
+              <ChevronLeft className="size-5" />
             </button>
+            <button
+              type="button"
+              aria-label="Next profile"
+              className="absolute right-5 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-white/15 text-white backdrop-blur-md transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:right-8 sm:inline-flex"
+              onClick={() => selectRelativeProfile(1)}
+            >
+              <ChevronRight className="size-5" />
+            </button>
+          </>
+        ) : null}
+        {profiles.length > 1 ? (
+          <div
+            aria-label="Profile carousel"
+            className="absolute bottom-7 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 sm:bottom-8"
+            role="tablist"
+          >
+            {profiles.map((profile) => (
+              <button
+                key={profile.id}
+                type="button"
+                aria-label={`Switch to ${profile.name}`}
+                aria-selected={profile.id === activeProfile?.id}
+                className={cn(
+                  "h-1.5 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
+                  profile.id === activeProfile?.id
+                    ? "w-7 bg-white"
+                    : "w-1.5 bg-white/45 hover:bg-white/70"
+                )}
+                onClick={() => onSelectProfile(profile.id)}
+                role="tab"
+              />
+            ))}
           </div>
         ) : null}
-        <div className="mb-2 flex min-w-0 items-center pr-12">
-          <h1 className="sr-only">S-Drive</h1>
-          <div className="relative flex min-h-11 min-w-0 flex-1 items-center self-stretch overflow-visible">
+        <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-5 sm:px-8 sm:pb-7">
+          <div className="max-w-[min(28rem,calc(100vw-2.5rem))]">
             <button
               type="button"
-              aria-label={
-                activeProfile
-                  ? `Open profile settings for ${activeProfile.name}`
-                  : "Choose active profile"
-              }
+              aria-label="Open profiles"
               onClick={onOpenProfiles}
-              className="group flex h-[3.75rem] min-w-0 shrink-0 items-center gap-3 px-1 pr-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+              className="font-display text-3xl italic leading-none tracking-display text-white [text-shadow:0_2px_18px_oklch(0.08_0.02_250_/_0.82)] transition hover:text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:text-4xl"
             >
-              <ProfileAvatar profile={activeProfile} size="lg" live={Boolean(activeProfile)} />
-              <span className="min-w-0 max-w-[8rem] truncate text-sm font-semibold leading-none tracking-tight sm:max-w-[10rem]">
-                {activeProfile ? activeProfile.name : "Choose profile"}
-              </span>
+              {activeProfile?.name ?? "Choose profile"}
             </button>
-
-            {otherProfiles.length > 0 ? (
-              <div
-                aria-label="Switch active profile"
-                className="flex min-w-0 flex-1 items-center overflow-x-auto overscroll-x-contain px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-                onWheel={handleProfileWheel}
-                role="group"
-              >
-                <div className="flex h-[3.25rem] items-center gap-2">
-                  {otherProfiles.map((profile) => (
-                    <button
-                      key={profile.id}
-                      type="button"
-                      aria-label={`Switch to ${profile.name}`}
-                      onClick={() => onSelectProfile(profile.id)}
-                      className="group/avatar relative inline-flex size-11 shrink-0 items-center justify-center rounded-full opacity-40 transition duration-200 ease-out hover:scale-105 hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95"
-                    >
-                      <span className="absolute inset-0 rounded-full bg-background/60 opacity-0 transition group-hover/avatar:opacity-100" />
-                      <ProfileAvatar profile={profile} size="md" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            <HeaderSdMark />
+          </div>
+          <div className="absolute bottom-5 right-5 text-right text-xs font-semibold text-white/88 [text-shadow:0_1px_10px_oklch(0.08_0.02_250_/_0.72)] sm:bottom-7 sm:right-8">
+            {activeProfile ? (
+              <span>
+                {activeProfile.active_contacts} contacts · {activeProfile.baptized_this_month} baptized
+              </span>
+            ) : (
+              <span>No profile selected</span>
+            )}
+          </div>
+        </div>
+      </div>
 
           <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(0.75rem+env(safe-area-inset-right))] z-[80] flex flex-col items-end gap-2 overflow-visible sm:bottom-8 sm:right-6">
             <AnimatePresence initial={false}>
@@ -1218,62 +1701,53 @@ function AppShellHeader({
                   </button>
                   <button
                     type="button"
-                    aria-label="Open search"
+                    aria-label="Open search and filters"
                     aria-expanded={openControl === "search"}
                     aria-pressed={openControl === "search"}
                     onClick={() => {
                       setRailExpanded(true);
-                      setOpenControl((current) => (current === "search" ? null : "search"));
+                      setOpenControl((current) => {
+                        const nextOpen = current === "search" ? null : "search";
+
+                        if (nextOpen === "search") {
+                          setSearchPanelMode("name");
+                        }
+
+                        return nextOpen;
+                      });
                     }}
                     className={cn(
                       floatingActionButtonClass,
-                      (openControl === "search" || search) && floatingActionButtonActiveClass
-                    )}
-                  >
-                    <Search className="size-4" />
-                    {search ? (
-                      <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-sky-500 shadow-[0_0_10px_oklch(0.76_0.13_244_/_0.6)]" />
-                    ) : null}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Open contact filters"
-                    aria-expanded={openControl === "filter"}
-                    aria-pressed={openControl === "filter"}
-                    onClick={() => {
-                      setRailExpanded(true);
-                      setOpenControl((current) => (current === "filter" ? null : "filter"));
-                    }}
-                    className={cn(
-                      floatingActionButtonClass,
-                      (openControl === "filter" || profileFilter !== "all") &&
+                      (openControl === "search" || search || profileFilter !== "all") &&
                         floatingActionButtonActiveClass
                     )}
                   >
-                    <SlidersHorizontal className="size-4" />
-                    {profileFilter !== "all" ? (
+                    <Search className="size-4" />
+                    {search || profileFilter !== "all" ? (
                       <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-sky-500 shadow-[0_0_10px_oklch(0.76_0.13_244_/_0.6)]" />
                     ) : null}
                   </button>
                   <button
                     type="button"
-                    aria-label="Open follow-up tasks"
-                    aria-expanded={openControl === "followup"}
-                    aria-pressed={openControl === "followup"}
+                    aria-label={
+                      notificationCount > 0
+                        ? `Show ${notificationCount} notifications`
+                        : "No notifications"
+                    }
                     onClick={() => {
-                      setRailExpanded(true);
-                      setOpenControl((current) => (current === "followup" ? null : "followup"));
+                      setOpenControl(null);
+                      setRailExpanded(false);
+                      onFocusFollowUps();
                     }}
                     className={cn(
                       floatingActionButtonClass,
-                      openControl === "followup" && floatingActionButtonActiveClass,
-                      followUpItems.length > 0 && "text-sky-600"
+                      notificationCount > 0 && "text-sky-600"
                     )}
                   >
-                    <NikeSwoosh className="size-5" />
-                    {followUpItems.length > 0 ? (
+                    <NikeSwoosh className="size-4" />
+                    {notificationCount > 0 ? (
                       <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full border border-white/80 bg-sky-500 px-1.5 text-[0.58rem] font-black leading-5 text-white shadow-[0_8px_18px_-8px_oklch(0.45_0.12_244_/_0.8),0_0_12px_oklch(0.76_0.13_244_/_0.5)]">
-                        {Math.min(followUpItems.length, 9)}
+                        {Math.min(notificationCount, 9)}
                       </span>
                     ) : null}
                   </button>
@@ -1286,178 +1760,224 @@ function AppShellHeader({
               aria-expanded={railOpen}
               onClick={handleRailToggle}
               className={cn(
-                "relative inline-flex size-14 items-center justify-center rounded-full border border-white/80 bg-white/80 text-sky-600 shadow-[0_18px_42px_-22px_oklch(0.45_0.08_245_/_0.7),0_1px_0_oklch(1_0_0_/_0.95)_inset] backdrop-blur-2xl transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:scale-95",
+                "relative inline-flex items-center justify-center rounded-full border border-white/80 bg-white/80 text-sky-600 shadow-[0_18px_42px_-22px_oklch(0.45_0.08_245_/_0.7),0_1px_0_oklch(1_0_0_/_0.95)_inset] backdrop-blur-2xl transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:scale-95",
+                railOpen ? "size-10" : "size-12",
                 railOpen && floatingActionButtonActiveClass
               )}
             >
               <Plus
-                className={cn("size-5 transition-transform duration-200", railOpen && "rotate-45")}
+                className={cn(
+                  "transition-transform duration-200",
+                  railOpen ? "size-4 rotate-45" : "size-5"
+                )}
               />
-              {followUpItems.length > 0 && !railOpen ? (
+              {notificationCount > 0 && !railOpen ? (
                 <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full border border-white/80 bg-sky-500 px-1.5 text-[0.58rem] font-black leading-5 text-white shadow-[0_8px_18px_-8px_oklch(0.45_0.12_244_/_0.8),0_0_12px_oklch(0.76_0.13_244_/_0.5)]">
-                  {Math.min(followUpItems.length, 9)}
+                  {Math.min(notificationCount, 9)}
                 </span>
               ) : null}
-              {(search || profileFilter !== "all") && followUpItems.length === 0 && !railOpen ? (
+              {(search || profileFilter !== "all") && notificationCount === 0 && !railOpen ? (
                 <span className="absolute right-2 top-2 size-2 rounded-full bg-sky-500 shadow-[0_0_10px_oklch(0.76_0.13_244_/_0.6)]" />
               ) : null}
             </button>
 
             {openControl === "search" ? (
-              <div className="soft-panel-strong absolute bottom-0 right-full z-[100] mr-3 w-[min(20rem,calc(100vw-5.5rem))] origin-bottom-right rounded-3xl border p-3">
-                <div className="mb-2 flex items-center justify-between gap-3 px-1">
-                  <span className="text-[0.64rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                    Search contacts
+              <div className="soft-panel-strong fixed bottom-[calc(6.75rem+env(safe-area-inset-bottom))] right-[calc(0.75rem+env(safe-area-inset-right))] z-[100] max-h-[min(68vh,30rem)] w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-3xl border p-3 sm:bottom-24 sm:right-6">
+                <div className="relative mb-3 flex h-6 items-center justify-center">
+                  <span className="text-center text-[0.64rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                    Search & filter
                   </span>
                   <button
                     type="button"
-                    aria-label="Close search"
+                    aria-label="Close search and filters"
                     onClick={() => setOpenControl(null)}
-                    className="rounded-full p-1 text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+                    className="absolute right-0 rounded-full p-1 text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
                   >
                     <X className="size-3.5" />
                   </button>
                 </div>
-                <label className="relative flex items-center">
-                  <Search className="pointer-events-none absolute left-4 size-4 text-muted-foreground" />
-                  <span className="sr-only">Search people</span>
-                  <input
-                    ref={searchInputRef}
-                    value={search}
-                    onChange={(event) => onSearch(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        setOpenControl(null);
-                      }
-                    }}
-                    placeholder="Search by name, owner, or note"
-                    className="soft-inset h-12 w-full rounded-2xl border px-3 pl-11 pr-10 text-sm font-medium tracking-tight outline-none transition placeholder:font-normal placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/25"
-                  />
-                  {search ? (
+                <div
+                  aria-label="Search and filter tools"
+                  className={cn(
+                    "grid gap-4 border-b border-sky-100/80 px-1",
+                    searchPanelMode === "name"
+                      ? "grid-cols-[minmax(0,1.35fr)_minmax(6.75rem,0.8fr)]"
+                      : "grid-cols-[minmax(6.75rem,0.8fr)_minmax(0,1.35fr)]"
+                  )}
+                  role="tablist"
+                >
+                  {searchPanelMode === "name" ? (
+                    <div
+                      aria-controls={nameSearchPanelId}
+                      aria-label="Search by contact name"
+                      aria-selected="true"
+                      className="flex h-11 min-w-0 items-center gap-2 border-b-2 border-sky-400 px-1 pb-2 pt-1 text-sky-700 transition focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-ring/20"
+                      role="tab"
+                    >
+                      <Search className="size-4 shrink-0" />
+                      <span className="sr-only">Search contacts by name</span>
+                      <input
+                        ref={searchInputRef}
+                        aria-label="Search contacts by name"
+                        className="min-w-0 flex-1 bg-transparent text-sm font-bold tracking-tight text-foreground outline-none placeholder:text-sky-700/55"
+                        placeholder="Name"
+                        value={search}
+                        onChange={(event) => onSearch(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Escape") {
+                            setOpenControl(null);
+                          }
+                        }}
+                      />
+                      {search ? (
+                        <button
+                          type="button"
+                          aria-label="Clear search"
+                          onClick={() => onSearch("")}
+                          className="shrink-0 rounded-full p-1 text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      aria-label="Clear search"
-                      onClick={() => onSearch("")}
-                      className="absolute right-3 rounded-full p-1 text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+                      aria-controls={nameSearchPanelId}
+                      aria-label="Search by contact name"
+                      aria-selected="false"
+                      onClick={() => setSearchPanelMode("name")}
+                      role="tab"
+                      className="inline-flex h-11 items-center justify-center gap-2 border-b-2 border-transparent px-1 pb-2 pt-1 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground transition hover:border-sky-200 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
                     >
-                      <X className="size-3.5" />
+                      <Search className="size-4" />
+                      <span>Name</span>
                     </button>
-                  ) : null}
-                </label>
-              </div>
-            ) : null}
-
-            {openControl === "filter" ? (
-              <div className="soft-panel-strong absolute bottom-0 right-full z-[100] mr-3 w-[min(18rem,calc(100vw-5.5rem))] origin-bottom-right rounded-3xl border p-3">
-                <div className="mb-2 flex items-center justify-between gap-3 px-1">
-                  <span className="text-[0.64rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                    Filter contacts
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="Close filters"
-                    onClick={() => setOpenControl(null)}
-                    className="rounded-full p-1 text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-                <label className="relative flex items-center">
-                  <span className="sr-only">Filter by owner</span>
-                  <select
-                    value={profileFilter}
-                    onChange={(event) => onProfileFilterChange(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        setOpenControl(null);
-                      }
-                    }}
-                    className="soft-inset h-12 w-full appearance-none rounded-2xl border px-4 pr-9 text-sm font-medium tracking-tight outline-none transition focus-visible:ring-2 focus-visible:ring-ring/25"
-                    aria-label="Filter by owner"
-                  >
-                    <option value="all">All contacts</option>
-                    <option value="mine">My contacts</option>
-                    {profiles.map((profile) => (
-                      <option key={profile.id} value={profile.id}>
-                        {profile.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronRight className="pointer-events-none absolute right-4 size-3.5 rotate-90 text-muted-foreground" />
-                </label>
-                <p className="mt-2 px-1 text-xs text-muted-foreground">
-                  Showing {activeFilterLabel}.
-                </p>
-              </div>
-            ) : null}
-
-            {openControl === "followup" ? (
-              <div className="absolute bottom-0 right-full z-[100] mr-3 w-[min(22rem,calc(100vw-5.5rem))] origin-bottom-right rounded-3xl border border-white/55 bg-white/55 p-3 shadow-[0_24px_70px_-38px_oklch(0.4_0.08_240_/_0.55)] backdrop-blur-2xl">
-                <div className="mb-3 flex items-start justify-between gap-3 px-1">
-                  <div>
-                    <p className="text-[0.64rem] font-black tracking-[0.22em] text-sky-600">
-                      Notifications - To Do
-                    </p>
-                    <p className="mt-1 text-xs font-bold text-muted-foreground">
-                      No activity updated in 5+ days.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    aria-label="Close follow-up tasks"
-                    onClick={() => setOpenControl(null)}
-                    className="rounded-full p-1 text-muted-foreground transition hover:bg-background/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
-                <div className="max-h-[24rem] space-y-2 overflow-y-auto pr-1">
-                  {followUpItems.length > 0 ? (
-                    followUpItems.map((item, index) => (
-                      <div
-                        key={item.person.id}
-                        className="soft-inset grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl border bg-white/50 px-3 py-2.5"
-                      >
-                        <span className="inline-flex size-6 items-center justify-center rounded-full bg-sky-500/90 text-[0.65rem] font-black text-white shadow-[0_0_16px_oklch(0.76_0.13_244_/_0.38)]">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-black text-foreground">
-                            {item.person.name}
-                          </p>
-                          <p className="truncate text-[0.68rem] font-bold text-muted-foreground">
-                            {item.stageLabel} · {item.ownerLabel}
-                          </p>
-                          <p className="truncate text-[0.62rem] font-semibold text-muted-foreground/80">
-                            Last: {item.latestActivity.label}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-black leading-none text-sky-600">
-                            {item.daysQuiet}
-                          </p>
-                          <p className="text-[0.55rem] font-black uppercase tracking-[0.14em] text-muted-foreground">
-                            days
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="rounded-2xl border border-sky-200/60 bg-white/45 px-4 py-6 text-center">
-                      <Check className="mx-auto mb-2 size-5 text-sky-500" />
-                      <p className="text-sm font-black text-foreground">All caught up</p>
-                      <p className="mt-1 text-xs font-bold text-muted-foreground">
-                        Everyone has activity within five days.
-                      </p>
-                    </div>
                   )}
+                  {searchPanelMode === "profile" ? (
+                    <div
+                      aria-controls={profileFilterPanelId}
+                      aria-label="Filter by profile"
+                      aria-selected="true"
+                      className="relative flex h-11 min-w-0 items-center gap-2 border-b-2 border-sky-400 px-1 pb-2 pt-1 text-sky-700 transition focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-ring/20"
+                      role="tab"
+                    >
+                      <span aria-hidden="true" className="relative block size-4 shrink-0">
+                        <span className="absolute left-1/2 top-0 size-1.5 -translate-x-1/2 rounded-full bg-current" />
+                        <span className="absolute bottom-0 left-0 size-2 rounded-full bg-current opacity-60" />
+                        <span className="absolute bottom-0 right-0 size-2 rounded-full bg-current opacity-80" />
+                      </span>
+                      <select
+                        value={profileFilter}
+                        onChange={(event) => onProfileFilterChange(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Escape") {
+                            setOpenControl(null);
+                          }
+                        }}
+                        className="min-w-0 flex-1 appearance-none bg-transparent pr-5 text-sm font-bold tracking-tight text-foreground outline-none"
+                        aria-label="Filter by profile"
+                      >
+                        <option value="all">All profiles</option>
+                        <option value="mine">My contacts</option>
+                        {profiles.map((profile) => (
+                          <option key={profile.id} value={profile.id}>
+                            {profile.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronRight className="pointer-events-none absolute right-3 size-3.5 rotate-90 text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-controls={profileFilterPanelId}
+                      aria-label="Filter by profile"
+                      aria-selected="false"
+                      onClick={() => setSearchPanelMode("profile")}
+                      role="tab"
+                      className="inline-flex h-11 min-w-0 items-center justify-center gap-2 border-b-2 border-transparent px-1 pb-2 pt-1 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground transition hover:border-sky-200 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+                    >
+                      <span aria-hidden="true" className="relative block size-4 shrink-0">
+                        <span className="absolute left-1/2 top-0 size-1.5 -translate-x-1/2 rounded-full bg-current" />
+                        <span className="absolute bottom-0 left-0 size-2 rounded-full bg-current opacity-60" />
+                        <span className="absolute bottom-0 right-0 size-2 rounded-full bg-current opacity-80" />
+                      </span>
+                      <span className="truncate">
+                        {profileFilter === "all" ? "Profile" : activeFilterLabel}
+                      </span>
+                    </button>
+                  )}
+                </div>
+
+                <div
+                  id={nameSearchPanelId}
+                  className={normalizedContactSearch ? "mt-3" : "sr-only"}
+                  role="tabpanel"
+                >
+                  {normalizedContactSearch ? (
+                    <div className="rounded-2xl border border-white/70 bg-white/45 p-2 shadow-[0_1px_0_oklch(1_0_0_/_0.9)_inset]">
+                      <div className="flex items-center justify-between gap-3 px-1 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                        <span>
+                          {`${contactSearchMatches.length} match${
+                            contactSearchMatches.length === 1 ? "" : "es"
+                          }`}
+                        </span>
+                        <span className="truncate text-sky-700/80">
+                          {profileFilter === "all" ? "All profiles" : activeFilterLabel}
+                        </span>
+                      </div>
+
+                      {contactSearchMatches.length > 0 ? (
+                        <>
+                          <div className="mt-2 max-h-44 space-y-1 overflow-y-auto pr-1">
+                            {contactSearchPreview.map((person) => (
+                              <button
+                                key={person.id}
+                                type="button"
+                                className="group flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+                                aria-label={`Open ${person.name}`}
+                                onClick={() => {
+                                  onSelectContact(person.id);
+                                  setOpenControl(null);
+                                  setRailExpanded(false);
+                                }}
+                              >
+                                <ContactAvatar person={person} size="md" />
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-bold text-foreground">
+                                    {person.name}
+                                  </span>
+                                  <span className="block truncate text-[0.68rem] font-medium text-muted-foreground">
+                                    {getStageLabel(stages, person.stage)}
+                                  </span>
+                                </span>
+                                <span className="shrink-0 rounded-full bg-sky-100/80 px-2 py-1 text-[0.62rem] font-black uppercase tracking-[0.12em] text-sky-700 opacity-80 transition group-hover:opacity-100">
+                                  Open
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                          {contactSearchMatches.length > contactSearchPreview.length ? (
+                            <p className="px-2 pt-2 text-[0.68rem] text-muted-foreground">
+                              +{contactSearchMatches.length - contactSearchPreview.length} more shown on the board.
+                            </p>
+                          ) : null}
+                        </>
+                      ) : (
+                        <p className="px-2 py-4 text-center text-xs leading-5 text-muted-foreground">
+                          No contacts found for &quot;{search.trim()}&quot;.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+                <div id={profileFilterPanelId} className="sr-only" role="tabpanel">
+                  Filter by profile
                 </div>
               </div>
             ) : null}
           </div>
-        </div>
-        </div>
-      </div>
 
       {!configured ? (
         <div className="mt-3 flex items-start gap-3 rounded-2xl border border-amber-300/60 bg-amber-50/80 px-4 py-3 text-xs leading-5 text-amber-950">
@@ -1479,7 +1999,16 @@ function AppShellHeader({
         open={settingsMode === "graphs"}
         people={graphPeople}
         profiles={graphProfiles}
+        stages={stages}
         onClose={() => setSettingsMode("closed")}
+      />
+      <EditStackModal
+        open={settingsMode === "edit"}
+        stages={allStages}
+        people={allPeople}
+        configured={configured}
+        onClose={() => setSettingsMode("closed")}
+        onSaved={onStagesChange}
       />
     </header>
   );
@@ -1498,6 +2027,100 @@ function NikeSwoosh({ className }: { className?: string }) {
         fill="currentColor"
       />
     </svg>
+  );
+}
+
+function FollowUpReminderList({
+  isVisible,
+  items,
+  assignmentItems,
+  reminderRef,
+}: {
+  isVisible: boolean;
+  items: FollowUpItem[];
+  assignmentItems: AssignmentNotificationItem[];
+  reminderRef: RefObject<HTMLDivElement | null>;
+}) {
+  if (!isVisible) {
+    return null;
+  }
+
+  const visibleAssignmentItems = assignmentItems.slice(0, 4);
+  const visibleItems = items.slice(0, 6);
+  const totalVisibleCount = visibleAssignmentItems.length + visibleItems.length;
+  const remainingCount = assignmentItems.length + items.length - totalVisibleCount;
+  const hasNotifications = assignmentItems.length > 0 || items.length > 0;
+
+  return (
+    <section
+      ref={reminderRef}
+      aria-label="Notifications"
+      aria-live="polite"
+      className="-mt-2 scroll-mt-5 text-[0.72rem] leading-5 text-muted-foreground focus-visible:outline-none sm:-mt-3"
+      tabIndex={-1}
+    >
+      {hasNotifications ? (
+        <ul className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-1">
+          {visibleAssignmentItems.map((item) => (
+            <li key={`assignment-${item.event.id}`} className="flex min-w-0 items-center gap-1.5">
+              <span className="size-1.5 shrink-0 rounded-full bg-cyan-500" />
+              <span className="truncate font-bold text-foreground">
+                {item.assignedProfile.name}
+              </span>
+              <span className="shrink-0">assigned</span>
+              <span className="truncate font-bold text-foreground">{item.person.name}</span>
+              {item.actorProfile ? (
+                <span className="shrink-0 text-muted-foreground/75">
+                  by {item.actorProfile.name}
+                </span>
+              ) : null}
+              <time
+                className="shrink-0 font-semibold text-sky-700"
+                dateTime={item.event.created_at}
+                title={formatDateTime(item.event.created_at)}
+              >
+                {formatDate(item.event.created_at)}
+              </time>
+            </li>
+          ))}
+          {visibleItems.map((item) => (
+            <li
+              key={`follow-up-${item.person.id}`}
+              className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5"
+            >
+              <span
+                className="inline-flex shrink-0 items-center gap-1 text-[0.62rem] font-black uppercase tracking-[0.14em] text-sky-700"
+                aria-label={`Missed on ${formatDate(item.missedAt)}`}
+              >
+                <Phone className="size-3 shrink-0" aria-hidden="true" strokeWidth={2.4} />
+                <time
+                  className="shrink-0"
+                  dateTime={item.missedAt}
+                  title={`Follow-up missed: ${formatDateTime(item.missedAt)}. Last activity: ${item.latestActivity.label} at ${formatDateTime(item.latestActivity.value)}`}
+                >
+                  MISSED · {formatDate(item.missedAt)}
+                </time>
+              </span>
+              <span className="size-1.5 shrink-0 rounded-full bg-sky-500" />
+              <span className="min-w-0 truncate font-bold text-foreground">{item.person.name}</span>
+              <span className="shrink-0">needs follow-up</span>
+              <span className="shrink-0 text-muted-foreground/75">({item.daysQuiet}d quiet)</span>
+            </li>
+          ))}
+          {remainingCount > 0 ? (
+            <li className="flex items-center gap-1.5 font-semibold text-muted-foreground/80">
+              <span className="size-1.5 rounded-full bg-muted-foreground/45" />
+              +{remainingCount} more
+            </li>
+          ) : null}
+        </ul>
+      ) : (
+        <p className="flex items-center gap-1.5">
+          <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/45" />
+          <span>No notifications</span>
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -1531,11 +2154,13 @@ function GraphsModal({
   open,
   people,
   profiles,
+  stages,
   onClose,
 }: {
   open: boolean;
   people: BoardPerson[];
   profiles: BoardProfile[];
+  stages: Stage[];
   onClose: () => void;
 }) {
   const [monthFilter, setMonthFilter] = useState("all");
@@ -1554,9 +2179,9 @@ function GraphsModal({
 
     return matchesMonth && matchesUser;
   });
-  const graphData = STAGES.map((stage, index) => ({
+  const graphData = stages.map((stage, index) => ({
     id: stage.id,
-    index: stageIndex[stage.id],
+    index: getStageIndex(stages, stage.id),
     label: stage.label,
     count: filteredGraphPeople.filter((person) => person.stage === stage.id).length,
     color: graphColors[index % graphColors.length],
@@ -1868,7 +2493,7 @@ function GraphsModal({
                       </div>
                     </DashboardPanel>
 
-                    <DashboardPanel action={`${total} contacts`} title="Stage Report">
+                    <DashboardPanel action={`${total} contacts`} flatOnMobile title="Stage Report">
                       <div className="space-y-1">
                         {graphData.map((item) => (
                           <div key={item.id} className="grid grid-cols-[5.8rem_1fr_1.25rem] items-center gap-2">
@@ -1894,9 +2519,9 @@ function GraphsModal({
                   </div>
 
                   <div className="grid gap-2 md:grid-cols-[1.15fr_0.85fr]">
-                    <DashboardPanel action="all sections" title="Pipeline Sections">
-                      <div className="overflow-hidden rounded-2xl border border-foreground/10 bg-white/45">
-                        <div className="grid grid-cols-[1fr_3.5rem_3.5rem] bg-foreground/[0.035] px-3 py-1.5 text-[0.52rem] font-black uppercase tracking-[0.14em] text-muted-foreground">
+                    <DashboardPanel action="all sections" flatOnMobile title="Pipeline Sections">
+                      <div className="overflow-hidden border-y border-foreground/10 bg-white/35 md:rounded-2xl md:border md:bg-white/45">
+                        <div className="grid grid-cols-[minmax(0,1fr)_3.25rem_3rem] gap-2 bg-sky-50/45 px-1.5 py-1.5 text-[0.5rem] font-black uppercase tracking-[0.14em] text-muted-foreground md:grid-cols-[1fr_3.5rem_3.5rem] md:px-3">
                           <span>Section</span>
                           <span className="text-right">People</span>
                           <span className="text-right">Share</span>
@@ -1905,41 +2530,59 @@ function GraphsModal({
                           const share = total === 0 ? 0 : Math.round((item.count / total) * 100);
 
                           return (
-                            <div key={item.id} className="grid grid-cols-[1fr_3.5rem_3.5rem] items-center border-t border-foreground/10 px-3 py-1 text-[0.68rem]">
-                              <span className="flex min-w-0 items-center gap-2 font-bold text-foreground">
-                                <span className="size-2.5 rounded-full" style={{ background: item.color }} />
-                                <span className="truncate">{item.label}</span>
+                            <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_3.25rem_3rem] gap-2 border-t border-foreground/10 px-1.5 py-2 text-[0.7rem] md:grid-cols-[1fr_3.5rem_3.5rem] md:px-3 md:py-1.5">
+                              <span className="min-w-0 font-bold text-foreground">
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <span className="size-2 rounded-full md:size-2.5" style={{ background: item.color }} />
+                                  <span className="truncate">{item.label}</span>
+                                </span>
+                                <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-sky-100/75 md:hidden">
+                                  <span
+                                    className="block h-full rounded-full"
+                                    style={{
+                                      width: `${share}%`,
+                                      background: item.color,
+                                    }}
+                                  />
+                                </span>
                               </span>
-                              <span className="text-right font-black">{item.count}</span>
-                              <span className="text-right text-xs font-bold text-muted-foreground">{share}%</span>
+                              <span className="text-right text-sm font-black leading-6 text-foreground md:text-[0.68rem] md:leading-normal">{item.count}</span>
+                              <span className="text-right text-xs font-bold leading-6 text-sky-700 md:text-muted-foreground">{share}%</span>
                             </div>
                           );
                         })}
                       </div>
                     </DashboardPanel>
 
-                    <DashboardPanel action={`${activeUserCount} active`} title="User Days This Month">
-                      <div className="space-y-1">
+                    <DashboardPanel action={`${activeUserCount} active`} flatOnMobile title="User Days This Month">
+                      <div className="overflow-hidden border-y border-foreground/10 bg-white/30 md:rounded-2xl md:border md:bg-white/45">
                         {userRows.length > 0 ? (
-                          userRows.slice(0, 6).map((item) => (
-                            <div key={item.profile.id} className="soft-inset grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-xl border px-2 py-1">
-                              <ProfileAvatar profile={item.profile} size="xs" />
-                              <div className="min-w-0">
-                                <p className="truncate text-[0.68rem] font-black text-foreground">{item.profile.name}</p>
-                                <p className="text-[0.58rem] font-bold text-muted-foreground">
-                                  {item.contacts} contacts · {item.studies} studies
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-black leading-none text-sky-600">{item.averageDays}</p>
-                                <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-muted-foreground">
-                                  days
-                                </p>
-                              </div>
+                          <>
+                            <div className="grid grid-cols-[auto_minmax(0,1fr)_3.25rem] gap-2 bg-sky-50/45 px-1.5 py-1.5 text-[0.5rem] font-black uppercase tracking-[0.14em] text-muted-foreground md:px-3">
+                              <span className="w-6" aria-hidden="true" />
+                              <span>User</span>
+                              <span className="text-right">Days</span>
                             </div>
-                          ))
+                            {userRows.slice(0, 6).map((item) => (
+                              <div key={item.profile.id} className="grid grid-cols-[auto_minmax(0,1fr)_3.25rem] items-center gap-2 border-t border-foreground/10 px-1.5 py-2 md:px-3">
+                                <ProfileAvatar profile={item.profile} size="xs" />
+                                <div className="min-w-0">
+                                  <p className="truncate text-[0.72rem] font-black leading-tight text-foreground">{item.profile.name}</p>
+                                  <p className="text-[0.6rem] font-bold text-muted-foreground">
+                                    {item.contacts} contacts · {item.studies} studies
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-base font-black leading-none text-sky-700 md:text-sm">{item.averageDays}</p>
+                                  <p className="text-[0.52rem] font-black uppercase tracking-[0.14em] text-muted-foreground">
+                                    days
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </>
                         ) : (
-                          <div className="soft-inset rounded-2xl border px-4 py-8 text-center text-sm font-bold text-muted-foreground">
+                          <div className="px-4 py-8 text-center text-sm font-bold text-muted-foreground">
                             No user activity for this filter.
                           </div>
                         )}
@@ -1950,6 +2593,495 @@ function GraphsModal({
               </motion.div>
             </motion.div>,
             document.body
+  );
+}
+
+function EditStackModal({
+  open,
+  stages,
+  people,
+  configured,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  stages: Stage[];
+  people: BoardPerson[];
+  configured: boolean;
+  onClose: () => void;
+  onSaved: (stages: Stage[]) => void;
+}) {
+  const [draftStages, setDraftStages] = useState<Stage[]>(() => normalizeStages(stages));
+  const [collapsedStageIds, setCollapsedStageIds] = useState<StageId[]>([]);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<StageId | null>(null);
+  const [deleteCodesByStageId, setDeleteCodesByStageId] = useState<Record<StageId, string>>({});
+  const [finalDeleteConfirmId, setFinalDeleteConfirmId] = useState<StageId | null>(null);
+  const [notice, setNotice] = useState<string | undefined>();
+  const [isPending, startTransition] = useTransition();
+  const activeCounts = useMemo(() => {
+    const counts = new Map<StageId, number>();
+
+    for (const person of people) {
+      counts.set(person.stage, (counts.get(person.stage) ?? 0) + 1);
+    }
+
+    return counts;
+  }, [people]);
+  const collapsedStageSet = useMemo(() => new Set(collapsedStageIds), [collapsedStageIds]);
+  const visibleCount = draftStages.filter((stage) => !stage.isHidden).length;
+  const allCollapsed =
+    draftStages.length > 0 && draftStages.every((stage) => collapsedStageSet.has(stage.id));
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      setDraftStages(normalizeStages(stages));
+      setCollapsedStageIds([]);
+      setConfirmDeleteId(null);
+      setDeleteCodesByStageId({});
+      setFinalDeleteConfirmId(null);
+      setNotice(undefined);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, stages]);
+
+  function updateDraftStage(stageId: StageId, patch: Partial<Stage>) {
+    setDraftStages((current) =>
+      current.map((stage) => (stage.id === stageId ? { ...stage, ...patch } : stage))
+    );
+  }
+
+  function moveDraftStage(stageId: StageId, direction: -1 | 1) {
+    setDraftStages((current) => {
+      const index = current.findIndex((stage) => stage.id === stageId);
+      const targetIndex = index + direction;
+
+      if (index < 0 || targetIndex < 0 || targetIndex >= current.length) {
+        return current;
+      }
+
+      const next = [...current];
+      const [stage] = next.splice(index, 1);
+      next.splice(targetIndex, 0, stage);
+
+      return next.map((item, itemIndex) => ({
+        ...item,
+        sortOrder: (itemIndex + 1) * 1000,
+      }));
+    });
+  }
+
+  function toggleDraftStage(stageId: StageId) {
+    setCollapsedStageIds((current) =>
+      current.includes(stageId)
+        ? current.filter((id) => id !== stageId)
+        : [...current, stageId]
+    );
+  }
+
+  function toggleAllDraftStages() {
+    setCollapsedStageIds(allCollapsed ? [] : draftStages.map((stage) => stage.id));
+    setConfirmDeleteId(null);
+    setDeleteCodesByStageId({});
+    setFinalDeleteConfirmId(null);
+  }
+
+  function addDraftStage() {
+    setDraftStages((current) => {
+      const label = "New Stack";
+      const id = createStageId(label, current.map((stage) => stage.id));
+      const next: Stage = {
+        id,
+        label,
+        shortLabel: "New",
+        description: "Custom follow-up stage.",
+        tone: getFallbackTone(current.length + 1),
+        sortOrder: (current.length + 1) * 1000,
+        isHidden: false,
+        isSystem: false,
+      };
+
+      return [...current, next];
+    });
+    setConfirmDeleteId(null);
+    setDeleteCodesByStageId({});
+    setFinalDeleteConfirmId(null);
+    setNotice("Rename the new stack, then save changes.");
+  }
+
+  function requestDeleteStage(stage: Stage) {
+    const count = activeCounts.get(stage.id) ?? 0;
+    const deleteCode = deleteCodesByStageId[stage.id] ?? "";
+
+    if (stage.isHidden) {
+      updateDraftStage(stage.id, { isHidden: false });
+      setConfirmDeleteId(null);
+      setDeleteCodesByStageId((current) => {
+        const next = { ...current };
+        delete next[stage.id];
+
+        return next;
+      });
+      setFinalDeleteConfirmId(null);
+      setNotice(`${stage.label} will be restored when you save.`);
+      return;
+    }
+
+    if (visibleCount <= 1) {
+      setNotice("Keep at least one stack visible.");
+      return;
+    }
+
+    if (count > 0) {
+      setNotice(`Move ${count} contact${count === 1 ? "" : "s"} out of ${stage.label} before deleting it.`);
+      return;
+    }
+
+    if (confirmDeleteId !== stage.id) {
+      setConfirmDeleteId(stage.id);
+      setDeleteCodesByStageId({ [stage.id]: "" });
+      setFinalDeleteConfirmId(null);
+      setNotice(`First confirmation: deleting ${stage.label} requires a delete code.`);
+      return;
+    }
+
+    if (deleteCode !== "1943") {
+      setFinalDeleteConfirmId(null);
+      setNotice("The delete code did not match.");
+      return;
+    }
+
+    if (finalDeleteConfirmId !== stage.id) {
+      setFinalDeleteConfirmId(stage.id);
+      setNotice(`Final confirmation needed before deleting ${stage.label}.`);
+      return;
+    }
+
+    updateDraftStage(stage.id, { isHidden: true });
+    setConfirmDeleteId(null);
+    setDeleteCodesByStageId((current) => {
+      const next = { ...current };
+      delete next[stage.id];
+
+      return next;
+    });
+    setFinalDeleteConfirmId(null);
+    setNotice(`${stage.label} will be hidden after saving.`);
+  }
+
+  function handleSave() {
+    if (!configured) {
+      setNotice("Connect Supabase before editing stacks.");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await saveStages({ stages: draftStages });
+
+      if (!result.ok || !result.data) {
+        setNotice(result.ok ? "Stacks could not be saved." : result.error);
+        return;
+      }
+
+      onSaved(result.data);
+      setNotice(undefined);
+      onClose();
+    });
+  }
+
+  if (!open) {
+    return null;
+  }
+
+  return createPortal(
+    <motion.div
+      aria-modal="true"
+      className="fixed inset-0 z-[140] flex items-end justify-center bg-foreground/25 px-3 py-3 backdrop-blur-sm sm:items-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      role="dialog"
+    >
+      <motion.div
+        className="soft-panel-strong flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden rounded-[1.5rem] border"
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex flex-wrap items-center gap-3 border-b border-foreground/10 px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[0.62rem] font-black uppercase tracking-[0.24em] text-sky-500">
+              Settings
+            </p>
+            <h2 className="truncate font-display text-2xl leading-none tracking-display text-foreground">
+              Edit Stack
+            </h2>
+          </div>
+          <div className="ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1.5">
+            <button
+              aria-label={allCollapsed ? "Expand all stacks" : "Collapse all stacks"}
+              aria-pressed={allCollapsed}
+              className="inline-flex size-8 items-center justify-center rounded-lg text-foreground/75 transition hover:bg-white/70 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 disabled:cursor-not-allowed disabled:text-foreground/35"
+              disabled={isPending || draftStages.length === 0}
+              onClick={toggleAllDraftStages}
+              title={allCollapsed ? "Expand all stacks" : "Collapse all stacks"}
+              type="button"
+            >
+              <ChevronRight
+                className={cn(
+                  "size-4 transition-transform",
+                  allCollapsed ? "rotate-90" : "-rotate-90"
+                )}
+              />
+            </button>
+            <button
+              aria-label="Add stack"
+              className="inline-flex size-8 items-center justify-center rounded-lg text-foreground/80 transition hover:bg-white/70 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 disabled:cursor-not-allowed disabled:text-foreground/35"
+              disabled={isPending}
+              onClick={addDraftStage}
+              title="Add stack"
+              type="button"
+            >
+              <Plus className="size-4" />
+            </button>
+          </div>
+          <Button
+            aria-label="Close edit stack"
+            className="shrink-0"
+            onClick={onClose}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <X className="size-5" />
+          </Button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-2.5 sm:p-3">
+          <div className="space-y-2">
+            {draftStages.map((stage, index) => {
+              const tone = stageTones[stage.tone] ?? stageTones.sky;
+              const confirmDelete = confirmDeleteId === stage.id;
+              const deleteCode = deleteCodesByStageId[stage.id] ?? "";
+              const deleteUnlocked = deleteCode === "1943";
+              const finalDeleteConfirm = finalDeleteConfirmId === stage.id;
+              const collapsed = collapsedStageSet.has(stage.id);
+              const fieldsId = `edit-stack-${stage.id}-fields`;
+
+              return (
+                <section
+                  key={stage.id}
+                  className={cn(
+                    "py-1.5 transition",
+                    stage.isHidden && "opacity-60"
+                  )}
+                >
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+                    <button
+                      aria-controls={fieldsId}
+                      aria-expanded={!collapsed}
+                      className="flex min-h-10 min-w-0 items-center gap-2 rounded-xl px-1.5 text-left outline-none transition hover:bg-background/35 focus-visible:ring-2 focus-visible:ring-ring/20"
+                      onClick={() => toggleDraftStage(stage.id)}
+                      type="button"
+                    >
+                      <span className={cn("size-2 shrink-0 rounded-full", tone.dot)} />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="truncate text-sm font-black text-foreground">
+                            {stage.label || "Untitled stack"}
+                          </span>
+                          <span className="shrink-0 rounded-full border border-white/70 bg-white/80 px-1.5 py-0.5 font-display text-xs italic leading-none text-foreground/75">
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
+                        </span>
+                        {stage.isHidden ? (
+                          <span className="mt-0.5 block truncate text-[0.68rem] font-bold text-amber-800">
+                            Hidden
+                          </span>
+                        ) : null}
+                      </span>
+                      <ChevronRight
+                        className={cn(
+                          "size-4 shrink-0 text-muted-foreground transition-transform",
+                          !collapsed && "rotate-90 text-sky-600"
+                        )}
+                      />
+                    </button>
+
+                    <Button
+                      aria-label={stage.isHidden ? `Restore ${stage.label}` : `Delete ${stage.label}`}
+                      className={cn(
+                        "shrink-0",
+                        confirmDelete && "border-destructive/50 text-destructive"
+                      )}
+                      disabled={isPending || (confirmDelete && !deleteUnlocked)}
+                      onClick={() => requestDeleteStage(stage)}
+                      size="icon-sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+
+                    <div className="ml-auto flex shrink-0 items-center gap-1">
+                      <Button
+                        aria-label={`Move ${stage.label} up`}
+                        disabled={isPending || index === 0}
+                        onClick={() => moveDraftStage(stage.id, -1)}
+                        size="icon-sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        <ChevronRight className="size-4 -rotate-90" />
+                      </Button>
+                      <Button
+                        aria-label={`Move ${stage.label} down`}
+                        disabled={isPending || index === draftStages.length - 1}
+                        onClick={() => moveDraftStage(stage.id, 1)}
+                        size="icon-sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        <ChevronRight className="size-4 rotate-90" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div
+                    id={fieldsId}
+                    hidden={collapsed}
+                    className="mt-2 grid min-w-0 gap-2 sm:grid-cols-[0.9fr_1.1fr]"
+                  >
+                    <label className="min-w-0">
+                      <span className="mb-0.5 block text-[0.56rem] font-black uppercase tracking-[0.16em] text-muted-foreground">
+                        Stack name
+                      </span>
+                      <input
+                        className="soft-inset h-10 w-full rounded-lg border px-2.5 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                        value={stage.label}
+                        onChange={(event) =>
+                          updateDraftStage(stage.id, {
+                            label: event.target.value,
+                            shortLabel: event.target.value.slice(0, 24),
+                          })
+                        }
+                      />
+                    </label>
+
+                    <label className="min-w-0">
+                      <span className="mb-0.5 block text-[0.56rem] font-black uppercase tracking-[0.16em] text-muted-foreground">
+                        Description
+                      </span>
+                      <input
+                        className="soft-inset h-10 w-full rounded-lg border px-2.5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                        value={stage.description}
+                        onChange={(event) =>
+                          updateDraftStage(stage.id, { description: event.target.value })
+                        }
+                      />
+                    </label>
+                  </div>
+                  {confirmDelete ? (
+                    <div className="mt-2 rounded-[1rem] border border-destructive/35 bg-destructive/10 p-2.5 text-destructive">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[0.68rem] font-black uppercase tracking-[0.16em]">
+                            {finalDeleteConfirm ? "Final confirmation" : "First confirmation"}
+                          </p>
+                          <p className="mt-0.5 text-sm font-bold leading-5">
+                            If you delete, everything will be deleted permanently.
+                          </p>
+                        </div>
+                        <label className="shrink-0">
+                          <span className="mb-0.5 block text-[0.56rem] font-black uppercase tracking-[0.16em]">
+                            Delete code
+                          </span>
+                          <input
+                            aria-label={`Delete code for ${stage.label}`}
+                            className="h-10 w-full rounded-lg border border-destructive/35 bg-background/80 px-2.5 text-center text-sm font-black tracking-[0.28em] text-destructive outline-none focus-visible:ring-2 focus-visible:ring-destructive/25 sm:w-28"
+                            inputMode="numeric"
+                            onChange={(event) => {
+                              setDeleteCodesByStageId({ [stage.id]: event.target.value.trim() });
+                              setFinalDeleteConfirmId(null);
+                            }}
+                            placeholder="Code"
+                            value={deleteCode}
+                          />
+                        </label>
+                      </div>
+                      <div className="mt-2 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <Button
+                          onClick={() => {
+                            setConfirmDeleteId(null);
+                            setDeleteCodesByStageId({});
+                            setFinalDeleteConfirmId(null);
+                            setNotice(undefined);
+                          }}
+                          size="sm"
+                          type="button"
+                          variant="ghost"
+                        >
+                          Cancel delete
+                        </Button>
+                        <Button
+                          className="border-destructive/40 text-destructive"
+                          disabled={!deleteUnlocked || isPending}
+                          onClick={() => requestDeleteStage(stage)}
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          <Trash2 className="size-4" />
+                          {deleteUnlocked
+                            ? finalDeleteConfirm
+                              ? "Delete this stack"
+                              : "Final confirmation"
+                            : "Enter code to unlock"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-foreground/10 px-4 py-3">
+          {notice ? (
+            <div className="mb-3 rounded-2xl border border-sky-200/70 bg-sky-50/70 px-3 py-2 text-xs font-bold leading-5 text-sky-900">
+              {notice}
+            </div>
+          ) : null}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+            <Button
+              disabled={isPending}
+              onClick={onClose}
+              type="button"
+              variant="ghost"
+            >
+              Cancel
+            </Button>
+            <Button
+              className="border border-sky-200/70 bg-white/85 text-foreground shadow-[0_1px_0_oklch(1_0_0_/_0.9)_inset] hover:bg-white hover:text-foreground disabled:text-foreground/70"
+              disabled={isPending}
+              onClick={handleSave}
+              type="button"
+            >
+              {isPending ? "Saving..." : "Save stack"}
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>,
+    document.body
   );
 }
 
@@ -2002,16 +3134,24 @@ function DashboardStatCard({
 function DashboardPanel({
   action,
   className,
+  flatOnMobile = false,
   title,
   children,
 }: {
   action?: string;
   className?: string;
+  flatOnMobile?: boolean;
   title: string;
   children: ReactNode;
 }) {
   return (
-    <section className={cn("soft-panel rounded-[1.1rem] border p-2.5", className)}>
+    <section
+      className={cn(
+        "soft-panel rounded-[1.1rem] border p-2.5",
+        flatOnMobile && "mobile-dashboard-panel-flat",
+        className
+      )}
+    >
       <div className="mb-1.5 flex items-start justify-between gap-3">
         <h3 className="text-xs font-black tracking-tight text-foreground">{title}</h3>
         {action ? (
@@ -2027,6 +3167,7 @@ function DashboardPanel({
 
 function JourneyBoard({
   people,
+  stages,
   profiles,
   activeProfile,
   configured,
@@ -2037,6 +3178,7 @@ function JourneyBoard({
   onReactionLogged,
 }: {
   people: BoardPerson[];
+  stages: Stage[];
   profiles: BoardProfile[];
   activeProfile: BoardProfile | null;
   configured: boolean;
@@ -2048,8 +3190,14 @@ function JourneyBoard({
 }) {
   return (
     <div className="-mx-2 overflow-x-auto px-2 pb-3">
-      <div className="grid min-h-[42rem] w-max grid-cols-6 gap-4 md:min-w-[1180px] xl:w-full">
-        {STAGES.map((stage, index) => {
+      <div
+        className="grid min-h-[42rem] w-max gap-4 xl:w-full"
+        style={{
+          gridTemplateColumns: `repeat(${Math.max(stages.length, 1)}, minmax(0, 1fr))`,
+          minWidth: `${Math.max(1180, stages.length * 196)}px`,
+        }}
+      >
+        {stages.map((stage, index) => {
           const stagePeople = sortPeople(
             people.filter((person) => person.stage === stage.id)
           );
@@ -2063,6 +3211,7 @@ function JourneyBoard({
             >
               <StageLane
                 stage={stage}
+                stages={stages}
                 people={stagePeople}
                 profiles={profiles}
                 activeProfile={activeProfile}
@@ -2081,8 +3230,298 @@ function JourneyBoard({
   );
 }
 
+function StackBoard({
+  people,
+  stages,
+  profiles,
+  activeProfile,
+  configured,
+  isPending,
+  searchActive,
+  onMove,
+  onNotice,
+  onSelect,
+  onReactionLogged,
+}: {
+  people: BoardPerson[];
+  stages: Stage[];
+  profiles: BoardProfile[];
+  activeProfile: BoardProfile | null;
+  configured: boolean;
+  isPending: boolean;
+  searchActive: boolean;
+  onMove: (person: BoardPerson, stage: StageId) => void;
+  onNotice: (message?: string) => void;
+  onSelect: (id: string) => void;
+  onReactionLogged: (personId: string, event: PersonEvent) => void;
+}) {
+  const [expandedStages, setExpandedStages] = useState<StackExpandedState>({});
+  const [mobileExpandedStageId, setMobileExpandedStageId] = useState<
+    StageId | null | undefined
+  >(undefined);
+  const isMobileStackView = useMediaQuery(MOBILE_STACK_MEDIA_QUERY);
+  const defaultMobileExpandedStageId = useMemo(() => {
+    return stages.find((stage) => people.some((person) => person.stage === stage.id))?.id ?? null;
+  }, [people, stages]);
+  const activeMobileStageId = useMemo(() => {
+    if (mobileExpandedStageId === null) {
+      return null;
+    }
+
+    if (mobileExpandedStageId === undefined) {
+      return defaultMobileExpandedStageId;
+    }
+
+    const stageVisible = stages.some((stage) => stage.id === mobileExpandedStageId);
+    const stageHasSearchMatches = people.some(
+      (person) => person.stage === mobileExpandedStageId
+    );
+
+    if (!stageVisible || (searchActive && !stageHasSearchMatches)) {
+      return defaultMobileExpandedStageId;
+    }
+
+    return mobileExpandedStageId;
+  }, [defaultMobileExpandedStageId, mobileExpandedStageId, people, searchActive, stages]);
+
+  function handleToggleStage(stageId: StageId, currentExpanded: boolean) {
+    if (isMobileStackView) {
+      setMobileExpandedStageId(currentExpanded ? null : stageId);
+      return;
+    }
+
+    setExpandedStages((current) => ({
+      ...current,
+      [stageId]: !currentExpanded,
+    }));
+  }
+
+  return (
+    <div className="flex w-full flex-col gap-5 pb-28 sm:gap-3 sm:pb-10">
+      {stages.map((stage, index) => {
+        const stagePeople = sortPeople(
+          people.filter((person) => person.stage === stage.id)
+        );
+        const expanded =
+          isMobileStackView
+            ? activeMobileStageId === stage.id
+            : searchActive && stagePeople.length > 0
+            ? true
+            : Object.prototype.hasOwnProperty.call(expandedStages, stage.id)
+              ? expandedStages[stage.id] ?? false
+              : stagePeople.length > 0;
+
+        return (
+          <motion.div
+            key={stage.id}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.035, duration: 0.32, ease: "easeOut" }}
+          >
+            <StackStageSection
+              stage={stage}
+              stages={stages}
+              people={stagePeople}
+              profiles={profiles}
+              activeProfile={activeProfile}
+              configured={configured}
+              isPending={isPending}
+              expanded={expanded}
+              onToggle={() => handleToggleStage(stage.id, expanded)}
+              onMove={onMove}
+              onNotice={onNotice}
+              onSelect={onSelect}
+              onReactionLogged={onReactionLogged}
+            />
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StackStageSection({
+  stage,
+  stages,
+  people,
+  profiles,
+  activeProfile,
+  configured,
+  isPending,
+  expanded,
+  onToggle,
+  onMove,
+  onNotice,
+  onSelect,
+  onReactionLogged,
+}: {
+  stage: Stage;
+  stages: Stage[];
+  people: BoardPerson[];
+  profiles: BoardProfile[];
+  activeProfile: BoardProfile | null;
+  configured: boolean;
+  isPending: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  onMove: (person: BoardPerson, stage: StageId) => void;
+  onNotice: (message?: string) => void;
+  onSelect: (id: string) => void;
+  onReactionLogged: (personId: string, event: PersonEvent) => void;
+}) {
+  const contentId = useId();
+  const tone = stageTones[stage.tone] ?? stageTones.sky;
+  const collapsedPreviewPeople = expanded ? [] : getTopActivePreviewPeople(people);
+
+  return (
+    <section
+      className={cn(
+        "soft-panel mobile-stack-stage-flat relative overflow-visible rounded-none border-0 transition-[background,box-shadow] duration-200 sm:overflow-hidden sm:rounded-[1.6rem] sm:border",
+        expanded && "mobile-stack-stage-open"
+      )}
+    >
+      <button
+        type="button"
+        aria-controls={contentId}
+        aria-expanded={expanded}
+        className={cn(
+          "group mobile-stack-stage-header flex w-full items-center gap-3 rounded-2xl px-2 py-3 text-left transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/25 sm:rounded-none sm:px-5 sm:py-4 sm:hover:bg-white/35",
+          expanded && "mobile-stack-stage-header-open"
+        )}
+        onClick={onToggle}
+      >
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 shadow-[0_1px_0_oklch(1_0_0_/_0.85)_inset]">
+          <span className="font-display text-xl italic leading-none text-foreground/45">
+            {getStageIndex(stages, stage.id)}
+          </span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className={cn("inline-block size-1.5 shrink-0 rounded-full", tone.dot)} />
+            <span className="truncate font-display text-2xl leading-none tracking-display text-foreground">
+              {stage.label}
+            </span>
+            {stage.id === "hunting" ? <SeedSproutAnimation /> : null}
+          </span>
+          <span className="mt-1 hidden truncate text-xs font-medium text-muted-foreground sm:block">
+            {stage.description}
+          </span>
+          {collapsedPreviewPeople.length > 0 ? (
+            <span className="mt-2 flex h-4 items-center sm:hidden">
+              <span className="sr-only">
+                Top active contacts: {collapsedPreviewPeople.map((person) => person.name).join(", ")}
+              </span>
+              <span aria-hidden className="flex -space-x-1">
+                {collapsedPreviewPeople.map((person) => (
+                  <span
+                    key={person.id}
+                    className="inline-flex rounded-full ring-2 ring-white/80"
+                  >
+                    <ContactAvatar person={person} size="xs" />
+                  </span>
+                ))}
+              </span>
+            </span>
+          ) : null}
+        </span>
+        <span className="flex shrink-0 items-center gap-3">
+          <span
+            className={cn(
+              "mobile-stack-stage-count inline-flex min-w-7 flex-col items-end justify-center gap-1 font-display text-3xl leading-none tracking-display sm:min-w-11 sm:items-center sm:gap-0 sm:rounded-2xl sm:border sm:border-white/70 sm:bg-white/70 sm:px-3 sm:py-1.5 sm:text-2xl sm:shadow-[0_1px_0_oklch(1_0_0_/_0.85)_inset]",
+              expanded && "mobile-stack-stage-count-open",
+              tone.text
+            )}
+          >
+            <span>{people.length}</span>
+            <span aria-hidden className="mobile-stack-stage-count-accent h-0.5 w-5 rounded-full sm:hidden" />
+          </span>
+          <span
+            aria-hidden
+            className={cn(
+              "mobile-stack-stage-chevron inline-flex size-9 items-center justify-center rounded-full border transition sm:hidden",
+              expanded && "mobile-stack-stage-chevron-open"
+            )}
+          >
+            <ChevronRight
+              className={cn(
+                "size-4 transition-transform duration-200",
+                expanded && "rotate-90"
+              )}
+            />
+          </span>
+          <ChevronRight
+            aria-hidden
+            className={cn(
+              "hidden size-5 text-muted-foreground transition-transform duration-200 sm:block",
+              expanded && "rotate-90 text-sky-600"
+            )}
+          />
+        </span>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded ? (
+          <motion.div
+            id={contentId}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            <div className="px-0 pb-1 pt-0 sm:border-t sm:border-foreground/[0.07] sm:p-4">
+              {people.length > 0 ? (
+                <SortableContext
+                  items={people.map((person) => person.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="grid grid-cols-1 gap-x-4 gap-y-0 lg:grid-cols-2 2xl:grid-cols-3">
+                    {people.map((person) => (
+                      <SortablePersonCard
+                        key={person.id}
+                        person={person}
+                        profiles={profiles}
+                        stages={stages}
+                        activeProfile={activeProfile}
+                        configured={configured}
+                        disabled={isPending}
+                        sortableDisabled
+                        onMove={onMove}
+                        onNotice={onNotice}
+                        onSelect={onSelect}
+                        onReactionLogged={onReactionLogged}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              ) : (
+                <div className="soft-inset flex min-h-32 flex-col items-center justify-center gap-3 rounded-[1.3rem] border border-dashed p-6 text-center">
+                  <span
+                    className={cn(
+                      "flex size-9 items-center justify-center rounded-full text-foreground/40",
+                      tone.soft
+                    )}
+                  >
+                    <span className={cn("size-1.5 rounded-full", tone.dot)} />
+                  </span>
+                  <p className="font-display text-base italic leading-snug text-foreground/80">
+                    {getEmptyStageMessage(stage)}
+                  </p>
+                  <p className="text-[0.7rem] leading-5 text-muted-foreground">
+                    Add a card or move someone here.
+                  </p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </section>
+  );
+}
+
 function StageLane({
   stage,
+  stages,
   people,
   profiles,
   activeProfile,
@@ -2093,7 +3532,8 @@ function StageLane({
   onSelect,
   onReactionLogged,
 }: {
-  stage: (typeof STAGES)[number];
+  stage: Stage;
+  stages: Stage[];
   people: BoardPerson[];
   profiles: BoardProfile[];
   activeProfile: BoardProfile | null;
@@ -2105,7 +3545,7 @@ function StageLane({
   onReactionLogged: (personId: string, event: PersonEvent) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
-  const tone = stageTones[stage.id];
+  const tone = stageTones[stage.tone] ?? stageTones.sky;
 
   return (
     <section
@@ -2119,7 +3559,7 @@ function StageLane({
         <div className="min-w-0">
           <div className="flex min-w-0 items-baseline gap-2">
             <span className="shrink-0 font-display text-2xl italic leading-none text-foreground/40">
-              {stageIndex[stage.id]}
+              {getStageIndex(stages, stage.id)}
             </span>
             <span className={cn("inline-block size-1.5 shrink-0 rounded-full", tone.dot)} />
             <h2 className="min-w-0 truncate font-display text-2xl leading-[0.95] tracking-display text-foreground">
@@ -2146,19 +3586,20 @@ function StageLane({
           items={people.map((person) => person.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="flex flex-1 flex-col gap-3 p-3">
+          <div className="flex flex-1 flex-col gap-0 px-3 py-2">
             {people.map((person) => (
               <SortablePersonCard
                 key={person.id}
                 person={person}
                 profiles={profiles}
+                stages={stages}
                 activeProfile={activeProfile}
                 configured={configured}
                 disabled={isPending}
                 onMove={onMove}
                 onNotice={onNotice}
                 onSelect={onSelect}
-              onReactionLogged={onReactionLogged}
+                onReactionLogged={onReactionLogged}
               />
             ))}
             {people.length === 0 ? (
@@ -2172,7 +3613,7 @@ function StageLane({
                   <span className={cn("size-1.5 rounded-full", tone.dot)} />
                 </span>
                 <p className="font-display text-base italic leading-snug text-foreground/80">
-                  {emptyMessages[stage.id]}
+                  {getEmptyStageMessage(stage)}
                 </p>
                 <p className="text-[0.7rem] leading-5 text-muted-foreground">
                   Add a card or drag someone here.
@@ -2190,6 +3631,7 @@ function QuickAddContactDialog({
   open,
   profiles,
   activeProfile,
+  stages,
   configured,
   onClose,
   onCreated,
@@ -2199,13 +3641,14 @@ function QuickAddContactDialog({
   open: boolean;
   profiles: BoardProfile[];
   activeProfile: BoardProfile | null;
+  stages: Stage[];
   configured: boolean;
   onClose: () => void;
   onCreated: (person: BoardPerson) => void;
   onProfilesChange: (profiles: BoardProfile[]) => void;
   onNotice: (message?: string) => void;
 }) {
-  const [stage, setStage] = useState<StageId>(STAGES[0].id);
+  const [stage, setStage] = useState<StageId>(stages[0]?.id ?? "hunting");
   const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>(() =>
     activeProfile ? [activeProfile.id] : []
   );
@@ -2217,12 +3660,12 @@ function QuickAddContactDialog({
     }
 
     const frame = window.requestAnimationFrame(() => {
-      setStage(STAGES[0].id);
+      setStage(stages[0]?.id ?? "hunting");
       setSelectedProfileIds(activeProfile ? [activeProfile.id] : []);
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [activeProfile, open]);
+  }, [activeProfile, open, stages]);
 
   function handleSubmit(formData: FormData) {
     if (!configured) {
@@ -2268,7 +3711,7 @@ function QuickAddContactDialog({
     >
       <form
         action={handleSubmit}
-        className="soft-panel-strong w-full max-w-md rounded-lg border p-4"
+        className="soft-panel-strong w-full max-w-md rounded-lg border p-4 text-slate-950 dark:text-foreground"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="relative mb-4 flex items-center justify-center">
@@ -2277,7 +3720,7 @@ function QuickAddContactDialog({
           </h2>
           <button
             aria-label="Close add contact"
-            className="soft-control absolute right-0 inline-flex size-9 items-center justify-center rounded-md border text-muted-foreground transition hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            className="soft-control absolute right-0 inline-flex size-9 items-center justify-center rounded-md border text-slate-700 transition hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 dark:text-muted-foreground dark:hover:text-sky-200"
             onClick={onClose}
             type="button"
           >
@@ -2289,19 +3732,19 @@ function QuickAddContactDialog({
             autoFocus
             name="name"
             placeholder="Full name"
-            className="soft-inset h-12 w-full rounded-md border px-4 text-sm font-medium tracking-tight outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/20"
+            className="soft-inset h-12 w-full rounded-md border px-4 text-sm font-medium tracking-tight text-slate-950 outline-none placeholder:text-slate-900/70 focus-visible:ring-2 focus-visible:ring-ring/20 dark:text-foreground dark:placeholder:text-muted-foreground"
           />
           <select
             aria-label="Starting stage"
-            className="soft-inset h-12 w-full rounded-md border px-4 text-sm font-medium tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            className="soft-inset h-12 w-full rounded-md border px-4 text-sm font-medium tracking-tight text-slate-950 outline-none focus-visible:ring-2 focus-visible:ring-ring/20 dark:text-foreground"
             onChange={(event) => {
-              if (isStageId(event.target.value)) {
+              if (stages.some((item) => item.id === event.target.value)) {
                 setStage(event.target.value);
               }
             }}
             value={stage}
           >
-            {STAGES.map((item) => (
+            {stages.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.label}
               </option>
@@ -2313,19 +3756,30 @@ function QuickAddContactDialog({
             onChange={setSelectedProfileIds}
             onProfilesChange={onProfilesChange}
             shape="square"
+            highContrastText
           />
           <textarea
             name="notes"
             placeholder="Care notes (optional)"
             rows={3}
-            className="soft-inset w-full resize-none rounded-md border px-4 py-3 text-sm leading-5 outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/20"
+            className="soft-inset w-full resize-none rounded-md border px-4 py-3 text-sm leading-5 text-slate-950 outline-none placeholder:text-slate-900/70 focus-visible:ring-2 focus-visible:ring-ring/20 dark:text-foreground dark:placeholder:text-muted-foreground"
           />
         </div>
         <div className="mt-4 flex items-center justify-end gap-2">
-          <Button className="rounded-md" disabled={isPending} onClick={onClose} type="button" variant="ghost">
+          <Button
+            className="rounded-md text-slate-950 hover:text-sky-800 disabled:text-slate-950 dark:text-foreground dark:hover:text-sky-200"
+            disabled={isPending}
+            onClick={onClose}
+            type="button"
+            variant="ghost"
+          >
             Cancel
           </Button>
-          <Button className="rounded-md" disabled={isPending || selectedProfileIds.length < 1} type="submit">
+          <Button
+            className="rounded-md text-slate-950 hover:text-sky-800 disabled:text-slate-950 disabled:opacity-60 dark:text-foreground dark:hover:text-sky-200"
+            disabled={isPending || selectedProfileIds.length < 1}
+            type="submit"
+          >
             Save contact
           </Button>
         </div>
@@ -2366,9 +3820,11 @@ function SeedSproutAnimation() {
 function SortablePersonCard({
   person,
   profiles,
+  stages,
   activeProfile,
   configured,
   disabled,
+  sortableDisabled,
   onMove,
   onNotice,
   onSelect,
@@ -2376,9 +3832,11 @@ function SortablePersonCard({
 }: {
   person: BoardPerson;
   profiles: BoardProfile[];
+  stages: Stage[];
   activeProfile: BoardProfile | null;
   configured: boolean;
   disabled?: boolean;
+  sortableDisabled?: boolean;
   onMove: (person: BoardPerson, stage: StageId) => void;
   onNotice: (message?: string) => void;
   onSelect: (id: string) => void;
@@ -2389,37 +3847,49 @@ function SortablePersonCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: person.id });
-  const [collapsed, setCollapsed] = useState(false);
-  const previousStage = getNextStage(person.stage, -1);
-  const nextStage = getNextStage(person.stage, 1);
+  } = useSortable({ id: person.id, disabled: sortableDisabled });
+  const [collapsed, setCollapsed] = useState(true);
+  const previousStage = getNextStage(stages, person.stage, -1);
+  const nextStage = getNextStage(stages, person.stage, 1);
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
-  const tone = stageTones[person.stage];
+  const tone = getStageTone(stages, person.stage);
   const assignedProfiles = getAssignedProfiles(person, profiles);
   const hasFollowUp = Boolean(person.next_follow_up_at);
   const latestReaction = getLatestContactReaction(person.events);
   const latestStudy = getLatestCompletedStudy(person.studies);
+  const latestStudyTitle = latestStudy ? getStudyTitle(latestStudy) : null;
+  const latestStudyDate = latestStudy
+    ? latestStudy.studied_at ?? latestStudy.created_at
+    : null;
+  const collapsedStudyLabel = latestStudyTitle
+    ? `Last study: ${latestStudyTitle}`
+    : "No study documented";
+  const collapsedStudyAriaLabel = latestStudyTitle
+    ? `Last documented study: ${latestStudyTitle}${
+        latestStudyDate ? `, ${formatDate(latestStudyDate)}` : ""
+      }`
+    : collapsedStudyLabel;
   const totalStudies = person.studies.length;
   const overdueReaction = isReactionOverdue(latestReaction);
-  const collapsedProfile = assignedProfiles[0] ?? activeProfile;
-  const collapseButton = (
+  const assignedProfileNames = assignedProfiles.map((profile) => profile.name).join(", ");
+  const starToggleButton = (
     <button
       aria-label={collapsed ? `Expand ${person.name}` : `Collapse ${person.name}`}
-      aria-pressed={collapsed}
+      aria-pressed={!collapsed}
       className={cn(
-        "absolute left-2 top-3 z-10 inline-flex size-7 items-center justify-center rounded-full border bg-background/85 shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset] transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95",
+        "contact-star-button inline-flex size-8 shrink-0 items-center justify-center rounded-full border transition duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95",
         collapsed
-          ? "border-amber-400 text-amber-700"
-          : "border-foreground/10 text-foreground/35 hover:border-amber-300 hover:text-amber-600"
+          ? "contact-star-glass border-sky-200/70 text-sky-800/80"
+          : "contact-star-active border-blue-900/70 text-white"
       )}
       onClick={() => setCollapsed((value) => !value)}
       type="button"
     >
-      <Star className={cn("size-3.5", collapsed && "fill-current")} />
+      <Star className={cn("contact-star-icon size-4", !collapsed && "fill-current")} />
     </button>
   );
 
@@ -2428,173 +3898,166 @@ function SortablePersonCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "soft-control group relative overflow-hidden rounded-2xl border border-transparent ring-1 ring-inset transition-all",
-        tone.ring,
-        "hover:-translate-y-0.5 hover:cyan-accent",
+        "group relative overflow-visible border-b border-foreground/[0.07] bg-transparent transition-colors first:border-t hover:bg-card/45 focus-within:bg-card/40",
         overdueReaction &&
-          "border-red-400/70 ring-red-400/55 shadow-[0_0_0_1px_oklch(0.64_0.2_25_/_0.22),0_0_28px_oklch(0.64_0.2_25_/_0.24)]",
+          "border-red-400/40 bg-red-50/35 shadow-[inset_2px_0_0_oklch(0.64_0.2_25_/_0.7)]",
         isDragging && "opacity-40"
       )}
-      whileTap={{ scale: 0.99 }}
+      whileTap={{ scale: 0.995 }}
     >
       <span
         aria-hidden
-        className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br", tone.card)}
-      />
-      <span
-        aria-hidden
         className={cn(
-          "pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent to-transparent",
-          tone.edge
+          "pointer-events-none absolute inset-y-2 left-0 w-0.5 rounded-full opacity-55",
+          overdueReaction ? "bg-red-500" : tone.dot
         )}
       />
 
       {collapsed ? (
-        <div className="relative flex min-h-14 items-center gap-3 py-2 pl-12 pr-3">
+        <div className="relative flex min-h-[3.45rem] items-center py-1.5 pl-2 pr-10 sm:min-h-[3.65rem]">
           <button
-            aria-label={`Expand ${person.name}`}
-            aria-pressed={collapsed}
-            className="absolute left-3 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full border border-amber-400 bg-background/85 text-amber-700 shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset] transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95"
-            onClick={() => setCollapsed(false)}
+            className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1.5 py-1.5 pr-2 text-left transition hover:bg-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+            onClick={() => onSelect(person.id)}
             type="button"
           >
-            <Star className="size-3.5 fill-current" />
-          </button>
-          <div className="flex min-w-0 flex-1 items-center justify-start gap-3">
-            <ProfileAvatar profile={collapsedProfile} size="icon" />
-            <button
-              className="min-w-0 text-left"
-              onClick={() => onSelect(person.id)}
-              type="button"
-            >
-              <h3 className="truncate font-display text-xl leading-none tracking-display text-foreground">
+            <ContactAvatarSlot person={person} />
+            <span className="min-w-0 flex-1">
+              <h3 className="truncate font-display text-lg leading-none tracking-display text-foreground">
                 {person.name}
               </h3>
-            </button>
-          </div>
-          <span
-            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-sky-200/80 bg-white/75 px-3 py-1 text-[0.62rem] font-black uppercase tracking-[0.14em] text-sky-700 shadow-[0_1px_0_oklch(1_0_0_/_0.8)_inset,0_8px_18px_oklch(0.62_0.15_235_/_0.16)]"
-            title={`${totalStudies} total studies`}
-            aria-label={`${totalStudies} total studies`}
-          >
-            <span className="font-sans text-base leading-none tracking-tight text-sky-600">
-              {totalStudies}
+              <span
+                className="mt-1 flex min-w-0 items-center text-[0.68rem] font-semibold leading-none tracking-[0.05em] text-sky-700/85"
+                title={collapsedStudyAriaLabel}
+                aria-label={collapsedStudyAriaLabel}
+              >
+                <span className="truncate">{collapsedStudyLabel}</span>
+              </span>
             </span>
-            <span className="hidden sm:inline">Studies</span>
+          </button>
+          <span className="absolute inset-y-0 right-1 flex items-center justify-center">
+            {starToggleButton}
           </span>
         </div>
       ) : (
         <>
-          <div className="relative flex min-h-10 items-center px-3.5 pt-3">
-            {collapseButton}
-            <Button
-              aria-label={`Move ${person.name} backward`}
-              disabled={!configured || disabled || !previousStage}
-              onClick={() => previousStage && onMove(person, previousStage)}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-              className="absolute left-8 top-3 size-7"
-            >
-              <ChevronLeft className="size-3.5" />
-            </Button>
+          <div className="relative flex min-h-[3.65rem] items-center gap-3 px-2 py-2 pr-1.5">
             <button
-              className="mx-auto min-w-0 max-w-full px-10 text-center"
+              className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-left transition hover:bg-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
               type="button"
               onClick={() => onSelect(person.id)}
             >
-              <h3 className="truncate font-display text-2xl leading-none tracking-display text-foreground transition group-hover:text-foreground">
-                {person.name}
-              </h3>
+              <ContactAvatarSlot person={person} />
+              <span className="min-w-0 flex-1">
+                <h3 className="truncate font-display text-xl leading-none tracking-display text-foreground transition group-hover:text-foreground">
+                  {person.name}
+                </h3>
+                <span
+                  className="mt-0.5 flex items-center gap-1.5 text-[0.66rem] font-bold uppercase tracking-[0.12em] text-sky-700/85"
+                  title={`${totalStudies} total studies`}
+                  aria-label={`${totalStudies} total studies`}
+                >
+                  <span className="font-sans text-sm leading-none tracking-tight text-sky-600">
+                    {totalStudies}
+                  </span>
+                  <span>{totalStudies === 1 ? "study" : "studies"} done</span>
+                </span>
+              </span>
             </button>
-            <Button
-              aria-label={`Move ${person.name} forward`}
-              disabled={!configured || disabled || !nextStage}
-              onClick={() => nextStage && onMove(person, nextStage)}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-              className="absolute right-8 top-3 size-7"
-            >
-              <ChevronRight className="size-3.5" />
-            </Button>
+            {starToggleButton}
+          </div>
+
+          <div className="relative px-3 pb-3 pl-[4.5rem]">
             {hasFollowUp ? (
-              <span className="absolute right-3 top-12 shrink-0 rounded-full bg-foreground/5 px-2 py-0.5 text-[0.6rem] font-medium tracking-[0.12em] text-foreground/70">
+              <span className="mb-2 inline-flex shrink-0 rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[0.6rem] font-medium tracking-[0.12em] text-foreground/70">
                 {formatDate(person.next_follow_up_at)}
               </span>
             ) : null}
+
+            {latestStudy ? (
+              <p className="line-clamp-2 border-l-2 border-foreground/10 pl-3 text-[0.78rem] leading-5 text-muted-foreground">
+                <span className="font-medium text-foreground/80">Last study:</span>{" "}
+                {latestStudyTitle}
+                <span className="text-foreground/40"> · </span>
+                <span>{formatDate(latestStudy.studied_at)}</span>
+              </p>
+            ) : null}
+
+            {person.stage === "baptized" && person.baptized_at ? (
+              <p className="mt-2 text-[0.62rem] font-medium uppercase tracking-[0.2em] text-amber-700">
+                Baptized {new Date(person.baptized_at).toLocaleDateString()}
+              </p>
+            ) : null}
           </div>
 
-          {latestStudy ? (
-            <p className="relative mx-3.5 mt-3 line-clamp-2 border-l-2 border-foreground/10 pl-3 text-[0.78rem] leading-5 text-muted-foreground">
-              <span className="font-medium text-foreground/80">Last study:</span>{" "}
-              {getStudyTitle(latestStudy)}
-              <span className="text-foreground/40"> · </span>
-              <span>{formatDate(latestStudy.studied_at)}</span>
-            </p>
-          ) : null}
-
-          {person.stage === "baptized" && person.baptized_at ? (
-            <p className="relative mx-3.5 mt-3 text-[0.62rem] font-medium uppercase tracking-[0.2em] text-amber-700">
-              Baptized {new Date(person.baptized_at).toLocaleDateString()}
-            </p>
-          ) : null}
-
-          <div className="relative mt-4 flex min-w-0 items-center gap-1.5 border-t border-foreground/[0.07] bg-foreground/[0.015] px-3 py-2">
+          <div className="relative flex min-w-0 flex-wrap items-center gap-2 border-t border-foreground/[0.07] px-2 py-2 pl-[4.5rem]">
             {assignedProfiles.length > 0 ? (
-              <div className="flex -space-x-1.5">
-                {assignedProfiles.slice(0, 3).map((profile) => (
-                  <ProfileAvatar key={profile.id} profile={profile} size="xs" />
-                ))}
+              <div
+                aria-label={`Assigned to ${assignedProfileNames}`}
+                className="absolute left-3.5 top-1/2 flex w-[3.25rem] -translate-y-1/2 justify-center"
+                title={`Assigned to ${assignedProfileNames}`}
+              >
+                <div className="flex -space-x-2">
+                  {assignedProfiles.slice(0, 3).map((profile) => (
+                    <ProfileAvatar key={profile.id} profile={profile} size="xs" />
+                  ))}
+                </div>
               </div>
             ) : (
               <span className="shrink-0 text-[0.6rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                 Unassigned
               </span>
             )}
-            <div className="absolute left-1/2 top-1/2 flex min-w-0 max-w-[58%] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-1">
-              {latestReaction ? (
-                <>
-                  <div className="flex min-w-0 items-center gap-1 text-[0.66rem] font-medium text-muted-foreground">
-                    {latestReaction.event_type === "text_reaction" ? (
-                      <MessageCircle className="size-3.5 shrink-0 text-foreground/70" />
-                    ) : (
-                      <Phone className="size-3.5 shrink-0 text-foreground/70" />
-                    )}
-                    <span className="min-w-0 truncate uppercase tracking-[0.14em]">
-                      {getContactReactionDisplayTitle(latestReaction)}
-                    </span>
-                    <span className="shrink-0 text-foreground/25">·</span>
-                    <span className="shrink-0 tracking-normal text-foreground/60">
-                      {formatDate(latestReaction.created_at)}
-                    </span>
-                  </div>
-                  <div className="absolute left-[calc(100%+0.75rem)] top-1/2 -translate-y-1/2">
-                    <ContactReactionControls
-                      person={person}
-                      activeProfile={activeProfile}
-                      configured={configured}
-                      disabled={disabled}
-                      onNotice={onNotice}
-                      onReactionLogged={onReactionLogged}
-                      compact
-                    />
-                  </div>
-                </>
-              ) : null}
-            </div>
-            <div className="ml-auto flex shrink-0 items-center">
-              {latestReaction ? null : (
-                  <ContactReactionControls
-                    person={person}
-                    activeProfile={activeProfile}
-                    configured={configured}
-                    disabled={disabled}
-                    onNotice={onNotice}
-                    onReactionLogged={onReactionLogged}
-                    compact
-                  />
-              )}
+
+            {latestReaction ? (
+              <div className="flex min-w-0 flex-1 basis-40 items-center gap-1 text-[0.66rem] font-medium text-muted-foreground">
+                {latestReaction.event_type === "text_reaction" ? (
+                  <MessageCircle className="size-3.5 shrink-0 text-foreground/70" />
+                ) : (
+                  <Phone className="size-3.5 shrink-0 text-foreground/70" />
+                )}
+                <span className="min-w-0 truncate uppercase tracking-[0.14em]">
+                  {getContactReactionDisplayTitle(latestReaction)}
+                </span>
+                <span className="shrink-0 text-foreground/25">·</span>
+                <span className="shrink-0 tracking-normal text-foreground/60">
+                  {formatDate(latestReaction.created_at)}
+                </span>
+              </div>
+            ) : null}
+
+            <div className="ml-auto flex shrink-0 items-center gap-1.5">
+              <ContactReactionControls
+                person={person}
+                activeProfile={activeProfile}
+                configured={configured}
+                disabled={disabled}
+                onNotice={onNotice}
+                onReactionLogged={onReactionLogged}
+                compact
+              />
+              <span className="h-5 w-px bg-foreground/[0.08]" />
+              <Button
+                aria-label={`Move ${person.name} backward`}
+                disabled={!configured || disabled || !previousStage}
+                onClick={() => previousStage && onMove(person, previousStage)}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+                className="size-7 rounded-full"
+              >
+                <ChevronLeft className="size-3.5" />
+              </Button>
+              <Button
+                aria-label={`Move ${person.name} forward`}
+                disabled={!configured || disabled || !nextStage}
+                onClick={() => nextStage && onMove(person, nextStage)}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+                className="size-7 rounded-full"
+              >
+                <ChevronRight className="size-3.5" />
+              </Button>
             </div>
           </div>
         </>
@@ -2606,34 +4069,34 @@ function SortablePersonCard({
 function CardPreview({
   person,
   profiles,
+  stages,
 }: {
   person: BoardPerson;
   profiles: BoardProfile[];
+  stages: Stage[];
 }) {
-  const tone = stageTones[person.stage];
+  const tone = getStageTone(stages, person.stage);
   return (
     <article
-      className={cn(
-        "soft-panel relative w-72 rotate-1 overflow-hidden rounded-2xl border border-transparent p-4 ring-1 ring-inset",
-        tone.ring
-      )}
+      className="relative w-72 rotate-1 overflow-hidden border-y border-foreground/[0.08] bg-card/70 p-3 shadow-[0_18px_42px_-26px_oklch(0.2_0.028_264_/_0.35)]"
     >
       <span
         aria-hidden
-        className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br", tone.card)}
-      />
-      <span
-        aria-hidden
         className={cn(
-          "pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent to-transparent",
-          tone.edge
+          "pointer-events-none absolute inset-y-2 left-0 w-0.5 rounded-full opacity-60",
+          tone.dot
         )}
       />
-      <p className="relative font-display text-xl leading-[1.05] tracking-display">{person.name}</p>
-      <p className="relative mt-1.5 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-        {profileNames(person, profiles)}
-      </p>
-      <ProfileStack profiles={getAssignedProfiles(person, profiles)} className="relative mt-3" />
+      <div className="relative flex items-center gap-3">
+        <ContactAvatar person={person} size="row" />
+        <span className="min-w-0 flex-1">
+          <p className="truncate font-display text-lg leading-none tracking-display">{person.name}</p>
+          <p className="mt-1 truncate text-[0.68rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+            {profileNames(person, profiles)}
+          </p>
+        </span>
+        <ProfileStack profiles={getAssignedProfiles(person, profiles)} className="shrink-0" />
+      </div>
     </article>
   );
 }
@@ -2642,6 +4105,7 @@ function PersonDetailPanel({
   person,
   profiles,
   activeProfile,
+  stages,
   configured,
   onClose,
   onUpdated,
@@ -2655,6 +4119,7 @@ function PersonDetailPanel({
   person: BoardPerson | null;
   profiles: BoardProfile[];
   activeProfile: BoardProfile | null;
+  stages: Stage[];
   configured: boolean;
   onClose: () => void;
   onUpdated: (person: BoardPerson) => void;
@@ -2957,6 +4422,21 @@ function PersonDetailPanel({
     setAssignmentPopupOpen(true);
   }
 
+  function handleAssignProfile(profileId: string) {
+    if (!person) {
+      return;
+    }
+
+    const nextProfileIds = [profileId];
+
+    if (sameIds(nextProfileIds, assignmentProfileIds)) {
+      return;
+    }
+
+    setSelectedProfileIds(nextProfileIds);
+    saveContactDetails(detailNotes, nextProfileIds);
+  }
+
   async function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -2995,6 +4475,11 @@ function PersonDetailPanel({
       getAssignedProfiles(person, profiles)[0] ??
       null
     : null;
+  const detailStage = person ? getStageById(stages, person.stage) : null;
+  const detailStageTone = person ? getStageTone(stages, person.stage) : stageTones.sky;
+  const assignmentProfileIds =
+    selectedProfileIds.length > 0 ? selectedProfileIds : person?.assigned_profile_ids ?? [];
+  const currentAssignmentProfileId = assignmentProfileIds[0] ?? null;
 
   return (
     <AnimatePresence>
@@ -3021,7 +4506,7 @@ function PersonDetailPanel({
                 aria-hidden
                 className={cn(
                   "pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b opacity-90",
-                  stageTones[person.stage].glow
+                  detailStageTone.glow
                 )}
               />
               <div className="relative border-b border-foreground/[0.07] px-6 pb-5 pt-6">
@@ -3036,11 +4521,11 @@ function PersonDetailPanel({
                     <div className="mb-3 flex w-full flex-col items-start justify-start gap-2 pr-20 text-left uppercase text-muted-foreground">
                       <div className="flex max-w-full flex-wrap items-center justify-start gap-2 text-[0.66rem] font-semibold tracking-[0.28em] sm:tracking-[0.38em]">
                       <span
-                        className={cn("size-1.5 rounded-full", stageTones[person.stage].dot)}
+                        className={cn("size-1.5 rounded-full", detailStageTone.dot)}
                       />
                       <span className="whitespace-nowrap">
-                        {stageIndex[person.stage]} ·{" "}
-                        {STAGES.find((s) => s.id === person.stage)?.label}
+                        {getStageIndex(stages, person.stage)} ·{" "}
+                        {detailStage?.label ?? person.stage}
                       </span>
                       {detailOwnerProfile ? (
                         <span className="hidden text-foreground/25 sm:inline">/</span>
@@ -3225,15 +4710,22 @@ function PersonDetailPanel({
                           ? "Expand assigned profiles and Bible studies"
                           : "Collapse assigned profiles and Bible studies"
                       }
-                      aria-pressed={detailTabsCollapsed}
+                      aria-pressed={!detailTabsCollapsed}
                       className={cn(
-                        "absolute left-0 inline-flex size-7 shrink-0 items-center justify-center rounded-full border bg-card text-foreground/35 transition hover:border-amber-300 hover:text-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95",
-                        detailTabsCollapsed && "border-amber-400 text-amber-700"
+                        "contact-star-button absolute left-0 inline-flex size-7 shrink-0 items-center justify-center rounded-full border transition duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95",
+                        detailTabsCollapsed
+                          ? "contact-star-glass border-sky-200/70 text-sky-800/80"
+                          : "contact-star-active border-blue-900/70 text-white"
                       )}
                       onClick={() => setDetailTabsCollapsed((value) => !value)}
                       type="button"
                     >
-                      <Star className={cn("size-3.5", detailTabsCollapsed && "fill-current")} />
+                      <Star
+                        className={cn(
+                          "contact-star-icon size-3.5",
+                          !detailTabsCollapsed && "fill-current"
+                        )}
+                      />
                     </button>
                     <span className="px-10 text-center text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-foreground">
                       Bible Study
@@ -3301,14 +4793,42 @@ function PersonDetailPanel({
                         <X className="size-4" />
                       </button>
                     </div>
+                    <section className="soft-panel mb-3 rounded-2xl border p-3">
+                      <h3 className="text-center text-[0.7rem] font-black uppercase tracking-[0.26em] text-foreground">
+                        Assign new user
+                      </h3>
+                      <div className="mt-3 grid max-h-36 grid-cols-5 gap-2 overflow-y-auto pr-1">
+                        {profiles.map((profile) => {
+                          const selected = profile.id === currentAssignmentProfileId;
+
+                          return (
+                            <button
+                              key={profile.id}
+                              type="button"
+                              aria-pressed={selected}
+                              aria-label={`${selected ? "Current assignee" : "Assign"} ${profile.name}`}
+                              title={profile.name}
+                              className={cn(
+                                "flex aspect-square items-center justify-center rounded-xl border bg-background p-1.5 text-center transition hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25",
+                                selected
+                                  ? "border-primary bg-primary/10 shadow-[0_0_0_1px_oklch(0.22_0.028_264_/_0.22)]"
+                                  : "border-foreground/10 opacity-60 saturate-[0.75] hover:opacity-100 hover:saturate-100"
+                              )}
+                              onClick={() => handleAssignProfile(profile.id)}
+                            >
+                              <ProfileAvatar profile={profile} size="sm" />
+                              <span className="sr-only">
+                                {profile.name}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
                     <ProfileAssignmentPicker
                       hideHeader
                       profiles={profiles}
-                      selectedIds={
-                        selectedProfileIds.length > 0
-                          ? selectedProfileIds
-                          : person.assigned_profile_ids
-                      }
+                      selectedIds={assignmentProfileIds}
                       onChange={(ids) => {
                         setSelectedProfileIds(ids);
                         saveContactDetails(detailNotes, ids);
@@ -4703,17 +6223,23 @@ function ContactAvatar({
   size = "md",
 }: {
   person: BoardPerson | null;
-  size?: "md" | "lg";
+  size?: "xs" | "md" | "lg" | "row";
 }) {
   const sizeClass = {
+    xs: "size-4 text-[0.52rem]",
     md: "size-10 text-sm",
     lg: "size-14 text-lg",
+    row: "size-11 text-base",
   }[size];
+  const rowAvatar = size === "row";
 
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-foreground/15 bg-card font-display tracking-display text-foreground/80 shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset]",
+        "inline-flex shrink-0 items-center justify-center overflow-hidden border font-display tracking-display shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset]",
+        rowAvatar
+          ? "rounded-[22%] border-white/80 bg-gradient-to-br from-white via-sky-50 to-sky-100 text-sky-700 shadow-[0_1px_0_oklch(1_0_0_/_0.85)_inset,0_5px_14px_oklch(0.58_0.18_240_/_0.18)]"
+          : "rounded-full border-foreground/15 bg-card text-foreground/80",
         sizeClass
       )}
       title={person?.name ?? "Contact photo"}
@@ -4733,12 +6259,10 @@ function ContactAvatar({
   );
 }
 
-function HeaderSdMark() {
+function ContactAvatarSlot({ person }: { person: BoardPerson | null }) {
   return (
-    <span aria-hidden="true" className="s-drive-header-mark" title="S-Drive">
-      <span className="s-drive-header-mark__letters" data-text="SD">
-        SD
-      </span>
+    <span className="flex w-[3.25rem] shrink-0 justify-center">
+      <ContactAvatar person={person} size="row" />
     </span>
   );
 }
@@ -4873,6 +6397,7 @@ function ProfileStack({
 
 function ProfileAssignmentPicker({
   hideHeader = false,
+  highContrastText = false,
   profiles,
   selectedIds,
   onChange,
@@ -4880,6 +6405,7 @@ function ProfileAssignmentPicker({
   shape = "soft",
 }: {
   hideHeader?: boolean;
+  highContrastText?: boolean;
   profiles: BoardProfile[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
@@ -5012,6 +6538,7 @@ function ProfileAssignmentPicker({
     <div
       className={cn(
         "soft-panel border p-2.5",
+        highContrastText && "text-slate-950 dark:text-foreground",
         isSquare ? "rounded-md" : "rounded-xl"
       )}
     >
@@ -5049,7 +6576,14 @@ function ProfileAssignmentPicker({
                     type="button"
                   >
                     <ProfileAvatar profile={profile} size="sm" />
-                    <span className="mt-1.5 max-w-full truncate text-[0.72rem] font-medium tracking-tight text-foreground">
+                    <span
+                      className={cn(
+                        "mt-1.5 max-w-full truncate text-[0.72rem] font-medium tracking-tight",
+                        highContrastText
+                          ? "text-slate-950 dark:text-foreground"
+                          : "text-foreground"
+                      )}
+                    >
                       {profile.name}
                     </span>
                   </button>
@@ -5062,13 +6596,23 @@ function ProfileAssignmentPicker({
                 >
                   <span
                     className={cn(
-                      "flex size-8 items-center justify-center border border-dashed border-foreground/20 text-muted-foreground",
+                      "flex size-8 items-center justify-center border border-dashed border-foreground/20",
+                      highContrastText
+                        ? "text-slate-800 dark:text-muted-foreground"
+                        : "text-muted-foreground",
                       isSquare ? "rounded-md" : "rounded-full"
                     )}
                   >
                     <Plus className="size-3.5" />
                   </span>
-                  <span className="mt-1.5 text-[0.65rem] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                  <span
+                    className={cn(
+                      "mt-1.5 text-[0.65rem] font-medium uppercase tracking-[0.14em]",
+                      highContrastText
+                        ? "text-slate-900/80 dark:text-muted-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
                     Branch {index + 1}
                   </span>
                 </button>

@@ -10,6 +10,7 @@ export default async function Home() {
     <BibleStudyBoard
       initialPeople={board.people}
       initialProfiles={board.profiles}
+      initialStages={board.stages}
       configured={board.configured}
       error={board.error}
     />

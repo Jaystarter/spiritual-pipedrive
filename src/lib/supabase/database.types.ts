@@ -76,6 +76,7 @@ export type Database = {
             | "created"
             | "stage_moved"
             | "details_updated"
+            | "assigned"
             | "note_added"
             | "study_logged"
             | "text_reaction"
@@ -86,6 +87,7 @@ export type Database = {
           from_stage: StageId | null;
           to_stage: StageId | null;
           actor_profile_id: string | null;
+          notification_profile_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -95,6 +97,7 @@ export type Database = {
             | "created"
             | "stage_moved"
             | "details_updated"
+            | "assigned"
             | "note_added"
             | "study_logged"
             | "text_reaction"
@@ -105,6 +108,7 @@ export type Database = {
           from_stage?: StageId | null;
           to_stage?: StageId | null;
           actor_profile_id?: string | null;
+          notification_profile_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -114,6 +118,7 @@ export type Database = {
             | "created"
             | "stage_moved"
             | "details_updated"
+            | "assigned"
             | "note_added"
             | "study_logged"
             | "text_reaction"
@@ -124,6 +129,7 @@ export type Database = {
           from_stage?: StageId | null;
           to_stage?: StageId | null;
           actor_profile_id?: string | null;
+          notification_profile_id?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -208,12 +214,49 @@ export type Database = {
         };
         Relationships: [];
       };
+      stages: {
+        Row: {
+          id: StageId;
+          label: string;
+          short_label: string;
+          description: string;
+          tone: "amber" | "sky" | "indigo" | "violet" | "emerald" | "green";
+          sort_order: number;
+          is_hidden: boolean;
+          is_system: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: StageId;
+          label: string;
+          short_label: string;
+          description?: string;
+          tone?: "amber" | "sky" | "indigo" | "violet" | "emerald" | "green";
+          sort_order?: number;
+          is_hidden?: boolean;
+          is_system?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: StageId;
+          label?: string;
+          short_label?: string;
+          description?: string;
+          tone?: "amber" | "sky" | "indigo" | "violet" | "emerald" | "green";
+          sort_order?: number;
+          is_hidden?: boolean;
+          is_system?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
-    Enums: {
-      study_stage: StageId;
-    };
+    Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
 };

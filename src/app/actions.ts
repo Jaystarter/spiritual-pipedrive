@@ -2,7 +2,22 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getStageLabel, isStageId, type StageId } from "@/lib/stages";
+import {
+  DEFAULT_STAGES,
+  cleanStageDescription,
+  cleanStageLabel,
+  cleanStageShortLabel,
+  getAutomaticStudyStageId,
+  getFallbackTone,
+  getStageLabel,
+  getVisibleStages,
+  isManualOnlyStage,
+  isStageId,
+  isStageToneName,
+  normalizeStages,
+  type Stage,
+  type StageId,
+} from "@/lib/stages";
 import { createSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -12,6 +27,8 @@ type PersonUpdate = Database["public"]["Tables"]["people"]["Update"];
 type EventInsert = Database["public"]["Tables"]["person_events"]["Insert"];
 type StudyInsert = Database["public"]["Tables"]["person_studies"]["Insert"];
 type StudyUpdate = Database["public"]["Tables"]["person_studies"]["Update"];
+type StageRow = Database["public"]["Tables"]["stages"]["Row"];
+type StageInsert = Database["public"]["Tables"]["stages"]["Insert"];
 
 export type PersonEvent = Database["public"]["Tables"]["person_events"]["Row"];
 export type PersonStudy = Database["public"]["Tables"]["person_studies"]["Row"];
@@ -28,6 +45,7 @@ export type PersonLifeStatus = NonNullable<PersonRow["life_status"]>;
 export type BoardState = {
   people: BoardPerson[];
   profiles: BoardProfile[];
+  stages: Stage[];
   configured: boolean;
   error?: string;
 };
@@ -59,6 +77,10 @@ type MovePersonInput = {
   stage: StageId;
   orderedIds: string[];
   actorProfileId: string;
+};
+
+type SaveStagesInput = {
+  stages: Stage[];
 };
 
 type AddNoteInput = {
@@ -192,6 +214,54 @@ function cleanLifeStatus(value: PersonLifeStatus | null) {
   return undefined;
 }
 
+function mapStageRow(stage: StageRow): Stage {
+  return {
+    id: stage.id,
+    label: stage.label,
+    shortLabel: stage.short_label,
+    description: stage.description,
+    tone: stage.tone,
+    sortOrder: stage.sort_order,
+    isHidden: stage.is_hidden,
+    isSystem: stage.is_system,
+  };
+}
+
+async function listStages() {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return DEFAULT_STAGES;
+  }
+
+  const { data, error } = await supabase
+    .from("stages")
+    .select("*")
+    .order("sort_order", { ascending: true })
+    .order("label", { ascending: true });
+
+  if (error || !data || data.length === 0) {
+    return DEFAULT_STAGES;
+  }
+
+  return normalizeStages(data.map(mapStageRow));
+}
+
+async function validateVisibleStage(stageId: StageId) {
+  if (!isStageId(stageId)) {
+    return { error: "Choose a valid stage." } as const;
+  }
+
+  const stages = await listStages();
+  const stage = getVisibleStages(stages).find((item) => item.id === stageId);
+
+  if (!stage) {
+    return { error: "Choose a visible stack." } as const;
+  }
+
+  return { stage, stages } as const;
+}
+
 function currentMonthWindow() {
   const now = new Date();
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -308,20 +378,137 @@ async function getNextSortOrder(stage: StageId) {
   return (data?.sort_order ?? 0) + 1000;
 }
 
-async function insertEvent(
+function getVisibleAutomaticStudyStageId(studyCount: number, stages: Stage[]) {
+  const targetStage = getAutomaticStudyStageId(studyCount);
+
+  return getVisibleStages(stages).some((stage) => stage.id === targetStage)
+    ? targetStage
+    : null;
+}
+
+function applyAutomaticStudyStage(
+  person: BoardPerson,
+  stages: Stage[]
+): BoardPerson {
+  if (isManualOnlyStage(person.stage)) {
+    return person;
+  }
+
+  const targetStage = getVisibleAutomaticStudyStageId(person.studies.length, stages);
+
+  if (!targetStage || targetStage === person.stage) {
+    return person;
+  }
+
+  return {
+    ...person,
+    stage: targetStage,
+    baptized_at: null,
+  };
+}
+
+async function countPersonStudies(personId: string) {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return 0;
+  }
+
+  const { data, error } = await supabase
+    .from("person_studies")
+    .select("id")
+    .eq("person_id", personId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data?.length ?? 0;
+}
+
+async function synchronizeAutomaticStudyStage(
   personId: string,
-  event: Omit<EventInsert, "person_id">
+  studyCount: number,
+  actorProfileId: string
 ) {
   const supabase = createSupabaseAdmin();
 
   if (!supabase) {
-    return;
+    return null;
   }
 
-  await supabase.from("person_events").insert({
-    person_id: personId,
-    ...event,
+  const stages = await listStages();
+  const targetStage = getVisibleAutomaticStudyStageId(studyCount, stages);
+
+  if (!targetStage) {
+    return null;
+  }
+
+  const { data: currentPerson, error: currentError } = await supabase
+    .from("people")
+    .select("stage")
+    .eq("id", personId)
+    .is("archived_at", null)
+    .maybeSingle();
+
+  if (currentError || !currentPerson || isManualOnlyStage(currentPerson.stage)) {
+    return null;
+  }
+
+  const fromStage = currentPerson.stage;
+
+  if (fromStage === targetStage) {
+    return targetStage;
+  }
+
+  const { error: updateError } = await supabase
+    .from("people")
+    .update({
+      stage: targetStage,
+      sort_order: await getNextSortOrder(targetStage),
+      baptized_at: null,
+    })
+    .eq("id", personId)
+    .is("archived_at", null);
+
+  if (updateError) {
+    return null;
+  }
+
+  await insertEvent(personId, {
+    event_type: "stage_moved",
+    title: `Moved to ${getStageLabel(targetStage, stages)}`,
+    body: `Automatically moved after ${studyCount} completed ${
+      studyCount === 1 ? "study" : "studies"
+    }.`,
+    from_stage: fromStage,
+    to_stage: targetStage,
+    actor_profile_id: actorProfileId,
   });
+
+  return targetStage;
+}
+
+async function insertEvent(
+  personId: string,
+  event: Omit<EventInsert, "person_id">
+): Promise<PersonEvent | null> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data } = await supabase
+    .from("person_events")
+    .insert({
+      person_id: personId,
+      ...event,
+    })
+    .select("*")
+    .single();
+
+  return data ?? null;
 }
 
 async function hydratePeople(people: PersonRow[]) {
@@ -420,10 +607,13 @@ async function listProfilesWithStats(people?: PersonRow[]) {
 }
 
 export async function listPeople(): Promise<BoardState> {
+  const stages = await listStages();
+
   if (!isSupabaseConfigured()) {
     return {
       people: [],
       profiles: [],
+      stages,
       configured: false,
       error:
         "Supabase is not configured yet. Add SUPABASE_URL and SUPABASE_SECRET_KEY in Vercel.",
@@ -436,6 +626,7 @@ export async function listPeople(): Promise<BoardState> {
     return {
       people: [],
       profiles: [],
+      stages,
       configured: false,
       error: "Supabase credentials are missing.",
     };
@@ -452,6 +643,7 @@ export async function listPeople(): Promise<BoardState> {
     return {
       people: [],
       profiles: [],
+      stages,
       configured: true,
       error: error.message,
     };
@@ -461,16 +653,22 @@ export async function listPeople(): Promise<BoardState> {
     (person) => person.stage !== "baptized" || isCurrentMonth(person.baptized_at)
   );
 
+  const hydratedPeople = (await hydratePeople(people)).map((person) =>
+    applyAutomaticStudyStage(person, stages)
+  );
+
   try {
     return {
-      people: await hydratePeople(people),
-      profiles: await listProfilesWithStats(people),
+      people: hydratedPeople,
+      profiles: await listProfilesWithStats(hydratedPeople),
+      stages,
       configured: true,
     };
   } catch (profileError) {
     return {
-      people: await hydratePeople(people),
+      people: hydratedPeople,
       profiles: [],
+      stages,
       configured: true,
       error:
         profileError instanceof Error
@@ -634,6 +832,120 @@ export async function deleteProfile(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+export async function saveStages(
+  input: SaveStagesInput
+): Promise<ActionResult<Stage[]>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("stages")
+    .select("*")
+    .order("sort_order", { ascending: true });
+
+  if (existingError) {
+    return {
+      ok: false,
+      error: "Run the latest Supabase migration before editing stacks.",
+    };
+  }
+
+  const existingStages = normalizeStages((existingRows ?? []).map(mapStageRow));
+  const existingById = new Map(existingStages.map((stage) => [stage.id, stage]));
+  const seen = new Set<string>();
+  const nextStages: Stage[] = [];
+
+  for (const [index, stage] of input.stages.entries()) {
+    const id = stage.id.trim();
+
+    if (!isStageId(id)) {
+      return { ok: false, error: "Stack IDs can use lowercase letters, numbers, dashes, and underscores." };
+    }
+
+    if (seen.has(id)) {
+      return { ok: false, error: "Each stack needs a unique name." };
+    }
+
+    const label = cleanStageLabel(stage.label);
+
+    if (!label) {
+      return { ok: false, error: "Each stack needs a label." };
+    }
+
+    const existing = existingById.get(id);
+    seen.add(id);
+    nextStages.push({
+      id,
+      label,
+      shortLabel: cleanStageShortLabel(stage.shortLabel) || label.slice(0, 24),
+      description: cleanStageDescription(stage.description),
+      tone: isStageToneName(stage.tone) ? stage.tone : getFallbackTone(index + 1),
+      sortOrder: (index + 1) * 1000,
+      isHidden: Boolean(stage.isHidden),
+      isSystem:
+        existing?.isSystem ??
+        DEFAULT_STAGES.some((defaultStage) => defaultStage.id === id),
+    });
+  }
+
+  if (!nextStages.some((stage) => !stage.isHidden)) {
+    return { ok: false, error: "Keep at least one stack visible." };
+  }
+
+  const hiddenIds = nextStages
+    .filter((stage) => stage.isHidden)
+    .map((stage) => stage.id);
+
+  if (hiddenIds.length > 0) {
+    const { data: activePeople, error: activePeopleError } = await supabase
+      .from("people")
+      .select("stage")
+      .in("stage", hiddenIds)
+      .is("archived_at", null)
+      .limit(1);
+
+    if (activePeopleError) {
+      return { ok: false, error: activePeopleError.message };
+    }
+
+    const blockedStageId = activePeople?.[0]?.stage;
+
+    if (blockedStageId) {
+      return {
+        ok: false,
+        error: `Move contacts out of ${getStageLabel(blockedStageId, nextStages)} before deleting it.`,
+      };
+    }
+  }
+
+  const rows: StageInsert[] = nextStages.map((stage) => ({
+    id: stage.id,
+    label: stage.label,
+    short_label: stage.shortLabel,
+    description: stage.description,
+    tone: stage.tone,
+    sort_order: stage.sortOrder,
+    is_hidden: stage.isHidden,
+    is_system: stage.isSystem,
+  }));
+
+  const { error: upsertError } = await supabase
+    .from("stages")
+    .upsert(rows, { onConflict: "id" });
+
+  if (upsertError) {
+    return { ok: false, error: upsertError.message };
+  }
+
+  const stages = await listStages();
+
+  revalidatePath("/");
+  return { ok: true, data: stages };
+}
+
 export async function createPerson(
   input: PersonInput
 ): Promise<ActionResult<BoardPerson>> {
@@ -667,16 +979,21 @@ export async function createPerson(
     return { ok: false, error: "Add a name before creating a card." };
   }
 
-  if (!isStageId(input.stage)) {
-    return { ok: false, error: "Choose a valid stage." };
+  const stageResult = await validateVisibleStage(input.stage);
+
+  if ("error" in stageResult) {
+    return { ok: false, error: stageResult.error ?? "Choose a visible stack." };
   }
 
-  const sortOrder = await getNextSortOrder(input.stage);
+  const targetStage = isManualOnlyStage(input.stage)
+    ? input.stage
+    : getVisibleAutomaticStudyStageId(0, stageResult.stages) ?? input.stage;
+  const sortOrder = await getNextSortOrder(targetStage);
   const baptizedAt =
-    input.stage === "baptized" ? new Date().toISOString() : null;
+    targetStage === "baptized" ? new Date().toISOString() : null;
   const insert: PersonInsert = {
     name,
-    stage: input.stage,
+    stage: targetStage,
     phone: cleanOptional(input.phone),
     teacher: assignedTeacherLabel(selectedProfiles.profiles),
     notes: cleanOptional(input.notes),
@@ -700,10 +1017,10 @@ export async function createPerson(
     event_type: "created",
     title: "Added to the journey",
     body:
-      input.stage === "hunting"
+      targetStage === "hunting"
         ? "Started in Sowing Seeds."
-        : `Started in ${getStageLabel(input.stage)}.`,
-    to_stage: input.stage,
+        : `Started in ${getStageLabel(targetStage, stageResult.stages)}.`,
+    to_stage: targetStage,
     actor_profile_id: actor.actorProfileId,
   });
 
@@ -726,11 +1043,18 @@ export async function updatePerson(
     return { ok: false, error: actor.error };
   }
 
-  if (input.stage && !isStageId(input.stage)) {
-    return { ok: false, error: "Choose a valid stage." };
+  if (input.stage) {
+    const stageResult = await validateVisibleStage(input.stage);
+
+    if ("error" in stageResult) {
+      return { ok: false, error: stageResult.error ?? "Choose a visible stack." };
+    }
   }
 
   const patch: PersonUpdate = {};
+  const assignmentEvents: PersonEvent[] = [];
+  let newlyAssignedProfiles: Database["public"]["Tables"]["profiles"]["Row"][] = [];
+  let detailsChanged = false;
 
   if (input.name !== undefined) {
     const name = input.name.trim();
@@ -740,20 +1064,24 @@ export async function updatePerson(
     }
 
     patch.name = name;
+    detailsChanged = true;
   }
 
   if (input.stage) {
     patch.stage = input.stage;
     patch.baptized_at =
       input.stage === "baptized" ? new Date().toISOString() : null;
+    detailsChanged = true;
   }
 
   if (input.phone !== undefined) {
     patch.phone = cleanOptional(input.phone);
+    detailsChanged = true;
   }
 
   if (input.notes !== undefined) {
     patch.notes = cleanOptional(input.notes);
+    detailsChanged = true;
   }
 
   if (input.lifeStatus !== undefined) {
@@ -764,17 +1092,35 @@ export async function updatePerson(
     }
 
     patch.life_status = lifeStatus;
+    detailsChanged = true;
   }
 
   if (input.nextFollowUpAt !== undefined) {
     patch.next_follow_up_at = cleanDate(input.nextFollowUpAt);
+    detailsChanged = true;
   }
 
   if (input.lastContactedAt !== undefined) {
     patch.last_contacted_at = cleanDate(input.lastContactedAt);
+    detailsChanged = true;
   }
 
   if (input.assignedProfileIds !== undefined) {
+    const { data: currentPerson, error: currentPersonError } = await supabase
+      .from("people")
+      .select("assigned_profile_ids")
+      .eq("id", input.id)
+      .is("archived_at", null)
+      .maybeSingle();
+
+    if (currentPersonError) {
+      return { ok: false, error: currentPersonError.message };
+    }
+
+    if (!currentPerson) {
+      return { ok: false, error: "That contact no longer exists." };
+    }
+
     const normalizedProfiles = normalizeProfileIds(input.assignedProfileIds);
 
     if ("error" in normalizedProfiles) {
@@ -789,6 +1135,13 @@ export async function updatePerson(
 
     patch.assigned_profile_ids = normalizedProfiles.ids;
     patch.teacher = assignedTeacherLabel(selectedProfiles.profiles);
+    const currentPrimaryProfileId = currentPerson.assigned_profile_ids[0] ?? null;
+    const nextPrimaryProfileId = normalizedProfiles.ids[0] ?? null;
+    newlyAssignedProfiles = selectedProfiles.profiles.filter(
+      (profile) =>
+        !currentPerson.assigned_profile_ids.includes(profile.id) ||
+        (profile.id === nextPrimaryProfileId && profile.id !== currentPrimaryProfileId)
+    );
   }
 
   const { data, error } = await supabase
@@ -803,15 +1156,35 @@ export async function updatePerson(
     return { ok: false, error: error.message };
   }
 
-  await insertEvent(data.id, {
-    event_type: "details_updated",
-    title: "Details updated",
-    body: "Contact information, assigned profiles, notes, or follow-up details changed.",
-    actor_profile_id: actor.actorProfileId,
-  });
+  if (detailsChanged) {
+    const detailEvent = await insertEvent(data.id, {
+      event_type: "details_updated",
+      title: "Details updated",
+      body: "Contact information, notes, or follow-up details changed.",
+      actor_profile_id: actor.actorProfileId,
+    });
+
+    if (detailEvent) {
+      assignmentEvents.push(detailEvent);
+    }
+  }
+
+  for (const profile of newlyAssignedProfiles) {
+    const event = await insertEvent(data.id, {
+      event_type: "assigned",
+      title: `${profile.name} assigned`,
+      body: `${profile.name} was assigned to ${data.name}.`,
+      actor_profile_id: actor.actorProfileId,
+      notification_profile_id: profile.id,
+    });
+
+    if (event) {
+      assignmentEvents.push(event);
+    }
+  }
 
   revalidatePath("/");
-  return { ok: true, data: { ...data, events: [], studies: [] } };
+  return { ok: true, data: { ...data, events: assignmentEvents, studies: [] } };
 }
 
 export async function movePerson(
@@ -829,8 +1202,10 @@ export async function movePerson(
     return { ok: false, error: actor.error };
   }
 
-  if (!isStageId(input.stage)) {
-    return { ok: false, error: "Choose a valid stage." };
+  const stageResult = await validateVisibleStage(input.stage);
+
+  if ("error" in stageResult) {
+    return { ok: false, error: stageResult.error ?? "Choose a visible stack." };
   }
 
   const orderedIds = Array.from(new Set(input.orderedIds));
@@ -874,10 +1249,10 @@ export async function movePerson(
   if (fromStage !== input.stage) {
     await insertEvent(input.id, {
       event_type: "stage_moved",
-      title: `Moved to ${getStageLabel(input.stage)}`,
+      title: `Moved to ${getStageLabel(input.stage, stageResult.stages)}`,
       body: fromStage
-        ? `Moved from ${getStageLabel(fromStage)} to ${getStageLabel(input.stage)}.`
-        : `Moved to ${getStageLabel(input.stage)}.`,
+        ? `Moved from ${getStageLabel(fromStage, stageResult.stages)} to ${getStageLabel(input.stage, stageResult.stages)}.`
+        : `Moved to ${getStageLabel(input.stage, stageResult.stages)}.`,
       from_stage: fromStage,
       to_stage: input.stage,
       actor_profile_id: actor.actorProfileId,
@@ -1168,6 +1543,13 @@ export async function addPersonStudy(
     return { ok: false, error: eventError.message };
   }
 
+  try {
+    const studyCount = await countPersonStudies(input.id);
+    await synchronizeAutomaticStudyStage(input.id, studyCount, actor.actorProfileId);
+  } catch {
+    // The study is already saved; leave the card where it is if auto-staging cannot sync.
+  }
+
   revalidatePath("/");
   return { ok: true, data: { study, event } };
 }
@@ -1259,10 +1641,28 @@ export async function deletePersonStudy(
     return { ok: false, error: actor.error };
   }
 
+  const { data: study } = await supabase
+    .from("person_studies")
+    .select("person_id")
+    .eq("id", input.id)
+    .maybeSingle();
   const { error } = await supabase.from("person_studies").delete().eq("id", input.id);
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  if (study?.person_id) {
+    try {
+      const studyCount = await countPersonStudies(study.person_id);
+      await synchronizeAutomaticStudyStage(
+        study.person_id,
+        studyCount,
+        actor.actorProfileId
+      );
+    } catch {
+      // The deletion succeeded; leave the card where it is if auto-staging cannot sync.
+    }
   }
 
   revalidatePath("/");

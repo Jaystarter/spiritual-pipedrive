@@ -132,10 +132,10 @@ export function ProfileSheet({
   return (
     <AnimatePresence>
       {open ? (
-        <div className="fixed inset-0 z-[90] flex items-end justify-center sm:items-center">
+        <div className="fixed inset-0 z-[130] flex items-center justify-center px-3 py-6">
           <motion.button
             aria-label="Close profiles"
-            className="absolute inset-0 bg-foreground/55 backdrop-blur-md"
+            className="absolute inset-0 bg-sky-950/24 backdrop-blur-xl"
             disabled={required}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -144,7 +144,7 @@ export function ProfileSheet({
             type="button"
           />
           <motion.div
-            className="relative z-10 max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[1.75rem] border bg-card p-5 shadow-[0_60px_120px_-30px_oklch(0.2_0.028_264_/_0.45)] sm:rounded-[1.75rem]"
+            className="relative z-10 max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-[1.75rem] border border-white/60 bg-white/62 p-5 shadow-[0_60px_120px_-30px_oklch(0.2_0.028_264_/_0.45),0_1px_0_oklch(1_0_0_/_0.88)_inset] backdrop-blur-2xl"
             initial={{ opacity: 0, y: 60, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 60, scale: 0.98 }}
@@ -156,7 +156,7 @@ export function ProfileSheet({
             <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-foreground/10 sm:hidden" />
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-[0.62rem] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                <p className="text-[0.62rem] font-black uppercase tracking-[0.22em] text-slate-950">
                   Profiles
                 </p>
               </div>
@@ -175,9 +175,9 @@ export function ProfileSheet({
               onChange={handleAvatarChange}
             />
 
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 divide-y divide-slate-950/10 border-y border-white/60">
               {profiles.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-foreground/15 bg-background/60 p-6 text-center text-sm italic text-muted-foreground">
+                <div className="p-6 text-center text-sm italic text-slate-950/70">
                   No profiles yet. Add the first one below.
                 </div>
               ) : null}
@@ -190,14 +190,17 @@ export function ProfileSheet({
                   <div
                     key={profile.id}
                     className={cn(
-                      "rounded-2xl border border-foreground/10 bg-background/70 p-3 transition",
-                      active && "border-foreground/30 bg-foreground/5"
+                      "relative py-3 transition",
+                      active && "bg-sky-50/30"
                     )}
                   >
-                    <div className="flex items-center gap-3">
+                    {active ? (
+                      <span className="absolute bottom-3 left-0 top-3 w-1 rounded-full bg-sky-400" />
+                    ) : null}
+                    <div className="flex items-center gap-3 pl-3">
                       <button
                         aria-label={`Change ${profile.name}'s photo`}
-                        className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-foreground/15 bg-card font-display tracking-display text-foreground/80 shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset]"
+                        className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/70 font-display tracking-display text-foreground/80 shadow-[0_1px_0_oklch(1_0_0_/_0.8)_inset,0_10px_24px_-18px_oklch(0.25_0.04_250_/_0.5)]"
                         disabled={busy}
                         onClick={() => requestAvatar(profile.id)}
                         type="button"
@@ -224,17 +227,17 @@ export function ProfileSheet({
                         type="button"
                       >
                         <span className="flex items-center gap-2">
-                          <span className="truncate font-display text-lg leading-[1.05] tracking-display text-foreground">
+                          <span className="truncate font-display text-lg leading-[1.05] tracking-display text-slate-950">
                             {profile.name}
                           </span>
                           {active ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-[0.16em] text-background">
+                            <span className="inline-flex items-center gap-1 text-[0.6rem] font-black uppercase tracking-[0.16em] text-sky-700">
                               <Check className="size-3" />
                               Active
                             </span>
                           ) : null}
                         </span>
-                        <span className="mt-0.5 block text-[0.72rem] text-muted-foreground">
+                        <span className="mt-0.5 block text-[0.72rem] font-medium text-slate-950/70">
                           {profile.active_contacts} contacts · {profile.baptized_this_month} baptized this month
                         </span>
                       </button>
@@ -258,7 +261,7 @@ export function ProfileSheet({
                       </Button>
                     </div>
                     {confirming ? (
-                      <p className="mt-2 text-[0.72rem] text-muted-foreground">
+                      <p className="mt-2 pl-3 text-[0.72rem] text-slate-950/70">
                         Tap the check to delete. Profiles with active contacts can&apos;t be removed.
                       </p>
                     ) : null}
@@ -267,15 +270,15 @@ export function ProfileSheet({
               })}
             </div>
 
-            <form action={handleCreate} className="mt-5 flex gap-2 rounded-2xl border border-foreground/10 bg-background/70 p-1.5">
+            <form action={handleCreate} className="mt-5 flex items-center gap-2 border-b border-slate-950/15 pb-2">
               <input
                 name="profileName"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Add profile name"
-                className="min-w-0 flex-1 rounded-xl bg-transparent px-3 text-sm tracking-tight outline-none placeholder:text-muted-foreground/70"
+                className="min-w-0 flex-1 bg-transparent px-1 text-sm font-semibold tracking-tight text-slate-950 outline-none placeholder:text-slate-950/45"
               />
-              <Button disabled={isPending} type="submit" size="sm">
+              <Button disabled={isPending} type="submit" size="sm" className="rounded-full">
                 {isPending ? (
                   <RefreshCcw className="size-3.5 animate-spin" />
                 ) : (
