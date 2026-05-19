@@ -1523,14 +1523,37 @@ function AppShellHeader({
           className="absolute inset-0 flex items-center justify-center"
           style={{ background: "var(--neu-bg)" }}
         >
-          <span
-            className="font-display text-[7rem] leading-none tracking-display sm:text-[10rem]"
-            style={{ color: "rgba(163, 177, 198, 0.32)" }}
-          >
-            {activeProfile?.name.slice(0, 1).toUpperCase() ?? "S"}
-          </span>
+          {activeProfile?.avatar_url ? (
+            <span
+              className="neu-inset relative size-[8.5rem] overflow-hidden sm:size-[11rem]"
+              style={{ borderRadius: "9999px" }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt=""
+                draggable={false}
+                src={activeProfile.avatar_url}
+                className="size-full"
+                style={{
+                  objectFit: "cover",
+                  objectPosition: `${activeProfile.avatar_offset_x ?? 50}% ${activeProfile.avatar_offset_y ?? 50}%`,
+                  transform: `scale(${activeProfile.avatar_scale ?? 1})`,
+                  transformOrigin: "center",
+                }}
+              />
+            </span>
+          ) : (
+            <span
+              className="font-display text-[7rem] leading-none tracking-display sm:text-[10rem]"
+              style={{ color: "rgba(163, 177, 198, 0.32)" }}
+            >
+              {activeProfile?.name.slice(0, 1).toUpperCase() ?? "S"}
+            </span>
+          )}
         </div>
-        <h1 className="sr-only">S-Drive</h1>
+        <h1 className="header-hero-wordmark pointer-events-none absolute left-5 top-4 z-10 select-none font-display text-[1rem] italic leading-none tracking-[0.16em] sm:left-7 sm:top-5 sm:text-[1.15rem]">
+          S-Drive
+        </h1>
         <button
           type="button"
           aria-label="Open settings"
@@ -1539,7 +1562,7 @@ function AppShellHeader({
             setSettingsMode((mode) => (mode === "menu" ? "closed" : "menu"))
           }
           className={cn(
-            "neu-raised-sm absolute right-5 top-5 z-20 inline-flex size-10 items-center justify-center rounded-full text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 sm:right-7 sm:top-7",
+            "neu-raised-sm absolute right-3 top-3 z-20 inline-flex size-10 items-center justify-center rounded-full text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 sm:right-4 sm:top-4",
             settingsMode !== "closed" && "neu-pressed text-[var(--neu-accent)]"
           )}
         >
@@ -1548,7 +1571,7 @@ function AppShellHeader({
         <AnimatePresence initial={false}>
           {settingsMode === "menu" ? (
             <motion.div
-              className="fixed right-[4.5rem] top-5 z-[220] flex flex-row-reverse items-center gap-2.5 sm:right-[5rem] sm:top-7"
+              className="fixed right-[3.75rem] top-3 z-[220] flex flex-row-reverse items-center gap-2.5 sm:right-[4.5rem] sm:top-4"
               initial={{ opacity: 0, x: 8, scale: 0.96 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 6, scale: 0.96 }}
@@ -3409,7 +3432,12 @@ function StackStageSection({
         )}
         onClick={onToggle}
       >
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 shadow-[0_1px_0_oklch(1_0_0_/_0.85)_inset]">
+        <span
+          className={cn(
+            "relative flex size-11 shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-white/60 shadow-[0_1px_0_oklch(1_0_0_/_0.85)_inset]",
+            expanded && "stack-stage-number-active"
+          )}
+        >
           <span className="font-display text-xl italic leading-none text-foreground/45">
             {getStageIndex(stages, stage.id)}
           </span>
@@ -6297,6 +6325,11 @@ function ProfileAvatar({
           className="profile-avatar-photo"
           draggable={false}
           src={profile.avatar_url}
+          style={{
+            objectPosition: `${profile.avatar_offset_x ?? 50}% ${profile.avatar_offset_y ?? 50}%`,
+            transform: `scale(${profile.avatar_scale ?? 1})`,
+            transformOrigin: "center",
+          }}
         />
       ) : (
         <svg

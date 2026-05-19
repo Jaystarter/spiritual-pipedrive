@@ -9,9 +9,14 @@ import {
   deleteProfile,
   renameProfile,
   updateProfileAvatar,
+  updateProfileAvatarFraming,
   type BoardProfile,
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
+import {
+  AvatarFramingAdjuster,
+  type AvatarFraming,
+} from "@/components/profiles/avatar-framing-adjuster";
 import { setActiveProfileId } from "@/lib/profiles-client";
 
 type ProfileSheetProps = {
@@ -40,10 +45,14 @@ export function ProfileSheet({
   const [editingProfileId, setEditingProfileId] = useState("");
   const [editingName, setEditingName] = useState("");
   const [renameError, setRenameError] = useState("");
+  const [adjusterProfileId, setAdjusterProfileId] = useState("");
+  const [adjusterError, setAdjusterError] = useState("");
+  const [isSavingFraming, setIsSavingFraming] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isRenaming, startRenameTransition] = useTransition();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const avatarTargetRef = useRef("");
+  const openAdjusterAfterUploadRef = useRef(false);
   const editInputRef = useRef<HTMLInputElement>(null);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -168,6 +177,8 @@ export function ProfileSheet({
     const file = event.target.files?.[0];
     event.target.value = "";
     const profileId = avatarTargetRef.current;
+    const shouldOpenAdjuster = openAdjusterAfterUploadRef.current;
+    openAdjusterAfterUploadRef.current = false;
 
     if (!file || !profileId) {
       return;
@@ -190,6 +201,11 @@ export function ProfileSheet({
           profile.id === result.data?.id ? { ...profile, ...result.data } : profile
         )
       );
+
+      if (shouldOpenAdjuster) {
+        setAdjusterError("");
+        setAdjusterProfileId(profileId);
+      }
     } catch (avatarError) {
       setError(
         avatarError instanceof Error ? avatarError.message : "Could not update photo."
@@ -199,9 +215,136 @@ export function ProfileSheet({
     }
   }
 
-  function requestAvatar(profileId: string) {
+  function openFilePicker(profileId: string, openAdjusterAfter: boolean) {
     avatarTargetRef.current = profileId;
+    openAdjusterAfterUploadRef.current = openAdjusterAfter;
     avatarInputRef.current?.click();
+  }
+
+  function requestAvatar(profile: BoardProfile) {
+    setError("");
+
+    if (profile.avatar_url) {
+      setAdjusterError("");
+      setAdjusterProfileId(profile.id);
+      return;
+    }
+
+    openFilePicker(profile.id, true);
+  }
+
+  function handleReplacePhoto() {
+    if (!adjusterProfileId) {
+      return;
+    }
+
+    openFilePicker(adjusterProfileId, false);
+  }
+
+  async function handleRemovePhoto() {
+    const profileId = adjusterProfileId;
+
+    if (!profileId || isSavingFraming) {
+      return;
+    }
+
+    setAdjusterError("");
+    setIsSavingFraming(true);
+
+    onProfilesChange(
+      profiles.map((profile) =>
+        profile.id === profileId
+          ? {
+              ...profile,
+              avatar_url: null,
+              avatar_offset_x: 50,
+              avatar_offset_y: 50,
+              avatar_scale: 1,
+            }
+          : profile
+      )
+    );
+
+    try {
+      const result = await updateProfileAvatar(profileId, null);
+
+      if (!result.ok || !result.data) {
+        setAdjusterError(result.ok ? "Could not remove photo." : result.error);
+        return;
+      }
+
+      onProfilesChange(
+        profiles.map((profile) =>
+          profile.id === result.data?.id ? { ...profile, ...result.data } : profile
+        )
+      );
+      setAdjusterProfileId("");
+    } catch (removeError) {
+      setAdjusterError(
+        removeError instanceof Error
+          ? removeError.message
+          : "Could not remove photo."
+      );
+    } finally {
+      setIsSavingFraming(false);
+    }
+  }
+
+  function closeAdjuster() {
+    if (isSavingFraming) {
+      return;
+    }
+
+    setAdjusterProfileId("");
+    setAdjusterError("");
+  }
+
+  async function handleSaveFraming(framing: AvatarFraming) {
+    const profileId = adjusterProfileId;
+
+    if (!profileId) {
+      return;
+    }
+
+    setAdjusterError("");
+    setIsSavingFraming(true);
+
+    onProfilesChange(
+      profiles.map((profile) =>
+        profile.id === profileId
+          ? {
+              ...profile,
+              avatar_offset_x: framing.offsetX,
+              avatar_offset_y: framing.offsetY,
+              avatar_scale: framing.scale,
+            }
+          : profile
+      )
+    );
+
+    try {
+      const result = await updateProfileAvatarFraming(profileId, framing);
+
+      if (!result.ok || !result.data) {
+        setAdjusterError(result.ok ? "Could not save framing." : result.error);
+        return;
+      }
+
+      onProfilesChange(
+        profiles.map((profile) =>
+          profile.id === result.data?.id ? { ...profile, ...result.data } : profile
+        )
+      );
+      setAdjusterProfileId("");
+    } catch (framingError) {
+      setAdjusterError(
+        framingError instanceof Error
+          ? framingError.message
+          : "Could not save framing."
+      );
+    } finally {
+      setIsSavingFraming(false);
+    }
   }
 
   function handleDelete(profileId: string) {
@@ -223,7 +366,12 @@ export function ProfileSheet({
     });
   }
 
+  const adjusterProfile = profiles.find(
+    (profile) => profile.id === adjusterProfileId
+  );
+
   return (
+    <>
     <AnimatePresence>
       {open ? (
         <div className="fixed inset-0 z-[130] flex items-center justify-center px-3 py-6">
@@ -310,20 +458,30 @@ export function ProfileSheet({
                     ) : null}
                     <div className="flex items-center gap-3 pl-3">
                       <button
-                        aria-label={`Change ${profile.name}'s photo`}
+                        aria-label={
+                          profile.avatar_url
+                            ? `Adjust ${profile.name}'s photo`
+                            : `Add ${profile.name}'s photo`
+                        }
                         className="neu-raised-sm relative flex size-12 shrink-0 items-center justify-center overflow-hidden font-display tracking-display text-[var(--neu-text)]"
                         style={{ borderRadius: "999px" }}
                         disabled={busy || savingThisRow}
-                        onClick={() => requestAvatar(profile.id)}
+                        onClick={() => requestAvatar(profile)}
                         type="button"
                       >
                         {profile.avatar_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             alt=""
-                            className="size-full object-cover"
+                            className="size-full"
                             draggable={false}
                             src={profile.avatar_url}
+                            style={{
+                              objectFit: "cover",
+                              objectPosition: `${profile.avatar_offset_x ?? 50}% ${profile.avatar_offset_y ?? 50}%`,
+                              transform: `scale(${profile.avatar_scale ?? 1})`,
+                              transformOrigin: "center",
+                            }}
                           />
                         ) : (
                           profile.name.slice(0, 1).toUpperCase()
@@ -466,6 +624,24 @@ export function ProfileSheet({
         </div>
       ) : null}
     </AnimatePresence>
+    <AvatarFramingAdjuster
+      open={Boolean(adjusterProfile)}
+      avatarUrl={adjusterProfile?.avatar_url ?? null}
+      framing={{
+        offsetX: adjusterProfile?.avatar_offset_x ?? 50,
+        offsetY: adjusterProfile?.avatar_offset_y ?? 50,
+        scale: adjusterProfile?.avatar_scale ?? 1,
+      }}
+      busy={Boolean(adjusterProfile && busyProfileId === adjusterProfile.id)}
+      saving={isSavingFraming}
+      error={adjusterError}
+      title={adjusterProfile ? `Adjust ${adjusterProfile.name}'s photo` : "Adjust photo"}
+      onCancel={closeAdjuster}
+      onSave={handleSaveFraming}
+      onReplacePhoto={handleReplacePhoto}
+      onRemovePhoto={handleRemovePhoto}
+    />
+    </>
   );
 }
 
@@ -484,14 +660,24 @@ function fileToAvatarDataUrl(file: File) {
 
     image.onload = () => {
       URL.revokeObjectURL(objectUrl);
-      const canvas = document.createElement("canvas");
-      const outputSize = 192;
-      const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
-      const sourceX = Math.max(0, (image.naturalWidth - sourceSize) / 2);
-      const sourceY = Math.max(0, (image.naturalHeight - sourceSize) / 2);
+      // Preserve the aspect ratio so the user can re-frame the photo with
+      // the avatar adjuster. We just resize the long edge to MAX_DIMENSION.
+      const MAX_DIMENSION = 384;
+      const { naturalWidth, naturalHeight } = image;
 
-      canvas.width = outputSize;
-      canvas.height = outputSize;
+      if (naturalWidth === 0 || naturalHeight === 0) {
+        reject(new Error("Could not read photo."));
+        return;
+      }
+
+      const longest = Math.max(naturalWidth, naturalHeight);
+      const scale = longest > MAX_DIMENSION ? MAX_DIMENSION / longest : 1;
+      const targetWidth = Math.max(1, Math.round(naturalWidth * scale));
+      const targetHeight = Math.max(1, Math.round(naturalHeight * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
       const context = canvas.getContext("2d");
 
       if (!context) {
@@ -499,18 +685,8 @@ function fileToAvatarDataUrl(file: File) {
         return;
       }
 
-      context.drawImage(
-        image,
-        sourceX,
-        sourceY,
-        sourceSize,
-        sourceSize,
-        0,
-        0,
-        outputSize,
-        outputSize
-      );
-      resolve(canvas.toDataURL("image/jpeg", 0.82));
+      context.drawImage(image, 0, 0, targetWidth, targetHeight);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
     };
 
     image.onerror = () => {

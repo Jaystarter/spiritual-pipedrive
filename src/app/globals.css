@@ -811,6 +811,58 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* Stack-view active stage badge — thin orange glowing ring + pulse.  */
+  /* ------------------------------------------------------------------ */
+  .stack-stage-number-active::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: inherit;
+    border: 1px solid var(--neu-accent);
+    box-shadow:
+      0 0 8px 1px rgba(255, 122, 0, 0.55),
+      0 0 18px 2px rgba(255, 122, 0, 0.22),
+      inset 0 0 6px rgba(255, 122, 0, 0.25);
+    pointer-events: none;
+    animation: stack-stage-number-pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes stack-stage-number-pulse {
+    0%,
+    100% {
+      opacity: 0.6;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.04);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Header hero wordmark — small engraved S-Drive in top-left corner.  */
+  /* ------------------------------------------------------------------ */
+  .header-hero-wordmark {
+    color: var(--neu-accent);
+    text-transform: uppercase;
+    font-weight: 700;
+    text-shadow:
+      0 -1px 0 rgba(0, 0, 0, 0.55),
+      0 -2px 1px rgba(0, 0, 0, 0.28),
+      0 1px 0 rgba(255, 255, 255, 0.7),
+      0 2px 1px rgba(255, 255, 255, 0.35),
+      0 0 8px rgba(0, 0, 0, 0.16);
+  }
+  [data-theme="dark"] .header-hero-wordmark {
+    text-shadow:
+      0 -1px 0 rgba(0, 0, 0, 0.9),
+      0 -2px 2px rgba(0, 0, 0, 0.55),
+      0 1px 0 rgba(255, 255, 255, 0.08),
+      0 2px 1px rgba(255, 255, 255, 0.04),
+      0 0 10px rgba(0, 0, 0, 0.7);
+  }
+
+  /* ------------------------------------------------------------------ */
   /* Header hero bottom beam — soft orange light sweeping back & forth. */
   /* ------------------------------------------------------------------ */
   .header-hero-beam {
@@ -879,7 +931,8 @@
     .app-header-band::after,
     .quick-actions-diamond-shine::after,
     .header-hero-beam::before,
-    .header-hero-beam::after {
+    .header-hero-beam::after,
+    .stack-stage-number-active::after {
       animation: none;
       will-change: auto;
     }
