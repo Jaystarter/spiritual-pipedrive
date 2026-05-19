@@ -288,64 +288,60 @@ function AvatarFramingAdjusterPanel({
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            {onRemovePhoto && avatarUrl ? (
-              <button
-                type="button"
-                onClick={onRemovePhoto}
-                disabled={saving || busy}
-                aria-label="Remove photo"
-                title="Remove photo (show initial)"
-                className="neu-raised-sm inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.72rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-danger)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-                style={{ borderRadius: "999px" }}
-              >
-                <Trash2 className="size-3.5" />
-                Remove
-              </button>
-            ) : null}
-            {onReplacePhoto ? (
-              <button
-                type="button"
-                onClick={onReplacePhoto}
-                disabled={saving || busy}
-                className="neu-raised-sm inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.72rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-                style={{ borderRadius: "999px" }}
-              >
-                <Camera className="size-3.5" />
-                Replace
-              </button>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          {onRemovePhoto && avatarUrl ? (
             <button
               type="button"
-              onClick={onCancel}
-              disabled={saving}
-              className="neu-raised-sm inline-flex items-center px-3 py-1.5 text-[0.72rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={onRemovePhoto}
+              disabled={saving || busy}
+              aria-label="Remove photo"
+              title="Remove photo (show initial)"
+              className="neu-raised-sm inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.72rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-danger)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               style={{ borderRadius: "999px" }}
             >
-              Cancel
+              <Trash2 className="size-3.5" />
+              Remove
             </button>
+          ) : null}
+          {onReplacePhoto ? (
             <button
               type="button"
-              onClick={handleSave}
-              disabled={saving || disabled}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[0.72rem] font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-              style={{
-                borderRadius: "999px",
-                background:
-                  "linear-gradient(135deg, var(--neu-accent), var(--neu-accent-soft))",
-                boxShadow:
-                  "-3px -3px 8px var(--neu-shadow-light), 3px 3px 10px var(--neu-shadow-dark)",
-              }}
+              onClick={onReplacePhoto}
+              disabled={saving || busy}
+              className="neu-raised-sm inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.72rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              style={{ borderRadius: "999px" }}
             >
-              {saving ? (
-                <RefreshCcw className="size-3.5 animate-spin" />
-              ) : null}
-              Save
+              <Camera className="size-3.5" />
+              Replace
             </button>
-          </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="neu-raised-sm inline-flex items-center px-3 py-1.5 text-[0.72rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            style={{ borderRadius: "999px" }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || disabled}
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[0.72rem] font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            style={{
+              borderRadius: "999px",
+              background:
+                "linear-gradient(135deg, var(--neu-accent), var(--neu-accent-soft))",
+              boxShadow:
+                "-3px -3px 8px var(--neu-shadow-light), 3px 3px 10px var(--neu-shadow-dark)",
+            }}
+          >
+            {saving ? (
+              <RefreshCcw className="size-3.5 animate-spin" />
+            ) : null}
+            Save
+          </button>
         </div>
 
         {error ? (
