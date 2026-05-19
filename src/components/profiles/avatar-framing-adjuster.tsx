@@ -288,7 +288,7 @@ function AvatarFramingAdjusterPanel({
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-3">
           {onRemovePhoto && avatarUrl ? (
             <button
               type="button"
@@ -296,7 +296,7 @@ function AvatarFramingAdjusterPanel({
               disabled={saving || busy}
               aria-label="Remove photo"
               title="Remove photo (show initial)"
-              className="neu-raised-sm inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.72rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-danger)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="neu-raised-sm inline-flex items-center justify-center gap-1.5 px-4 py-2 text-[0.78rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-danger)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               style={{ borderRadius: "999px" }}
             >
               <Trash2 className="size-3.5" />
@@ -308,7 +308,7 @@ function AvatarFramingAdjusterPanel({
               type="button"
               onClick={onReplacePhoto}
               disabled={saving || busy}
-              className="neu-raised-sm inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.72rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="neu-raised-sm inline-flex items-center justify-center gap-1.5 px-4 py-2 text-[0.78rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               style={{ borderRadius: "999px" }}
             >
               <Camera className="size-3.5" />
@@ -319,7 +319,7 @@ function AvatarFramingAdjusterPanel({
             type="button"
             onClick={onCancel}
             disabled={saving}
-            className="neu-raised-sm inline-flex items-center px-3 py-1.5 text-[0.72rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            className="neu-raised-sm inline-flex items-center justify-center px-4 py-2 text-[0.78rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             style={{ borderRadius: "999px" }}
           >
             Cancel
@@ -328,7 +328,7 @@ function AvatarFramingAdjusterPanel({
             type="button"
             onClick={handleSave}
             disabled={saving || disabled}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 text-[0.72rem] font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-1.5 px-5 py-2 text-[0.78rem] font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             style={{
               borderRadius: "999px",
               background:
