@@ -41,12 +41,14 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageCircle,
+  Moon,
   Phone,
   Pencil,
   Plus,
   Search,
   Settings,
   Star,
+  Sun,
   Trash2,
   X,
 } from "lucide-react";
@@ -86,6 +88,7 @@ import {
   onActiveProfileChange,
   setActiveProfileId,
 } from "@/lib/profiles-client";
+import { useTheme } from "@/lib/theme-client";
 import { cn } from "@/lib/utils";
 import {
   createStageId,
@@ -1180,26 +1183,15 @@ export function BibleStudyBoard({
 
   if (!mounted) {
     return (
-      <main className="relative min-h-screen overflow-hidden bg-background text-foreground grain">
-        <div
-          aria-hidden
-          className="pointer-events-none fixed inset-0 -z-10 [background:radial-gradient(70rem_44rem_at_18%_-10%,oklch(1_0_0_/_0.92),transparent_58%),radial-gradient(54rem_38rem_at_95%_8%,oklch(0.82_0.105_244_/_0.2),transparent_58%),radial-gradient(48rem_38rem_at_8%_105%,oklch(0.86_0.06_210_/_0.24),transparent_62%),linear-gradient(145deg,oklch(0.985_0.004_215)_0%,var(--background)_46%,oklch(0.91_0.018_215)_100%)]"
-        />
+      <main className="relative min-h-screen overflow-hidden text-foreground" style={{ background: "var(--neu-bg)" }}>
+        <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 pipeline-flat-bg" />
       </main>
     );
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground grain">
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10 [background:radial-gradient(70rem_44rem_at_18%_-10%,oklch(1_0_0_/_0.92),transparent_58%),radial-gradient(54rem_38rem_at_95%_8%,oklch(0.82_0.105_244_/_0.2),transparent_58%),radial-gradient(48rem_38rem_at_8%_105%,oklch(0.86_0.06_210_/_0.24),transparent_62%),linear-gradient(145deg,oklch(0.985_0.004_215)_0%,var(--background)_46%,oklch(0.91_0.018_215)_100%)]"
-      />
-      {boardView === "stack" ? <div aria-hidden className="stack-view-ambient" /> : null}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-px bg-[linear-gradient(90deg,transparent,oklch(0.76_0.13_244_/_0.28),transparent)]"
-      />
+    <main className="relative min-h-screen overflow-hidden text-foreground" style={{ background: "var(--neu-bg)" }}>
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 pipeline-flat-bg" />
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1840px] flex-col gap-5 px-4 pb-10 pt-5 sm:px-6 sm:pt-7">
         <AppShellHeader
           search={search}
@@ -1371,6 +1363,7 @@ function AppShellHeader({
   const [searchPanelMode, setSearchPanelMode] = useState<"name" | "profile">("name");
   const [railExpanded, setRailExpanded] = useState(false);
   const [settingsMode, setSettingsMode] = useState<"closed" | "menu" | "graphs" | "edit">("closed");
+  const [theme, setTheme] = useTheme();
   const nameSearchPanelId = useId();
   const profileFilterPanelId = useId();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -1404,6 +1397,13 @@ function AppShellHeader({
         ? "All contacts"
         : profiles.find((profile) => profile.id === profileFilter)?.name ?? "All contacts";
   const notificationCount = followUpItems.length + assignmentNotificationItems.length;
+  const profileIndicatorProfiles =
+    profiles.length <= 3 || activeProfileIndex < 0
+      ? profiles
+      : [-1, 0, 1].map(
+          (offset) =>
+            profiles[(activeProfileIndex + offset + profiles.length) % profiles.length]
+        );
 
   function selectRelativeProfile(direction: 1 | -1) {
     if (profiles.length < 2) {
@@ -1501,15 +1501,16 @@ function AppShellHeader({
   }, [openControl, searchPanelMode]);
 
   const floatingActionButtonClass =
-    "relative inline-flex size-10 items-center justify-center rounded-full border border-white/75 bg-white/70 text-muted-foreground shadow-[0_12px_32px_-20px_oklch(0.45_0.05_245_/_0.55),0_1px_0_oklch(1_0_0_/_0.92)_inset] backdrop-blur-2xl transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.03] hover:border-sky-200/90 hover:bg-white/90 hover:text-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:scale-100";
+    "neu-raised-sm relative inline-flex size-10 items-center justify-center rounded-full text-[var(--neu-text)] transition duration-200 ease-out hover:-translate-y-0.5 hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--neu-bg)] active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0";
   const floatingActionButtonActiveClass =
-    "border-sky-200/90 bg-sky-50/90 text-sky-600 shadow-[0_14px_36px_-18px_oklch(0.6_0.12_244_/_0.72),0_0_0_1px_oklch(0.76_0.13_244_/_0.25),0_1px_0_oklch(1_0_0_/_0.95)_inset]";
+    "neu-pressed text-[var(--neu-accent)]";
   const railOpen = railExpanded || openControl !== null;
 
   return (
     <header className="relative isolate z-[70] overflow-visible">
       <div
-        className="profile-hero-bg relative -mx-4 -mt-5 min-h-[15rem] overflow-hidden border-b border-white/55 bg-sky-200 text-white shadow-[0_24px_60px_-42px_oklch(0.3_0.12_244_/_0.82)] sm:-mx-6 sm:-mt-7 sm:min-h-[18rem] sm:rounded-b-[2.5rem]"
+        className="profile-hero-bg neu-raised relative mx-0 -mt-2 min-h-[15rem] overflow-hidden text-[var(--neu-text-strong)] sm:mx-0 sm:-mt-3 sm:min-h-[16rem]"
+        style={{ borderRadius: "1.5rem" }}
         onPointerCancel={() => {
           profileSwipeStartRef.current = null;
         }}
@@ -1519,25 +1520,17 @@ function AppShellHeader({
       >
         <div
           aria-hidden="true"
-          className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_32%_18%,oklch(1_0_0_/_0.8),transparent_24%),linear-gradient(135deg,oklch(0.83_0.08_231),oklch(0.66_0.16_248)_54%,oklch(0.48_0.15_254))]"
+          className="absolute inset-0 flex items-center justify-center"
+          style={{ background: "var(--neu-bg)" }}
         >
-          <span className="font-display text-[7rem] leading-none tracking-display text-white/35 sm:text-[10rem]">
+          <span
+            className="font-display text-[7rem] leading-none tracking-display sm:text-[10rem]"
+            style={{ color: "rgba(163, 177, 198, 0.32)" }}
+          >
             {activeProfile?.name.slice(0, 1).toUpperCase() ?? "S"}
           </span>
         </div>
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.08_0.02_250_/_0.2),transparent_33%,oklch(0.08_0.02_250_/_0.54)),linear-gradient(90deg,oklch(0.1_0.02_250_/_0.54),transparent_42%,oklch(0.1_0.02_250_/_0.28))]"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-[radial-gradient(circle_at_48%_12%,oklch(1_0_0_/_0.2),transparent_30%),radial-gradient(circle_at_82%_24%,oklch(1_0_0_/_0.12),transparent_24%)]"
-        />
-        <div aria-hidden="true" className="profile-hero-light" />
         <h1 className="sr-only">S-Drive</h1>
-        <p className="gospel-worker-carve pointer-events-none absolute left-1/2 top-8 z-10 -translate-x-1/2 font-display text-2xl italic leading-none tracking-display text-white sm:top-10 sm:text-3xl">
-          Gospel Worker
-        </p>
         <button
           type="button"
           aria-label="Open settings"
@@ -1545,23 +1538,26 @@ function AppShellHeader({
           onClick={() =>
             setSettingsMode((mode) => (mode === "menu" ? "closed" : "menu"))
           }
-          className="absolute right-5 top-5 z-20 inline-flex size-10 items-center justify-center rounded-full border border-white/45 bg-white/20 text-white shadow-[0_14px_30px_-18px_oklch(0.08_0.02_250_/_0.72),0_1px_0_oklch(1_0_0_/_0.5)_inset] backdrop-blur-md transition hover:scale-105 hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 active:scale-95 sm:right-7 sm:top-7"
+          className={cn(
+            "neu-raised-sm absolute right-5 top-5 z-20 inline-flex size-10 items-center justify-center rounded-full text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 sm:right-7 sm:top-7",
+            settingsMode !== "closed" && "neu-pressed text-[var(--neu-accent)]"
+          )}
         >
           <Settings className="size-4" />
         </button>
         <AnimatePresence initial={false}>
           {settingsMode === "menu" ? (
             <motion.div
-              className="fixed right-5 top-20 z-[220] flex flex-col items-end gap-2 sm:right-7 sm:top-24"
-              initial={{ opacity: 0, y: -8, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.96 }}
+              className="fixed right-[4.5rem] top-5 z-[220] flex flex-row-reverse items-center gap-2.5 sm:right-[5rem] sm:top-7"
+              initial={{ opacity: 0, x: 8, scale: 0.96 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 6, scale: 0.96 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
             >
               <button
                 type="button"
                 aria-label="Open graphs"
-                className={cn(floatingActionButtonClass, "size-11")}
+                className={cn(floatingActionButtonClass, "size-10")}
                 onClick={() => setSettingsMode("graphs")}
                 title="Graphs"
               >
@@ -1577,7 +1573,7 @@ function AppShellHeader({
                 aria-pressed={boardView === "stack"}
                 className={cn(
                   floatingActionButtonClass,
-                  "size-11",
+                  "size-10",
                   boardView === "stack" && floatingActionButtonActiveClass
                 )}
                 onClick={() => {
@@ -1592,7 +1588,9 @@ function AppShellHeader({
                   <span className="absolute left-0 top-2.5 h-3.5 w-3.5 rounded-md border border-current bg-white/80" />
                 </span>
                 {boardView === "stack" ? (
-                  <span className="absolute -right-0.5 -top-0.5 inline-flex size-5 items-center justify-center rounded-full border border-white/85 bg-sky-500 text-white shadow-[0_8px_18px_-8px_oklch(0.45_0.12_244_/_0.8),0_0_12px_oklch(0.76_0.13_244_/_0.5)]">
+                  <span
+                    className="neu-accent-fill absolute -right-0.5 -top-0.5 inline-flex size-5 items-center justify-center rounded-full text-white"
+                  >
                     <Check className="size-3" />
                   </span>
                 ) : null}
@@ -1600,11 +1598,25 @@ function AppShellHeader({
               <button
                 type="button"
                 aria-label="Edit stack"
-                className={cn(floatingActionButtonClass, "size-11")}
+                className={cn(floatingActionButtonClass, "size-10")}
                 onClick={() => setSettingsMode("edit")}
                 title="Edit Stack"
               >
                 <Pencil className="size-4" />
+              </button>
+              <button
+                type="button"
+                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                aria-pressed={theme === "dark"}
+                className={cn(
+                  floatingActionButtonClass,
+                  "size-10",
+                  theme === "dark" && floatingActionButtonActiveClass
+                )}
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                title={theme === "dark" ? "Light mode" : "Dark mode"}
+              >
+                {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
               </button>
             </motion.div>
           ) : null}
@@ -1614,7 +1626,7 @@ function AppShellHeader({
             <button
               type="button"
               aria-label="Previous profile"
-              className="absolute left-4 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-white/15 text-white backdrop-blur-md transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:inline-flex"
+              className="neu-raised-sm absolute left-4 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 sm:inline-flex"
               onClick={() => selectRelativeProfile(-1)}
             >
               <ChevronLeft className="size-5" />
@@ -1622,7 +1634,7 @@ function AppShellHeader({
             <button
               type="button"
               aria-label="Next profile"
-              className="absolute right-5 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-white/15 text-white backdrop-blur-md transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:right-8 sm:inline-flex"
+              className="neu-raised-sm absolute right-5 top-1/2 z-20 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 sm:right-8 sm:inline-flex"
               onClick={() => selectRelativeProfile(1)}
             >
               <ChevronRight className="size-5" />
@@ -1632,25 +1644,26 @@ function AppShellHeader({
         {profiles.length > 1 ? (
           <div
             aria-label="Profile carousel"
-            className="absolute bottom-7 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 sm:bottom-8"
+            className="absolute bottom-7 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 sm:bottom-8"
             role="tablist"
           >
-            {profiles.map((profile) => (
-              <button
-                key={profile.id}
-                type="button"
-                aria-label={`Switch to ${profile.name}`}
-                aria-selected={profile.id === activeProfile?.id}
-                className={cn(
-                  "h-1.5 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70",
-                  profile.id === activeProfile?.id
-                    ? "w-7 bg-white"
-                    : "w-1.5 bg-white/45 hover:bg-white/70"
-                )}
-                onClick={() => onSelectProfile(profile.id)}
-                role="tab"
-              />
-            ))}
+            {profileIndicatorProfiles.map((profile) => {
+              const isActive = profile.id === activeProfile?.id;
+              return (
+                <button
+                  key={profile.id}
+                  type="button"
+                  aria-label={`Switch to ${profile.name}`}
+                  aria-selected={isActive}
+                  className={cn(
+                    "transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40",
+                    isActive ? "neu-accent-fill h-2 w-6 rounded-full" : "neu-inset size-2 rounded-full"
+                  )}
+                  onClick={() => onSelectProfile(profile.id)}
+                  role="tab"
+                />
+              );
+            })}
           </div>
         ) : null}
         <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-5 sm:px-8 sm:pb-7">
@@ -1659,21 +1672,23 @@ function AppShellHeader({
               type="button"
               aria-label="Open profiles"
               onClick={onOpenProfiles}
-              className="font-display text-3xl italic leading-none tracking-display text-white [text-shadow:0_2px_18px_oklch(0.08_0.02_250_/_0.82)] transition hover:text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:text-4xl"
+              className="font-display text-3xl italic leading-none tracking-display text-[var(--neu-text-strong)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 sm:text-4xl"
             >
               {activeProfile?.name ?? "Choose profile"}
             </button>
           </div>
-          <div className="absolute bottom-5 right-5 text-right text-xs font-semibold text-white/88 [text-shadow:0_1px_10px_oklch(0.08_0.02_250_/_0.72)] sm:bottom-7 sm:right-8">
+          <div className="absolute bottom-5 right-5 flex flex-col items-end text-right text-xs font-semibold leading-tight text-[var(--neu-text)] sm:bottom-7 sm:right-8">
             {activeProfile ? (
-              <span>
-                {activeProfile.active_contacts} contacts · {activeProfile.baptized_this_month} baptized
-              </span>
+              <>
+                <span>{activeProfile.active_contacts} contacts</span>
+                <span>{activeProfile.baptized_this_month} baptized</span>
+              </>
             ) : (
               <span>No profile selected</span>
             )}
           </div>
         </div>
+        <div aria-hidden="true" className="header-hero-beam" />
       </div>
 
           <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(0.75rem+env(safe-area-inset-right))] z-[80] flex flex-col items-end gap-2 overflow-visible sm:bottom-8 sm:right-6">
@@ -1724,7 +1739,7 @@ function AppShellHeader({
                   >
                     <Search className="size-4" />
                     {search || profileFilter !== "all" ? (
-                      <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full bg-sky-500 shadow-[0_0_10px_oklch(0.76_0.13_244_/_0.6)]" />
+                      <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full" style={{ background: "var(--neu-accent)" }} />
                     ) : null}
                   </button>
                   <button
@@ -1746,7 +1761,9 @@ function AppShellHeader({
                   >
                     <NikeSwoosh className="size-4" />
                     {notificationCount > 0 ? (
-                      <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full border border-white/80 bg-sky-500 px-1.5 text-[0.58rem] font-black leading-5 text-white shadow-[0_8px_18px_-8px_oklch(0.45_0.12_244_/_0.8),0_0_12px_oklch(0.76_0.13_244_/_0.5)]">
+                      <span
+                        className="neu-accent-fill absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[0.58rem] font-black leading-5 text-white"
+                      >
                         {Math.min(notificationCount, 9)}
                       </span>
                     ) : null}
@@ -1760,9 +1777,9 @@ function AppShellHeader({
               aria-expanded={railOpen}
               onClick={handleRailToggle}
               className={cn(
-                "relative inline-flex items-center justify-center rounded-full border border-white/80 bg-white/80 text-sky-600 shadow-[0_18px_42px_-22px_oklch(0.45_0.08_245_/_0.7),0_1px_0_oklch(1_0_0_/_0.95)_inset] backdrop-blur-2xl transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-white/95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:scale-95",
+                "neu-raised relative inline-flex items-center justify-center rounded-full text-[var(--neu-accent)] transition duration-200 ease-out hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--neu-bg)] active:translate-y-0 active:scale-95",
                 railOpen ? "size-10" : "size-12",
-                railOpen && floatingActionButtonActiveClass
+                railOpen && "neu-pressed"
               )}
             >
               <Plus
@@ -1772,12 +1789,14 @@ function AppShellHeader({
                 )}
               />
               {notificationCount > 0 && !railOpen ? (
-                <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full border border-white/80 bg-sky-500 px-1.5 text-[0.58rem] font-black leading-5 text-white shadow-[0_8px_18px_-8px_oklch(0.45_0.12_244_/_0.8),0_0_12px_oklch(0.76_0.13_244_/_0.5)]">
+                <span
+                  className="neu-accent-fill absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[0.58rem] font-black leading-5 text-white"
+                >
                   {Math.min(notificationCount, 9)}
                 </span>
               ) : null}
               {(search || profileFilter !== "all") && notificationCount === 0 && !railOpen ? (
-                <span className="absolute right-2 top-2 size-2 rounded-full bg-sky-500 shadow-[0_0_10px_oklch(0.76_0.13_244_/_0.6)]" />
+                <span className="absolute right-2 top-2 size-2 rounded-full" style={{ background: "var(--neu-accent)" }} />
               ) : null}
             </button>
 
@@ -3401,7 +3420,6 @@ function StackStageSection({
             <span className="truncate font-display text-2xl leading-none tracking-display text-foreground">
               {stage.label}
             </span>
-            {stage.id === "hunting" ? <SeedSproutAnimation /> : null}
           </span>
           <span className="mt-1 hidden truncate text-xs font-medium text-muted-foreground sm:block">
             {stage.description}
@@ -3565,7 +3583,6 @@ function StageLane({
             <h2 className="min-w-0 truncate font-display text-2xl leading-[0.95] tracking-display text-foreground">
               {stage.label}
             </h2>
-            {stage.id === "hunting" ? <SeedSproutAnimation /> : null}
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -3789,34 +3806,6 @@ function QuickAddContactDialog({
   );
 }
 
-function SeedSproutAnimation() {
-  return (
-    <motion.span
-      aria-hidden
-      className="relative ml-0.5 inline-flex size-6 shrink-0 items-end justify-center"
-      animate={{ y: [0, -2, 0] }}
-      transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-    >
-      <motion.span
-        className="absolute bottom-1 h-3 w-1 rounded-full bg-sky-500/80"
-        animate={{ scaleY: [0.75, 1.08, 0.82] }}
-        transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.span
-        className="absolute bottom-3 left-2 h-2.5 w-3 rounded-[999px_999px_999px_0] bg-sky-300/90 shadow-[0_0_12px_oklch(0.76_0.13_244_/_0.38)]"
-        animate={{ rotate: [-12, -24, -12], scale: [0.9, 1.05, 0.9] }}
-        transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.span
-        className="absolute bottom-3 right-2 h-2.5 w-3 rounded-[999px_999px_0_999px] bg-cyan-200/95 shadow-[0_0_12px_oklch(0.76_0.13_244_/_0.35)]"
-        animate={{ rotate: [12, 24, 12], scale: [0.9, 1.05, 0.9] }}
-        transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <span className="absolute bottom-0 h-2.5 w-4 rounded-[999px_999px_999px_999px] bg-sky-700/75 shadow-[0_5px_12px_oklch(0.58_0.032_250_/_0.18)]" />
-    </motion.span>
-  );
-}
-
 function SortablePersonCard({
   person,
   profiles,
@@ -3856,7 +3845,6 @@ function SortablePersonCard({
     transition,
   };
 
-  const tone = getStageTone(stages, person.stage);
   const assignedProfiles = getAssignedProfiles(person, profiles);
   const hasFollowUp = Boolean(person.next_follow_up_at);
   const latestReaction = getLatestContactReaction(person.events);
@@ -3893,25 +3881,30 @@ function SortablePersonCard({
     </button>
   );
 
+  const isActive = !collapsed;
+
   return (
     <motion.article
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, borderBottomColor: "rgba(163, 177, 198, 0.35)" }}
       className={cn(
-        "group relative overflow-visible border-b border-foreground/[0.07] bg-transparent transition-colors first:border-t hover:bg-card/45 focus-within:bg-card/40",
-        overdueReaction &&
-          "border-red-400/40 bg-red-50/35 shadow-[inset_2px_0_0_oklch(0.64_0.2_25_/_0.7)]",
+        "group relative overflow-visible border-b bg-transparent transition-colors last:border-b-0 hover:bg-white/50 focus-within:bg-white/40",
+        isActive && "bg-white/45",
+        overdueReaction && !isActive && "bg-white/30",
         isDragging && "opacity-40"
       )}
       whileTap={{ scale: 0.995 }}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute inset-y-2 left-0 w-0.5 rounded-full opacity-55",
-          overdueReaction ? "bg-red-500" : tone.dot
-        )}
-      />
+      {isActive || overdueReaction ? (
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-y-1.5 left-0 w-1 rounded-full",
+            isActive && "neu-accent-fill"
+          )}
+          style={!isActive && overdueReaction ? { background: "var(--neu-danger)" } : undefined}
+        />
+      ) : null}
 
       {collapsed ? (
         <div className="relative flex min-h-[3.45rem] items-center py-1.5 pl-2 pr-10 sm:min-h-[3.65rem]">
@@ -3926,8 +3919,10 @@ function SortablePersonCard({
                 {person.name}
               </h3>
               <span
-                className="mt-1 flex min-w-0 items-center text-[0.68rem] font-semibold leading-none tracking-[0.05em] text-sky-700/85"
-                title={collapsedStudyAriaLabel}
+                className={cn(
+                  "mt-1 flex min-w-0 items-center text-[0.68rem] font-semibold leading-none tracking-[0.05em]",
+                  latestStudyTitle ? "text-[var(--neu-text)]" : "contact-no-study"
+                )}
                 aria-label={collapsedStudyAriaLabel}
               >
                 <span className="truncate">{collapsedStudyLabel}</span>
@@ -3989,7 +3984,7 @@ function SortablePersonCard({
             ) : null}
           </div>
 
-          <div className="relative flex min-w-0 flex-wrap items-center gap-2 border-t border-foreground/[0.07] px-2 py-2 pl-[4.5rem]">
+          <div className="relative flex min-w-0 flex-wrap items-center gap-2 border-t border-slate-950/10 px-2 py-2 pl-[4.5rem]">
             {assignedProfiles.length > 0 ? (
               <div
                 aria-label={`Assigned to ${assignedProfileNames}`}
@@ -6232,14 +6227,14 @@ function ContactAvatar({
     row: "size-11 text-base",
   }[size];
   const rowAvatar = size === "row";
+  const tinyAvatar = size === "xs";
 
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center overflow-hidden border font-display tracking-display shadow-[0_1px_0_oklch(1_0_0_/_0.6)_inset]",
-        rowAvatar
-          ? "rounded-[22%] border-white/80 bg-gradient-to-br from-white via-sky-50 to-sky-100 text-sky-700 shadow-[0_1px_0_oklch(1_0_0_/_0.85)_inset,0_5px_14px_oklch(0.58_0.18_240_/_0.18)]"
-          : "rounded-full border-foreground/15 bg-card text-foreground/80",
+        "inline-flex shrink-0 items-center justify-center overflow-hidden font-display tracking-display",
+        rowAvatar ? "rounded-[22%]" : "rounded-full",
+        tinyAvatar ? "contact-avatar-flat" : "contact-avatar-neu",
         sizeClass
       )}
       title={person?.name ?? "Contact photo"}

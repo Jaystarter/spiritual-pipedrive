@@ -713,6 +713,52 @@ export async function createProfile(
   };
 }
 
+export async function renameProfile(
+  id: string,
+  name: string
+): Promise<ActionResult<BoardProfile>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const profileId = id.trim();
+
+  if (!uuidPattern.test(profileId)) {
+    return { ok: false, error: "Choose a valid profile." };
+  }
+
+  const cleanName = cleanProfileName(name);
+
+  if (!cleanName) {
+    return { ok: false, error: "Name is required." };
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ name: cleanName })
+    .eq("id", profileId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return {
+      ok: false,
+      error: error.code === "23505" ? "That profile already exists." : error.message,
+    };
+  }
+
+  const profiles = await listProfilesWithStats();
+  const profile = profiles.find((item) => item.id === data.id);
+
+  revalidatePath("/");
+  return {
+    ok: true,
+    data: profile ?? { ...data, active_contacts: 0, baptized_this_month: 0 },
+  };
+}
+
 export async function updateProfileAvatar(
   id: string,
   avatarUrl: string | null
@@ -746,6 +792,75 @@ export async function updateProfileAvatar(
       error: error instanceof Error ? error.message : "Could not update photo.",
     };
   }
+}
+
+type AvatarFramingInput = {
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+};
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number) {
+  const numeric = typeof value === "number" ? value : Number(value);
+
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+
+  if (numeric < min) {
+    return min;
+  }
+
+  if (numeric > max) {
+    return max;
+  }
+
+  return numeric;
+}
+
+export async function updateProfileAvatarFraming(
+  id: string,
+  framing: AvatarFramingInput
+): Promise<ActionResult<BoardProfile>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const profileId = id.trim();
+
+  if (!uuidPattern.test(profileId)) {
+    return { ok: false, error: "Choose a valid profile." };
+  }
+
+  const offsetX = clampNumber(framing.offsetX, 0, 100, 50);
+  const offsetY = clampNumber(framing.offsetY, 0, 100, 50);
+  const scale = clampNumber(framing.scale, 1, 3, 1);
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({
+      avatar_offset_x: offsetX,
+      avatar_offset_y: offsetY,
+      avatar_scale: scale,
+    })
+    .eq("id", profileId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  const profiles = await listProfilesWithStats();
+  const profile = profiles.find((item) => item.id === data.id);
+
+  revalidatePath("/");
+  return {
+    ok: true,
+    data: profile ?? { ...data, active_contacts: 0, baptized_this_month: 0 },
+  };
 }
 
 export async function updatePersonAvatar(

@@ -24,6 +24,10 @@ export const metadata: Metadata = {
   description: "An editorial CRM for the journey from first contact to baptism.",
 };
 
+// Runs synchronously before hydration so the saved theme is applied before
+// first paint, preventing a light-to-dark flash on reload.
+const themeBootstrapScript = `(function(){try{var t=localStorage.getItem('sd-theme');if(t==='dark'){document.documentElement.dataset.theme='dark';}}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,6 +38,11 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: themeBootstrapScript }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

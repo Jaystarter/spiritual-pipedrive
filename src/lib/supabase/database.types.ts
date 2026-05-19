@@ -198,18 +198,27 @@ export type Database = {
           id: string;
           name: string;
           avatar_url: string | null;
+          avatar_offset_x: number;
+          avatar_offset_y: number;
+          avatar_scale: number;
           created_at: string;
         };
         Insert: {
           id?: string;
           name: string;
           avatar_url?: string | null;
+          avatar_offset_x?: number;
+          avatar_offset_y?: number;
+          avatar_scale?: number;
           created_at?: string;
         };
         Update: {
           id?: string;
           name?: string;
           avatar_url?: string | null;
+          avatar_offset_x?: number;
+          avatar_offset_y?: number;
+          avatar_scale?: number;
           created_at?: string;
         };
         Relationships: [];

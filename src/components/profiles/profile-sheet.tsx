@@ -1,18 +1,18 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Camera, Check, Plus, RefreshCcw, Trash2, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import {
   createProfile,
   deleteProfile,
+  renameProfile,
   updateProfileAvatar,
   type BoardProfile,
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { setActiveProfileId } from "@/lib/profiles-client";
-import { cn } from "@/lib/utils";
 
 type ProfileSheetProps = {
   open: boolean;
@@ -37,9 +37,30 @@ export function ProfileSheet({
   const [error, setError] = useState("");
   const [busyProfileId, setBusyProfileId] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState("");
+  const [editingProfileId, setEditingProfileId] = useState("");
+  const [editingName, setEditingName] = useState("");
+  const [renameError, setRenameError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [isRenaming, startRenameTransition] = useTransition();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const avatarTargetRef = useRef("");
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (editingProfileId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingProfileId]);
+
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current);
+      }
+    };
+  }, []);
 
   function selectProfile(profileId: string) {
     setActiveProfileId(profileId);
@@ -47,6 +68,79 @@ export function ProfileSheet({
     if (!required) {
       onClose();
     }
+  }
+
+  function clearClickTimer() {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+  }
+
+  function handleNameClick(profileId: string) {
+    clearClickTimer();
+    clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = null;
+      selectProfile(profileId);
+    }, 220);
+  }
+
+  function handleNameDoubleClick(profile: BoardProfile) {
+    clearClickTimer();
+
+    if (busyProfileId === profile.id) {
+      return;
+    }
+
+    setRenameError("");
+    setError("");
+    setConfirmDeleteId("");
+    setEditingProfileId(profile.id);
+    setEditingName(profile.name);
+  }
+
+  function cancelRename() {
+    clearClickTimer();
+    setEditingProfileId("");
+    setEditingName("");
+    setRenameError("");
+  }
+
+  function commitRename(profileId: string) {
+    if (isRenaming) {
+      return;
+    }
+
+    const trimmed = editingName.trim();
+    const original = profiles.find((profile) => profile.id === profileId)?.name ?? "";
+
+    if (!trimmed || trimmed === original) {
+      cancelRename();
+      return;
+    }
+
+    setRenameError("");
+    setError("");
+
+    startRenameTransition(async () => {
+      const result = await renameProfile(profileId, trimmed);
+
+      if (!result.ok || !result.data) {
+        setRenameError(result.ok ? "Could not rename profile." : result.error);
+        return;
+      }
+
+      const updated = result.data;
+      const nextProfiles = profiles
+        .map((profile) =>
+          profile.id === updated.id ? { ...profile, ...updated } : profile
+        )
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      onProfilesChange(nextProfiles);
+      setEditingProfileId("");
+      setEditingName("");
+    });
   }
 
   function handleCreate(formData: FormData) {
@@ -135,7 +229,8 @@ export function ProfileSheet({
         <div className="fixed inset-0 z-[130] flex items-center justify-center px-3 py-6">
           <motion.button
             aria-label="Close profiles"
-            className="absolute inset-0 bg-sky-950/24 backdrop-blur-xl"
+            className="absolute inset-0"
+            style={{ background: "rgba(236, 239, 243, 0.85)" }}
             disabled={required}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -144,7 +239,8 @@ export function ProfileSheet({
             type="button"
           />
           <motion.div
-            className="relative z-10 max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-[1.75rem] border border-white/60 bg-white/62 p-5 shadow-[0_60px_120px_-30px_oklch(0.2_0.028_264_/_0.45),0_1px_0_oklch(1_0_0_/_0.88)_inset] backdrop-blur-2xl"
+            className="neu-raised relative z-10 max-h-[88vh] w-full max-w-lg overflow-y-auto p-5"
+            style={{ borderRadius: "1.75rem", background: "var(--neu-bg)" }}
             initial={{ opacity: 0, y: 60, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 60, scale: 0.98 }}
@@ -153,10 +249,13 @@ export function ProfileSheet({
             aria-modal="true"
             aria-label="Choose profile"
           >
-            <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-foreground/10 sm:hidden" />
+            <div
+              className="mx-auto mb-3 h-1 w-12 rounded-full sm:hidden"
+              style={{ background: "rgba(163, 177, 198, 0.4)" }}
+            />
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-[0.62rem] font-black uppercase tracking-[0.22em] text-slate-950">
+                <p className="text-[0.62rem] font-black uppercase tracking-[0.22em] text-[var(--neu-text-strong)]">
                   Profiles
                 </p>
               </div>
@@ -175,9 +274,16 @@ export function ProfileSheet({
               onChange={handleAvatarChange}
             />
 
-            <div className="mt-4 divide-y divide-slate-950/10 border-y border-white/60">
+            <div
+              className="mt-4 divide-y"
+              style={{
+                borderTop: "1px solid rgba(163, 177, 198, 0.35)",
+                borderBottom: "1px solid rgba(163, 177, 198, 0.35)",
+                borderColor: "rgba(163, 177, 198, 0.35)",
+              }}
+            >
               {profiles.length === 0 ? (
-                <div className="p-6 text-center text-sm italic text-slate-950/70">
+                <div className="p-6 text-center text-sm italic text-[var(--neu-text-muted)]">
                   No profiles yet. Add the first one below.
                 </div>
               ) : null}
@@ -185,23 +291,29 @@ export function ProfileSheet({
                 const active = profile.id === activeProfileId;
                 const confirming = profile.id === confirmDeleteId;
                 const busy = profile.id === busyProfileId;
+                const editing = profile.id === editingProfileId;
+                const savingThisRow = editing && isRenaming;
 
                 return (
                   <div
                     key={profile.id}
-                    className={cn(
-                      "relative py-3 transition",
-                      active && "bg-sky-50/30"
-                    )}
+                    className="relative py-3 transition"
+                    style={{
+                      borderColor: "rgba(163, 177, 198, 0.35)",
+                    }}
                   >
                     {active ? (
-                      <span className="absolute bottom-3 left-0 top-3 w-1 rounded-full bg-sky-400" />
+                      <span
+                        aria-hidden
+                        className="neu-accent-fill absolute bottom-3 left-0 top-3 w-1 rounded-full"
+                      />
                     ) : null}
                     <div className="flex items-center gap-3 pl-3">
                       <button
                         aria-label={`Change ${profile.name}'s photo`}
-                        className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/70 font-display tracking-display text-foreground/80 shadow-[0_1px_0_oklch(1_0_0_/_0.8)_inset,0_10px_24px_-18px_oklch(0.25_0.04_250_/_0.5)]"
-                        disabled={busy}
+                        className="neu-raised-sm relative flex size-12 shrink-0 items-center justify-center overflow-hidden font-display tracking-display text-[var(--neu-text)]"
+                        style={{ borderRadius: "999px" }}
+                        disabled={busy || savingThisRow}
                         onClick={() => requestAvatar(profile.id)}
                         type="button"
                       >
@@ -216,53 +328,97 @@ export function ProfileSheet({
                         ) : (
                           profile.name.slice(0, 1).toUpperCase()
                         )}
-                        <span className="absolute -bottom-0.5 -right-0.5 rounded-full border-2 border-card bg-foreground p-1 text-background">
+                        <span
+                          className="neu-pressed absolute -bottom-0.5 -right-0.5 inline-flex size-5 items-center justify-center rounded-full text-[var(--neu-accent)]"
+                        >
                           <Camera className="size-2.5" />
                         </span>
                       </button>
 
-                      <button
-                        className="min-w-0 flex-1 text-left"
-                        onClick={() => selectProfile(profile.id)}
-                        type="button"
-                      >
-                        <span className="flex items-center gap-2">
-                          <span className="truncate font-display text-lg leading-[1.05] tracking-display text-slate-950">
-                            {profile.name}
+                      {editing ? (
+                        <div className="min-w-0 flex-1">
+                          <div className="neu-inset flex items-center gap-2 px-3 py-1.5" style={{ borderRadius: "999px" }}>
+                            <input
+                              ref={editInputRef}
+                              aria-label={`Rename ${profile.name}`}
+                              className="min-w-0 flex-1 bg-transparent py-0.5 font-display text-lg leading-[1.05] tracking-display text-[var(--neu-text-strong)] outline-none transition-colors disabled:opacity-60"
+                              disabled={savingThisRow}
+                              maxLength={30}
+                              onBlur={() => commitRename(profile.id)}
+                              onChange={(event) => setEditingName(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  commitRename(profile.id);
+                                } else if (event.key === "Escape") {
+                                  event.preventDefault();
+                                  cancelRename();
+                                }
+                              }}
+                              type="text"
+                              value={editingName}
+                            />
+                            {savingThisRow ? (
+                              <RefreshCcw className="size-3.5 shrink-0 animate-spin text-[var(--neu-text-muted)]" />
+                            ) : null}
+                          </div>
+                          <span className="mt-1 block pl-3 text-[0.72rem] font-medium text-[var(--neu-text-muted)]">
+                            {profile.active_contacts} contacts · {profile.baptized_this_month} baptized this month
                           </span>
-                          {active ? (
-                            <span className="inline-flex items-center gap-1 text-[0.6rem] font-black uppercase tracking-[0.16em] text-sky-700">
-                              <Check className="size-3" />
-                              Active
+                        </div>
+                      ) : (
+                        <button
+                          aria-label={`Switch to ${profile.name}. Double-tap to rename.`}
+                          className="min-w-0 flex-1 cursor-text text-left"
+                          disabled={busy}
+                          onClick={() => handleNameClick(profile.id)}
+                          onDoubleClick={() => handleNameDoubleClick(profile)}
+                          type="button"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="truncate font-display text-lg leading-[1.05] tracking-display text-[var(--neu-text-strong)]">
+                              {profile.name}
                             </span>
-                          ) : null}
-                        </span>
-                        <span className="mt-0.5 block text-[0.72rem] font-medium text-slate-950/70">
-                          {profile.active_contacts} contacts · {profile.baptized_this_month} baptized this month
-                        </span>
-                      </button>
+                            {active ? (
+                              <span className="inline-flex items-center gap-1 text-[0.6rem] font-black uppercase tracking-[0.16em] text-[var(--neu-accent)]">
+                                <Check className="size-3" />
+                                Active
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="mt-0.5 block text-[0.72rem] font-medium text-[var(--neu-text-muted)]">
+                            {profile.active_contacts} contacts · {profile.baptized_this_month} baptized this month
+                          </span>
+                        </button>
+                      )}
 
-                      <Button
-                        disabled={busy}
+                      <button
+                        type="button"
+                        aria-label={confirming ? `Confirm delete ${profile.name}` : `Delete ${profile.name}`}
+                        disabled={busy || savingThisRow}
                         onClick={() =>
                           confirming
                             ? handleDelete(profile.id)
                             : setConfirmDeleteId(profile.id)
                         }
-                        size="icon-sm"
-                        type="button"
-                        variant={confirming ? "destructive" : "ghost"}
+                        className="neu-raised-sm inline-flex size-9 shrink-0 items-center justify-center rounded-full transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                        style={confirming ? { color: "var(--neu-danger)" } : { color: "var(--neu-text)" }}
                       >
                         {confirming ? (
                           <Check className="size-4" />
                         ) : (
                           <Trash2 className="size-4" />
                         )}
-                      </Button>
+                      </button>
                     </div>
                     {confirming ? (
-                      <p className="mt-2 pl-3 text-[0.72rem] text-slate-950/70">
+                      <p className="mt-2 pl-3 text-[0.72rem] text-[var(--neu-text-muted)]">
                         Tap the check to delete. Profiles with active contacts can&apos;t be removed.
+                      </p>
+                    ) : null}
+                    {editing && renameError ? (
+                      <p className="mt-2 pl-3 text-[0.72rem]" style={{ color: "var(--neu-danger)" }}>
+                        {renameError}
                       </p>
                     ) : null}
                   </div>
@@ -270,26 +426,39 @@ export function ProfileSheet({
               })}
             </div>
 
-            <form action={handleCreate} className="mt-5 flex items-center gap-2 border-b border-slate-950/15 pb-2">
-              <input
-                name="profileName"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Add profile name"
-                className="min-w-0 flex-1 bg-transparent px-1 text-sm font-semibold tracking-tight text-slate-950 outline-none placeholder:text-slate-950/45"
-              />
-              <Button disabled={isPending} type="submit" size="sm" className="rounded-full">
+            <form action={handleCreate} className="mt-5 flex items-center gap-2">
+              <div
+                className="neu-inset flex min-w-0 flex-1 items-center px-4 py-2"
+                style={{ borderRadius: "999px" }}
+              >
+                <input
+                  name="profileName"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Add profile name"
+                  className="min-w-0 flex-1 bg-transparent text-sm font-semibold tracking-tight text-[var(--neu-text-strong)] outline-none placeholder:text-[var(--neu-text-muted)]"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isPending}
+                className="neu-raised-sm inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-[var(--neu-accent)] transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ borderRadius: "999px" }}
+              >
                 {isPending ? (
                   <RefreshCcw className="size-3.5 animate-spin" />
                 ) : (
                   <Plus className="size-3.5" />
                 )}
                 Add
-              </Button>
+              </button>
             </form>
 
             {error ? (
-              <p className="mt-3 rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <p
+                className="neu-inset mt-3 px-3 py-2 text-sm"
+                style={{ borderRadius: "0.875rem", color: "var(--neu-danger)" }}
+              >
                 {error}
               </p>
             ) : null}
