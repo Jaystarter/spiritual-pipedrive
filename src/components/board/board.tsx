@@ -551,6 +551,27 @@ function sortStudies(studies: PersonStudy[]) {
   return [...studies].sort((a, b) => a.study_number - b.study_number);
 }
 
+function getStudyLoggedTimestamp(study: PersonStudy) {
+  return getStudyTimestamp(study.created_at) || getStudyTimestamp(study.studied_at);
+}
+
+function sortStudiesByLoggedNewest(studies: PersonStudy[]) {
+  return studies
+    .map((study, index) => ({
+      study,
+      index,
+      timestamp: getStudyLoggedTimestamp(study),
+    }))
+    .sort((a, b) => {
+      if (a.timestamp !== b.timestamp) {
+        return b.timestamp - a.timestamp;
+      }
+
+      return a.index - b.index;
+    })
+    .map((item) => item.study);
+}
+
 function getStudyCatalogTitle(studyNumber: number) {
   return STUDY_TITLES[studyNumber - 1] ?? `Study ${studyNumber}`;
 }
@@ -5661,7 +5682,7 @@ function TimelineTabs({
   const [activeTab, setActiveTab] = useState<"activity" | "studies">("activity");
   const [studySearchOpen, setStudySearchOpen] = useState(false);
   const [studySearch, setStudySearch] = useState("");
-  const recentStudies = [...sortStudies(studies)].reverse();
+  const recentStudies = sortStudiesByLoggedNewest(studies);
   const normalizedStudySearch = studySearch.trim().toLowerCase();
   const filteredStudies = normalizedStudySearch
     ? recentStudies.filter((study) => {
