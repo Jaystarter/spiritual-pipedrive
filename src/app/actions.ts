@@ -1113,6 +1113,7 @@ export async function createPerson(
     teacher: assignedTeacherLabel(selectedProfiles.profiles),
     notes: cleanOptional(input.notes),
     assigned_profile_ids: normalizedProfiles.ids,
+    created_by_profile_id: actor.actorProfileId,
     sort_order: sortOrder,
     baptized_at: baptizedAt,
     next_follow_up_at: cleanDate(input.nextFollowUpAt),

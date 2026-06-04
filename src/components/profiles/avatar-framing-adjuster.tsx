@@ -208,6 +208,7 @@ function AvatarFramingAdjusterPanel({
         onClick={saving ? undefined : onCancel}
         type="button"
       />
+      <div aria-hidden className="circuit-bg" />
       <motion.div
         className="neu-raised relative z-10 w-full max-w-sm overflow-hidden p-5"
         style={{ borderRadius: "1.75rem", background: "var(--neu-bg)" }}

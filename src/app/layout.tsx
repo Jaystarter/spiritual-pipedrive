@@ -43,7 +43,10 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: themeBootstrapScript }}
         />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <div aria-hidden className="circuit-bg" />
+      </body>
     </html>
   );
 }

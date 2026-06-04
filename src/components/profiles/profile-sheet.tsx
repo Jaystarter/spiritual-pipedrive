@@ -386,6 +386,7 @@ export function ProfileSheet({
             onClick={required ? undefined : onClose}
             type="button"
           />
+          <div aria-hidden className="circuit-bg" />
           <motion.div
             className="neu-raised relative z-10 max-h-[88vh] w-full max-w-lg overflow-y-auto p-5"
             style={{ borderRadius: "1.75rem", background: "var(--neu-bg)" }}

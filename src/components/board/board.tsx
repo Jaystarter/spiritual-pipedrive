@@ -911,24 +911,20 @@ export function BibleStudyBoard({
   const selectedPerson = selectedId
     ? people.find((person) => person.id === selectedId) ?? null
     : null;
-  const followUpItems = useMemo(
-    () => getFollowUpItems(filteredPeople, profiles, visibleStages),
-    [filteredPeople, profiles, visibleStages]
-  );
   const assignmentNotificationItems = useMemo(
     () => getAssignmentNotificationItems(people, profiles, activeProfile),
     [activeProfile, people, profiles]
   );
-  // Overdue follow-ups scoped strictly to the active profile's own contacts
-  // (the contacts that profile is "in charge of"), independent of the board's
-  // profile filter. Reuses the shared overdue rule via getFollowUpItems.
+  // Overdue follow-ups scoped strictly to the contacts the active profile
+  // entered (created_by_profile_id) — independent of the board's profile filter
+  // and of who the contact is later assigned to. Reuses the shared overdue rule.
   const activeProfileFollowUpItems = useMemo(() => {
     if (!activeProfile) {
       return [];
     }
 
-    const ownPeople = people.filter((person) =>
-      person.assigned_profile_ids.includes(activeProfile.id)
+    const ownPeople = people.filter(
+      (person) => person.created_by_profile_id === activeProfile.id
     );
 
     return getFollowUpItems(ownPeople, profiles, visibleStages);
@@ -1218,7 +1214,7 @@ export function BibleStudyBoard({
           onStagesChange={setStages}
           configured={configured}
           notice={notice}
-          followUpItems={followUpItems}
+          followUpItems={activeProfileFollowUpItems}
           assignmentNotificationItems={assignmentNotificationItems}
           onFocusFollowUps={handleFocusFollowUps}
           boardView={boardView}
@@ -1227,7 +1223,7 @@ export function BibleStudyBoard({
 
         <FollowUpReminderList
           isVisible={followUpReminderVisible}
-          items={followUpItems}
+          items={activeProfileFollowUpItems}
           assignmentItems={assignmentNotificationItems}
           reminderRef={followUpReminderRef}
           activeProfileId={activeProfileId}

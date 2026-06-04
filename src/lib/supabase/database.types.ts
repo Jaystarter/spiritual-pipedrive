@@ -22,6 +22,7 @@ export type Database = {
           avatar_url: string | null;
           life_status: "student" | "worker" | null;
           assigned_profile_ids: string[];
+          created_by_profile_id: string | null;
           sort_order: number;
           baptized_at: string | null;
           last_contacted_at: string | null;
@@ -40,6 +41,7 @@ export type Database = {
           avatar_url?: string | null;
           life_status?: "student" | "worker" | null;
           assigned_profile_ids?: string[];
+          created_by_profile_id?: string | null;
           sort_order?: number;
           baptized_at?: string | null;
           last_contacted_at?: string | null;
@@ -58,6 +60,7 @@ export type Database = {
           avatar_url?: string | null;
           life_status?: "student" | "worker" | null;
           assigned_profile_ids?: string[];
+          created_by_profile_id?: string | null;
           sort_order?: number;
           baptized_at?: string | null;
           last_contacted_at?: string | null;

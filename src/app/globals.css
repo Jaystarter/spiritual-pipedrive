@@ -62,6 +62,17 @@
   --neu-shadow-light: rgba(255, 255, 255, 0.95);
   --neu-shadow-dark: rgba(163, 177, 198, 0.45);
 
+  /* ----------------------------------------------------------------- */
+  /* Circuit-board background texture (LIGHT THEME ONLY).              */
+  /* Tuning knobs: raise --circuit-opacity to make the traces more     */
+  /* visible (0 hides it); change --circuit-size to scale the tile.    */
+  /* The pattern itself is a tiny inline SVG (no external asset) and    */
+  /* is rendered by the `.circuit-bg` layer below. Disabled in dark.   */
+  /* ----------------------------------------------------------------- */
+  --circuit-opacity: 0.16;
+  --circuit-size: 80px;
+  --circuit-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80' fill='none' stroke='rgb(120,135,160)' stroke-width='1'%3e%3cpath d='M0 16 H80'/%3e%3cpath d='M56 0 V80'/%3e%3cpath d='M16 16 V60 H40'/%3e%3cpath d='M56 36 H32'/%3e%3cpath d='M56 64 H72 V40'/%3e%3cg stroke='none' fill='rgb(120,135,160)'%3e%3ccircle cx='16' cy='16' r='2'/%3e%3ccircle cx='40' cy='60' r='2'/%3e%3ccircle cx='56' cy='36' r='2'/%3e%3ccircle cx='32' cy='36' r='2'/%3e%3ccircle cx='56' cy='64' r='2'/%3e%3ccircle cx='72' cy='40' r='2'/%3e%3c/g%3e%3c/svg%3e");
+
   /* shadcn / Tailwind tokens mapped onto the neumorphic palette */
   --background: #ECEFF3;
   --foreground: #4B5563;
@@ -808,6 +819,33 @@
   /* Page-fade radial background overlay neutralised. */
   .pipeline-flat-bg {
     background: var(--neu-bg) !important;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Circuit-board background texture — LIGHT THEME ONLY.               */
+  /* `.circuit-bg` is a single decorative, fixed, full-viewport layer.  */
+  /* It is rendered once at the app root (see layout.tsx) so it sits    */
+  /* behind every page and shows through the translucent backdrops of   */
+  /* portaled dialogs/popups, and again inside the two near-opaque      */
+  /* light-veil overlays (profile sheet + avatar adjuster) where a      */
+  /* behind-layer would be hidden. It tiles a faint PCB pattern on the  */
+  /* solid --neu-bg base at z-index:0 — above the base but below the    */
+  /* z-10 content/cards — so it only reads in the gaps as a subtle      */
+  /* technical overlay. It is purely decorative (callers pass           */
+  /* aria-hidden) and is fully disabled in dark mode below.             */
+  /* ------------------------------------------------------------------ */
+  .circuit-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: var(--circuit-image);
+    background-repeat: repeat;
+    background-size: var(--circuit-size) var(--circuit-size);
+    opacity: var(--circuit-opacity);
+  }
+  [data-theme="dark"] .circuit-bg {
+    display: none;
   }
 
   /* ------------------------------------------------------------------ */

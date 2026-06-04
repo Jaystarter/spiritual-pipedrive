@@ -146,10 +146,11 @@ export async function GET(request: Request) {
       continue;
     }
 
-    // A contact belongs to a profile via assigned_profile_ids (same association
-    // the board uses). Sort by quietest-first to match the board's ordering.
+    // A profile is only reminded about the contacts it entered
+    // (created_by_profile_id), matching the in-app reminders. Sort by
+    // quietest-first to mirror the board's ordering.
     const contacts = overduePeople
-      .filter((person) => person.assigned_profile_ids.includes(profile.id))
+      .filter((person) => person.created_by_profile_id === profile.id)
       .map((person) => ({
         person,
         daysQuiet: getFollowUpStatus(person, { now }).daysQuiet,
