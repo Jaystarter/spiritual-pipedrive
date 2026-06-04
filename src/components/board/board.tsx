@@ -209,6 +209,7 @@ const emptyMessages: Record<string, string> = {
   seventh_bible_study: "Track steady studies that need continued care.",
   ready_for_baptism: "Keep final preparation visible and personal.",
   baptized: "This month’s baptisms will glow here.",
+  brothers: "Baptized brothers continuing in care and service will gather here.",
 };
 
 const STUDY_TITLES = [

@@ -83,6 +83,16 @@ export const DEFAULT_STAGES: Stage[] = [
     isHidden: false,
     isSystem: true,
   },
+  {
+    id: "brothers",
+    label: "Brothers",
+    shortLabel: "Brothers",
+    description: "Baptized brothers continuing in care and service.",
+    tone: "amber",
+    sortOrder: 7000,
+    isHidden: false,
+    isSystem: true,
+  },
 ] satisfies Stage[];
 
 export const STAGES = DEFAULT_STAGES;
@@ -92,7 +102,11 @@ export const DEFAULT_STAGE_BY_ID = new Map(
   DEFAULT_STAGES.map((stage) => [stage.id, stage])
 );
 
-export const MANUAL_ONLY_STAGE_IDS = ["ready_for_baptism", "baptized"] as const;
+export const MANUAL_ONLY_STAGE_IDS = [
+  "ready_for_baptism",
+  "baptized",
+  "brothers",
+] as const;
 
 export function isManualOnlyStage(stageId: StageId) {
   return MANUAL_ONLY_STAGE_IDS.includes(
@@ -137,7 +151,11 @@ export function normalizeStages(stages: Stage[]) {
     seen.add(stage.id);
     return true;
   });
-  const normalized = uniqueStages
+  const stagesWithMissingDefaults = [
+    ...uniqueStages,
+    ...DEFAULT_STAGES.filter((stage) => !seen.has(stage.id)),
+  ];
+  const normalized = stagesWithMissingDefaults
     .map((stage) => {
       return {
         ...stage,
