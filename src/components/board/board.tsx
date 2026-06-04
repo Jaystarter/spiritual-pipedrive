@@ -76,6 +76,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ProfileSheet } from "@/components/profiles/profile-sheet";
 import { PushReminderToggle } from "@/components/notifications/push-reminder-toggle";
+import { LoginReminder } from "@/components/notifications/login-reminder";
 import {
   getBoardView,
   getBoardViewServerSnapshot,
@@ -918,6 +919,20 @@ export function BibleStudyBoard({
     () => getAssignmentNotificationItems(people, profiles, activeProfile),
     [activeProfile, people, profiles]
   );
+  // Overdue follow-ups scoped strictly to the active profile's own contacts
+  // (the contacts that profile is "in charge of"), independent of the board's
+  // profile filter. Reuses the shared overdue rule via getFollowUpItems.
+  const activeProfileFollowUpItems = useMemo(() => {
+    if (!activeProfile) {
+      return [];
+    }
+
+    const ownPeople = people.filter((person) =>
+      person.assigned_profile_ids.includes(activeProfile.id)
+    );
+
+    return getFollowUpItems(ownPeople, profiles, visibleStages);
+  }, [activeProfile, people, profiles, visibleStages]);
 
   function requireActiveProfile() {
     if (!activeProfile) {
@@ -1297,6 +1312,12 @@ export function BibleStudyBoard({
         onClose={() => setProfileSheetOpen(false)}
         onProfilesChange={setProfiles}
         onSelectProfile={handleSelectProfile}
+      />
+      <LoginReminder
+        activeProfileId={activeProfileId}
+        activeProfileName={activeProfile?.name ?? null}
+        items={activeProfileFollowUpItems}
+        onOpenNotifications={handleFocusFollowUps}
       />
     </main>
   );
