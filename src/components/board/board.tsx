@@ -716,6 +716,21 @@ function sameIds(a: string[], b: string[]) {
   return a.length === b.length && a.every((id, index) => id === b[index]);
 }
 
+function getBaptizedAtForStage(person: BoardPerson, targetStage: StageId) {
+  if (targetStage === "baptized") {
+    return person.baptized_at ?? new Date().toISOString();
+  }
+
+  if (
+    targetStage === "brothers" &&
+    (person.stage === "baptized" || person.stage === "brothers")
+  ) {
+    return person.baptized_at;
+  }
+
+  return null;
+}
+
 function buildMovePreview(
   people: BoardPerson[],
   id: string,
@@ -733,8 +748,7 @@ function buildMovePreview(
   );
   const nextTargetPeople = [...targetPeople];
   const boundedIndex = Math.max(0, Math.min(targetIndex, nextTargetPeople.length));
-  const baptizedAt =
-    targetStage === "baptized" ? person.baptized_at ?? new Date().toISOString() : null;
+  const baptizedAt = getBaptizedAtForStage(person, targetStage);
 
   nextTargetPeople.splice(boundedIndex, 0, {
     ...person,
@@ -1216,7 +1230,6 @@ export function BibleStudyBoard({
           notice={notice}
           followUpItems={activeProfileFollowUpItems}
           assignmentNotificationItems={assignmentNotificationItems}
-          onFocusFollowUps={handleFocusFollowUps}
           boardView={boardView}
           onBoardViewChange={setBoardView}
         />
@@ -1340,7 +1353,6 @@ function AppShellHeader({
   notice,
   followUpItems,
   assignmentNotificationItems,
-  onFocusFollowUps,
   boardView,
   onBoardViewChange,
 }: {
@@ -1364,7 +1376,6 @@ function AppShellHeader({
   notice?: string;
   followUpItems: FollowUpItem[];
   assignmentNotificationItems: AssignmentNotificationItem[];
-  onFocusFollowUps: () => void;
   boardView: BoardView;
   onBoardViewChange: (view: BoardView) => void;
 }) {
@@ -1774,32 +1785,6 @@ function AppShellHeader({
                       <span className="absolute right-2.5 top-2.5 size-1.5 rounded-full" style={{ background: "var(--neu-accent)" }} />
                     ) : null}
                   </button>
-                  <button
-                    type="button"
-                    aria-label={
-                      notificationCount > 0
-                        ? `Show ${notificationCount} notifications`
-                        : "No notifications"
-                    }
-                    onClick={() => {
-                      setOpenControl(null);
-                      setRailExpanded(false);
-                      onFocusFollowUps();
-                    }}
-                    className={cn(
-                      floatingActionButtonClass,
-                      notificationCount > 0 && "text-sky-600"
-                    )}
-                  >
-                    <NikeSwoosh className="size-4" />
-                    {notificationCount > 0 ? (
-                      <span
-                        className="neu-accent-fill absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[0.58rem] font-black leading-5 text-white"
-                      >
-                        {Math.min(notificationCount, 9)}
-                      </span>
-                    ) : null}
-                  </button>
                 </motion.div>
               ) : null}
             </AnimatePresence>
@@ -2062,22 +2047,6 @@ function AppShellHeader({
         onSaved={onStagesChange}
       />
     </header>
-  );
-}
-
-function NikeSwoosh({ className }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      viewBox="0 0 32 22"
-    >
-      <path
-        d="M3.4 12.7c4.7 2.1 12.3-.7 24.8-8.4-8.5 8.9-17.7 14.3-23.3 14.3-2.4 0-3.9-.9-4.4-2.4-.4-1.3.5-2.7 2.9-3.5Z"
-        fill="currentColor"
-      />
-    </svg>
   );
 }
 

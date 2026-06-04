@@ -281,6 +281,57 @@ function isCurrentMonth(value: string | null) {
   return date >= start && date < end;
 }
 
+async function promoteExpiredBaptizedPeople(stages: Stage[]) {
+  if (!getVisibleStages(stages).some((stage) => stage.id === "brothers")) {
+    return;
+  }
+
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return;
+  }
+
+  const { data: expiredPeople, error } = await supabase
+    .from("people")
+    .select("*")
+    .eq("stage", "baptized")
+    .is("archived_at", null)
+    .lt("baptized_at", currentMonthWindow().start.toISOString())
+    .order("baptized_at", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error || !expiredPeople || expiredPeople.length === 0) {
+    return;
+  }
+
+  const firstSortOrder = await getNextSortOrder("brothers");
+
+  for (const [index, person] of expiredPeople.entries()) {
+    const { error: updateError } = await supabase
+      .from("people")
+      .update({
+        stage: "brothers",
+        sort_order: firstSortOrder + index * 1000,
+      })
+      .eq("id", person.id)
+      .eq("stage", "baptized")
+      .is("archived_at", null);
+
+    if (updateError) {
+      continue;
+    }
+
+    await insertEvent(person.id, {
+      event_type: "stage_moved",
+      title: `Moved to ${getStageLabel("brothers", stages)}`,
+      body: "Automatically moved after the baptism month ended.",
+      from_stage: "baptized",
+      to_stage: "brothers",
+    });
+  }
+}
+
 function normalizeProfileIds(
   value: string[] | undefined
 ): { ids: string[] } | { error: string } {
@@ -632,6 +683,8 @@ export async function listPeople(): Promise<BoardState> {
     };
   }
 
+  await promoteExpiredBaptizedPeople(stages);
+
   const { data, error } = await supabase
     .from("people")
     .select("*")
@@ -649,11 +702,7 @@ export async function listPeople(): Promise<BoardState> {
     };
   }
 
-  const people = (data ?? []).filter(
-    (person) => person.stage !== "baptized" || isCurrentMonth(person.baptized_at)
-  );
-
-  const hydratedPeople = (await hydratePeople(people)).map((person) =>
+  const hydratedPeople = (await hydratePeople(data ?? [])).map((person) =>
     applyAutomaticStudyStage(person, stages)
   );
 
@@ -1185,8 +1234,11 @@ export async function updatePerson(
 
   if (input.stage) {
     patch.stage = input.stage;
-    patch.baptized_at =
-      input.stage === "baptized" ? new Date().toISOString() : null;
+    if (input.stage === "baptized") {
+      patch.baptized_at = new Date().toISOString();
+    } else if (input.stage !== "brothers") {
+      patch.baptized_at = null;
+    }
     detailsChanged = true;
   }
 
@@ -1344,8 +1396,14 @@ export async function movePerson(
     };
 
     if (movedCard) {
-      update.baptized_at =
-        input.stage === "baptized" ? new Date().toISOString() : null;
+      if (input.stage === "baptized") {
+        update.baptized_at = new Date().toISOString();
+      } else if (
+        input.stage !== "brothers" ||
+        (fromStage !== "baptized" && fromStage !== "brothers")
+      ) {
+        update.baptized_at = null;
+      }
     }
 
     return supabase

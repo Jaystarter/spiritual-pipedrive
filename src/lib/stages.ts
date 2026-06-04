@@ -77,7 +77,7 @@ export const DEFAULT_STAGES: Stage[] = [
     id: "baptized",
     label: "Baptized",
     shortLabel: "Baptized",
-    description: "Shown for the current month, then kept in history.",
+    description: "Shown for the baptism month, then moved to Brothers.",
     tone: "green",
     sortOrder: 6000,
     isHidden: false,
