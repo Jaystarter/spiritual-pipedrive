@@ -75,6 +75,7 @@ import {
 } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { ProfileSheet } from "@/components/profiles/profile-sheet";
+import { PushReminderToggle } from "@/components/notifications/push-reminder-toggle";
 import {
   getBoardView,
   getBoardViewServerSnapshot,
@@ -90,6 +91,11 @@ import {
 } from "@/lib/profiles-client";
 import { useTheme } from "@/lib/theme-client";
 import { cn } from "@/lib/utils";
+import {
+  FOLLOW_UP_QUIET_DAYS,
+  daysSince,
+  getLatestActivity,
+} from "@/lib/follow-ups";
 import {
   createStageId,
   getAutomaticStudyStageId,
@@ -286,7 +292,6 @@ const CM_TITLES = [
   "FI: (Gal 4:10) The Sabbath and the Feast Were Abolished",
 ] as const;
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-const FOLLOW_UP_QUIET_DAYS = 3;
 const FOLLOW_UP_REMINDER_VISIBLE_MS = 15_000;
 
 function sortPeople(people: BoardPerson[]) {
@@ -337,13 +342,7 @@ function daysInPipeline(createdAt: string) {
 }
 
 function daysSinceDate(value: string) {
-  const timestamp = Date.parse(value);
-
-  if (Number.isNaN(timestamp)) {
-    return 0;
-  }
-
-  return Math.max(0, Math.floor((Date.now() - timestamp) / 86_400_000));
+  return daysSince(value);
 }
 
 function addDays(value: string, days: number) {
@@ -374,37 +373,7 @@ function getMissedFollowUpDate(nextFollowUpAt: string | null, quietDueAt: string
 }
 
 function getLatestActivitySnapshot(person: BoardPerson) {
-  const candidates = [
-    {
-      label: "Created",
-      value: person.created_at,
-    },
-    {
-      label: "Contacted",
-      value: person.last_contacted_at,
-    },
-    ...person.events
-      .filter((event) => event.event_type !== "assigned")
-      .map((event) => ({
-        label: event.title || "Activity logged",
-        value: event.created_at,
-      })),
-    ...person.studies.map((study) => ({
-      label: `Study: ${getStudyTitle(study)}`,
-      value: study.studied_at ?? study.created_at,
-    })),
-  ].filter((item): item is { label: string; value: string } => Boolean(item.value));
-
-  return candidates.reduce((latest, item) => {
-    const latestTime = Date.parse(latest.value);
-    const itemTime = Date.parse(item.value);
-
-    if (Number.isNaN(itemTime)) {
-      return latest;
-    }
-
-    return Number.isNaN(latestTime) || itemTime > latestTime ? item : latest;
-  }, candidates[0]);
+  return getLatestActivity(person, (study) => `Study: ${getStudyTitle(study)}`);
 }
 
 function getTopActivePreviewPeople(people: BoardPerson[]) {
@@ -1246,6 +1215,7 @@ export function BibleStudyBoard({
           items={followUpItems}
           assignmentItems={assignmentNotificationItems}
           reminderRef={followUpReminderRef}
+          activeProfileId={activeProfileId}
         />
 
         <DndContext
@@ -2099,11 +2069,13 @@ function FollowUpReminderList({
   items,
   assignmentItems,
   reminderRef,
+  activeProfileId,
 }: {
   isVisible: boolean;
   items: FollowUpItem[];
   assignmentItems: AssignmentNotificationItem[];
   reminderRef: RefObject<HTMLDivElement | null>;
+  activeProfileId: string;
 }) {
   if (!isVisible) {
     return null;
@@ -2184,6 +2156,9 @@ function FollowUpReminderList({
           <span>No notifications</span>
         </p>
       )}
+      <div className="mt-2.5 border-t border-[var(--neu-text)]/10 pt-2.5">
+        <PushReminderToggle activeProfileId={activeProfileId} />
+      </div>
     </section>
   );
 }
