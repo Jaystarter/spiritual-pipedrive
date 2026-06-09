@@ -214,6 +214,17 @@ function cleanLifeStatus(value: PersonLifeStatus | null) {
   return undefined;
 }
 
+function isMissingCreatedByProfileColumnError(error: { message?: string; code?: string }) {
+  const message = error.message?.toLowerCase() ?? "";
+
+  return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
+    (message.includes("created_by_profile_id") &&
+      (message.includes("does not exist") || message.includes("schema cache")))
+  );
+}
+
 function mapStageRow(stage: StageRow): Stage {
   return {
     id: stage.id,
@@ -1173,6 +1184,34 @@ export async function createPerson(
     .insert(insert)
     .select("*")
     .single();
+
+  if (error && isMissingCreatedByProfileColumnError(error)) {
+    const legacyInsert: PersonInsert = { ...insert };
+    delete legacyInsert.created_by_profile_id;
+    const { data: legacyData, error: legacyError } = await supabase
+      .from("people")
+      .insert(legacyInsert)
+      .select("*")
+      .single();
+
+    if (legacyError) {
+      return { ok: false, error: legacyError.message };
+    }
+
+    await insertEvent(legacyData.id, {
+      event_type: "created",
+      title: "Added to the journey",
+      body:
+        targetStage === "hunting"
+          ? "Started in Sowing Seeds."
+          : `Started in ${getStageLabel(targetStage, stageResult.stages)}.`,
+      to_stage: targetStage,
+      actor_profile_id: actor.actorProfileId,
+    });
+
+    revalidatePath("/");
+    return { ok: true, data: { ...legacyData, events: [], studies: [] } };
+  }
 
   if (error) {
     return { ok: false, error: error.message };
