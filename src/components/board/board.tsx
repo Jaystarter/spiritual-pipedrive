@@ -36,10 +36,13 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Archive,
+  Briefcase,
   Camera,
   Check,
   ChevronLeft,
   ChevronRight,
+  GraduationCap,
   MessageCircle,
   Moon,
   Phone,
@@ -47,6 +50,7 @@ import {
   Plus,
   Search,
   Settings,
+  Sparkles,
   Star,
   Sun,
   Trash2,
@@ -55,6 +59,7 @@ import {
 
 import {
   addContactReaction,
+  addPersonNote,
   addPersonStudy,
   createPerson,
   createProfile,
@@ -90,7 +95,7 @@ import {
   onActiveProfileChange,
   setActiveProfileId,
 } from "@/lib/profiles-client";
-import { useTheme } from "@/lib/theme-client";
+import { nextTheme, useTheme } from "@/lib/theme-client";
 import { cn } from "@/lib/utils";
 import {
   FOLLOW_UP_QUIET_DAYS,
@@ -215,8 +220,9 @@ const emptyMessages: Record<string, string> = {
   third_bible_study: "Move consistent early studies here.",
   seventh_bible_study: "Track steady studies that need continued care.",
   ready_for_baptism: "Keep final preparation visible and personal.",
-  baptized: "This month’s baptisms will glow here.",
-  brothers: "Baptized brothers continuing in care and service will gather here.",
+  baptized: "Legacy baptisms will move into the Baptized lane.",
+  brothers: "Baptized contacts continuing in care and service will gather here.",
+  archive: "Archived contacts appear here. Use the Archive button on a contact to add one.",
 };
 
 const STUDY_TITLES = [
@@ -294,6 +300,10 @@ const CM_TITLES = [
 ] as const;
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const FOLLOW_UP_REMINDER_VISIBLE_MS = 15_000;
+// A contact with no activity (creation, contact, logged event, or study) in this
+// many days gets a subtle red "needs a follow-up" glow on its board card. This is
+// intentionally separate from FOLLOW_UP_QUIET_DAYS, which powers the reminders.
+const STALE_CONTACT_GLOW_DAYS = 7;
 
 function sortPeople(people: BoardPerson[]) {
   return [...people].sort((a, b) => {
@@ -447,6 +457,7 @@ function getFollowUpItems(
   stages: Stage[]
 ): FollowUpItem[] {
   return people
+    .filter((person) => person.stage !== "archive")
     .map((person) => {
       const latestActivity = getLatestActivitySnapshot(person);
       const daysQuiet = daysSinceDate(latestActivity.value);
@@ -590,6 +601,24 @@ function getLatestContactReaction(events: PersonEvent[]) {
   );
 }
 
+// The archive flow stores the reason as a note bodied `${ARCHIVE_NOTE_PREFIX}${reason}`.
+const ARCHIVE_NOTE_PREFIX = "Archived — ";
+
+function getArchiveReason(events: PersonEvent[]) {
+  const note = sortEventsByNewest(events).find(
+    (event) =>
+      typeof event.body === "string" && event.body.startsWith(ARCHIVE_NOTE_PREFIX)
+  );
+
+  if (!note?.body) {
+    return null;
+  }
+
+  const reason = note.body.slice(ARCHIVE_NOTE_PREFIX.length).trim();
+
+  return reason.length > 0 ? reason : null;
+}
+
 function getContactReactionDisplayTitle(event: PersonEvent) {
   return event.title.replace(/^(text|call):\s*/i, "");
 }
@@ -716,15 +745,20 @@ function sameIds(a: string[], b: string[]) {
   return a.length === b.length && a.every((id, index) => id === b[index]);
 }
 
+function isBaptizedLane(stageId: StageId) {
+  return stageId === "brothers";
+}
+
+function isLegacyOrCurrentBaptizedStage(stageId: StageId) {
+  return stageId === "baptized" || isBaptizedLane(stageId);
+}
+
 function getBaptizedAtForStage(person: BoardPerson, targetStage: StageId) {
-  if (targetStage === "baptized") {
+  if (isBaptizedLane(targetStage)) {
     return person.baptized_at ?? new Date().toISOString();
   }
 
-  if (
-    targetStage === "brothers" &&
-    (person.stage === "baptized" || person.stage === "brothers")
-  ) {
+  if (targetStage === "baptized" && isLegacyOrCurrentBaptizedStage(person.stage)) {
     return person.baptized_at;
   }
 
@@ -993,6 +1027,20 @@ export function BibleStudyBoard({
     const targetStage = visibleStageIds.has(overId) ? overId : overPerson?.stage;
 
     if (!targetStage) {
+      return;
+    }
+
+    // Archive can only be entered via the Archive button (with a reason).
+    // Dropping a non-archived card into the archive lane is blocked here;
+    // dragging a card OUT of archive into another lane stays allowed.
+    const draggedPerson = people.find((person) => person.id === personId);
+
+    if (
+      targetStage === "archive" &&
+      draggedPerson &&
+      draggedPerson.stage !== "archive"
+    ) {
+      setNotice("Use the Archive button (with a reason) to archive a contact.");
       return;
     }
 
@@ -1649,17 +1697,31 @@ function AppShellHeader({
               </button>
               <button
                 type="button"
-                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                aria-pressed={theme === "dark"}
+                aria-label={`Switch to ${
+                  nextTheme(theme) === "star"
+                    ? "Star"
+                    : nextTheme(theme) === "dark"
+                      ? "Dark"
+                      : "Light"
+                } mode`}
+                aria-pressed={theme !== "light"}
                 className={cn(
                   floatingActionButtonClass,
                   "size-10",
-                  theme === "dark" && floatingActionButtonActiveClass
+                  theme !== "light" && floatingActionButtonActiveClass
                 )}
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                title={theme === "dark" ? "Light mode" : "Dark mode"}
+                onClick={() => setTheme(nextTheme(theme))}
+                title={
+                  theme === "star" ? "Star mode" : theme === "dark" ? "Dark mode" : "Light mode"
+                }
               >
-                {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+                {theme === "star" ? (
+                  <Sparkles className="size-4" />
+                ) : theme === "dark" ? (
+                  <Moon className="size-4" />
+                ) : (
+                  <Sun className="size-4" />
+                )}
               </button>
             </motion.div>
           ) : null}
@@ -2230,7 +2292,21 @@ function GraphsModal({
           filteredGraphPeople.reduce((sum, person) => sum + daysInPipeline(person.created_at), 0) /
             total
         );
-  const baptizedCount = filteredGraphPeople.filter((person) => person.stage === "baptized").length;
+  const baptizedCount = filteredGraphPeople.filter((person) =>
+    isLegacyOrCurrentBaptizedStage(person.stage)
+  ).length;
+  const workerCount = filteredGraphPeople.filter(
+    (person) => person.life_status === "worker"
+  ).length;
+  const studentCount = filteredGraphPeople.filter(
+    (person) => person.life_status === "student"
+  ).length;
+  const lifeStatusTotal = workerCount + studentCount;
+  const lifeStatusMax = Math.max(1, workerCount, studentCount);
+  const lifeStatusRows = [
+    { key: "worker", label: "Workers", count: workerCount, color: "rgba(245, 158, 11, 0.92)" },
+    { key: "student", label: "Students", count: studentCount, color: "rgba(56, 132, 255, 0.92)" },
+  ];
   const activeUserCount = profiles.filter((profile) =>
     filteredGraphPeople.some((person) => person.assigned_profile_ids.includes(profile.id))
   ).length;
@@ -2543,6 +2619,48 @@ function GraphsModal({
                     </DashboardPanel>
                   </div>
 
+                  <div className="grid gap-2">
+                    <DashboardPanel
+                      action={`${lifeStatusTotal} marked`}
+                      flatOnMobile
+                      title="Workers vs Students"
+                    >
+                      <div className="space-y-1.5">
+                        {lifeStatusRows.map((row) => {
+                          const share =
+                            lifeStatusTotal === 0
+                              ? 0
+                              : Math.round((row.count / lifeStatusTotal) * 100);
+
+                          return (
+                            <div
+                              key={row.key}
+                              className="grid grid-cols-[5.8rem_1fr_2.6rem] items-center gap-2"
+                            >
+                              <span className="truncate text-[0.6rem] font-bold text-muted-foreground">
+                                {row.label}
+                              </span>
+                              <div className="soft-inset h-5 overflow-hidden rounded-xl border bg-white/45">
+                                <div
+                                  className="flex h-full items-center justify-end rounded-xl px-2 text-[0.52rem] font-black text-white"
+                                  style={{
+                                    width: `${Math.max(10, (row.count / lifeStatusMax) * 100)}%`,
+                                    background: row.color,
+                                  }}
+                                >
+                                  {share}%
+                                </div>
+                              </div>
+                              <span className="text-right text-xs font-black text-foreground">
+                                {row.count}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </DashboardPanel>
+                  </div>
+
                   <div className="grid gap-2 md:grid-cols-[1.15fr_0.85fr]">
                     <DashboardPanel action="all sections" flatOnMobile title="Pipeline Sections">
                       <div className="overflow-hidden border-y border-foreground/10 bg-white/35 md:rounded-2xl md:border md:bg-white/45">
@@ -2621,6 +2739,31 @@ function GraphsModal({
   );
 }
 
+const STAGE_SAVE_TIMEOUT_MS = 20000;
+
+// Guards against a stage save that never resolves (e.g. a hung Supabase
+// request) so the "Saving..." state can always settle.
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutMessage: string
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    );
+  });
+}
+
 function EditStackModal({
   open,
   stages,
@@ -2657,13 +2800,22 @@ function EditStackModal({
   const allCollapsed =
     draftStages.length > 0 && draftStages.every((stage) => collapsedStageSet.has(stage.id));
 
+  const stagesRef = useRef(stages);
+
+  useEffect(() => {
+    stagesRef.current = stages;
+  }, [stages]);
+
   useEffect(() => {
     if (!open) {
       return;
     }
 
+    // Only re-seed the draft when the modal opens. Re-running on every `stages`
+    // change would clobber the optimistic edits (and the success/error notice)
+    // produced by our own saves below.
     const frame = window.requestAnimationFrame(() => {
-      setDraftStages(normalizeStages(stages));
+      setDraftStages(normalizeStages(stagesRef.current));
       setCollapsedStageIds([]);
       setConfirmDeleteId(null);
       setDeleteCodesByStageId({});
@@ -2672,12 +2824,88 @@ function EditStackModal({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [open, stages]);
+  }, [open]);
 
   function updateDraftStage(stageId: StageId, patch: Partial<Stage>) {
     setDraftStages((current) =>
       current.map((stage) => (stage.id === stageId ? { ...stage, ...patch } : stage))
     );
+  }
+
+  function buildSingleStageSavePayload(stageId: StageId, sourceStages = draftStages) {
+    const draftStage = sourceStages.find((stage) => stage.id === stageId);
+
+    if (!draftStage) {
+      return null;
+    }
+
+    const nextStages = stages.map((stage) =>
+      stage.id === stageId ? { ...draftStage } : stage
+    );
+
+    if (!nextStages.some((stage) => stage.id === stageId)) {
+      nextStages.push({ ...draftStage });
+    }
+
+    return nextStages;
+  }
+
+  function persistStages(
+    stagesToSave: Stage[],
+    {
+      closeOnSave = false,
+      successNotice,
+    }: { closeOnSave?: boolean; successNotice?: string } = {}
+  ) {
+    if (!configured) {
+      setNotice("Connect Supabase before editing stacks.");
+      return;
+    }
+
+    const previousStages = stages;
+    const optimisticStages = normalizeStages(stagesToSave);
+
+    // Reflect the edit on the board (and in the modal) immediately so column
+    // headers update without waiting for the round-trip or a full page reload.
+    onSaved(optimisticStages);
+    setDraftStages(optimisticStages);
+    setNotice(undefined);
+
+    startTransition(async () => {
+      try {
+        const result = await withTimeout(
+          saveStages({ stages: stagesToSave }),
+          STAGE_SAVE_TIMEOUT_MS,
+          "Saving took too long. Check your connection and try again."
+        );
+
+        if (!result.ok || !result.data) {
+          // The server rejected the change, so roll the board back to avoid
+          // leaving an edit on screen that was never stored.
+          onSaved(previousStages);
+          setDraftStages(normalizeStages(previousStages));
+          setNotice(result.ok ? "Stacks could not be saved." : result.error);
+          return;
+        }
+
+        // Reconcile the optimistic copy with the authoritative server data.
+        onSaved(result.data);
+        setDraftStages(result.data);
+        setNotice(successNotice);
+
+        if (closeOnSave) {
+          onClose();
+        }
+      } catch (error) {
+        // Network/timeout failure: the outcome is unknown, so keep the
+        // optimistic edit visible but make clear it may not be stored yet.
+        setNotice(
+          error instanceof Error
+            ? error.message
+            : "We couldn't confirm the save. Refresh to check whether it was stored."
+        );
+      }
+    });
   }
 
   function moveDraftStage(stageId: StageId, direction: -1 | 1) {
@@ -2743,7 +2971,17 @@ function EditStackModal({
     const deleteCode = deleteCodesByStageId[stage.id] ?? "";
 
     if (stage.isHidden) {
-      updateDraftStage(stage.id, { isHidden: false });
+      const nextDraftStages = draftStages.map((item) =>
+        item.id === stage.id ? { ...item, isHidden: false } : item
+      );
+      const stagesToSave = buildSingleStageSavePayload(stage.id, nextDraftStages);
+
+      if (!stagesToSave) {
+        setNotice("That stack could not be found.");
+        return;
+      }
+
+      setDraftStages(nextDraftStages);
       setConfirmDeleteId(null);
       setDeleteCodesByStageId((current) => {
         const next = { ...current };
@@ -2752,7 +2990,9 @@ function EditStackModal({
         return next;
       });
       setFinalDeleteConfirmId(null);
-      setNotice(`${stage.label} will be restored when you save.`);
+      persistStages(stagesToSave, {
+        successNotice: `${stage.label} was restored.`,
+      });
       return;
     }
 
@@ -2786,7 +3026,17 @@ function EditStackModal({
       return;
     }
 
-    updateDraftStage(stage.id, { isHidden: true });
+    const nextDraftStages = draftStages.map((item) =>
+      item.id === stage.id ? { ...item, isHidden: true } : item
+    );
+    const stagesToSave = buildSingleStageSavePayload(stage.id, nextDraftStages);
+
+    if (!stagesToSave) {
+      setNotice("That stack could not be found.");
+      return;
+    }
+
+    setDraftStages(nextDraftStages);
     setConfirmDeleteId(null);
     setDeleteCodesByStageId((current) => {
       const next = { ...current };
@@ -2795,26 +3045,26 @@ function EditStackModal({
       return next;
     });
     setFinalDeleteConfirmId(null);
-    setNotice(`${stage.label} will be hidden after saving.`);
+    persistStages(stagesToSave, {
+      successNotice: `${stage.label} was hidden.`,
+    });
   }
 
   function handleSave() {
-    if (!configured) {
-      setNotice("Connect Supabase before editing stacks.");
+    persistStages(draftStages, { closeOnSave: true });
+  }
+
+  function handleSaveStage(stageId: StageId) {
+    const stagesToSave = buildSingleStageSavePayload(stageId);
+
+    if (!stagesToSave) {
+      setNotice("That stack could not be found.");
       return;
     }
 
-    startTransition(async () => {
-      const result = await saveStages({ stages: draftStages });
-
-      if (!result.ok || !result.data) {
-        setNotice(result.ok ? "Stacks could not be saved." : result.error);
-        return;
-      }
-
-      onSaved(result.data);
-      setNotice(undefined);
-      onClose();
+    const stage = draftStages.find((item) => item.id === stageId);
+    persistStages(stagesToSave, {
+      successNotice: stage ? `${stage.label || "Stack"} was saved.` : "Stack was saved.",
     });
   }
 
@@ -2982,7 +3232,7 @@ function EditStackModal({
                   <div
                     id={fieldsId}
                     hidden={collapsed}
-                    className="mt-2 grid min-w-0 gap-2 sm:grid-cols-[0.9fr_1.1fr]"
+                    className="mt-2 grid min-w-0 gap-2 sm:grid-cols-[0.9fr_1.1fr_auto]"
                   >
                     <label className="min-w-0">
                       <span className="mb-0.5 block text-[0.56rem] font-black uppercase tracking-[0.16em] text-muted-foreground">
@@ -3012,6 +3262,19 @@ function EditStackModal({
                         }
                       />
                     </label>
+
+                    <div className="flex items-end">
+                      <Button
+                        className="w-full sm:w-auto"
+                        disabled={isPending}
+                        onClick={() => handleSaveStage(stage.id)}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        Save this column
+                      </Button>
+                    </div>
                   </div>
                   {confirmDelete ? (
                     <div className="mt-2 rounded-[1rem] border border-destructive/35 bg-destructive/10 p-2.5 text-destructive">
@@ -3213,13 +3476,15 @@ function JourneyBoard({
   onSelect: (id: string) => void;
   onReactionLogged: (personId: string, event: PersonEvent) => void;
 }) {
+  const columnCount = Math.max(stages.length, 1);
+
   return (
-    <div className="-mx-2 overflow-x-auto px-2 pb-3">
+    <div className="-mx-2 overflow-x-auto px-2 pb-3 md:-mx-4 md:px-4">
       <div
-        className="grid min-h-[42rem] w-max gap-4 xl:w-full"
+        className="grid min-h-[42rem] w-max gap-4 md:gap-5"
         style={{
-          gridTemplateColumns: `repeat(${Math.max(stages.length, 1)}, minmax(0, 1fr))`,
-          minWidth: `${Math.max(1180, stages.length * 196)}px`,
+          gridTemplateColumns: `repeat(${columnCount}, minmax(17.5rem, 1fr))`,
+          minWidth: `max(100%, ${columnCount * 280}px)`,
         }}
       >
         {stages.map((stage, index) => {
@@ -3594,6 +3859,13 @@ function StageLane({
             <h2 className="min-w-0 truncate font-display text-2xl leading-[0.95] tracking-display text-foreground">
               {stage.label}
             </h2>
+            {stage.id === "brothers" ? (
+              <span
+                aria-hidden
+                className="stage-water shrink-0 self-center"
+                title="Baptized"
+              />
+            ) : null}
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -3614,7 +3886,7 @@ function StageLane({
           items={people.map((person) => person.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="flex flex-1 flex-col gap-0 px-3 py-2">
+          <div className="flex flex-1 flex-col gap-0 px-3 py-2 md:px-4">
             {people.map((person) => (
               <SortablePersonCard
                 key={person.id}
@@ -3643,9 +3915,11 @@ function StageLane({
                 <p className="font-display text-base italic leading-snug text-foreground/80">
                   {getEmptyStageMessage(stage)}
                 </p>
-                <p className="text-[0.7rem] leading-5 text-muted-foreground">
-                  Add a card or drag someone here.
-                </p>
+                {stage.id === "archive" ? null : (
+                  <p className="text-[0.7rem] leading-5 text-muted-foreground">
+                    Add a card or drag someone here.
+                  </p>
+                )}
               </div>
             ) : null}
           </div>
@@ -3817,6 +4091,38 @@ function QuickAddContactDialog({
   );
 }
 
+function LifeStatusBadge({
+  lifeStatus,
+}: {
+  lifeStatus: BoardPerson["life_status"];
+}) {
+  if (lifeStatus === "worker") {
+    return (
+      <span
+        aria-label="Worker"
+        title="Worker"
+        className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-amber-300 bg-amber-100 text-amber-700"
+      >
+        <Briefcase className="size-3" />
+      </span>
+    );
+  }
+
+  if (lifeStatus === "student") {
+    return (
+      <span
+        aria-label="Student"
+        title="Student"
+        className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-sky-300 bg-sky-100 text-sky-700"
+      >
+        <GraduationCap className="size-3" />
+      </span>
+    );
+  }
+
+  return null;
+}
+
 function SortablePersonCard({
   person,
   profiles,
@@ -3851,6 +4157,13 @@ function SortablePersonCard({
   const [collapsed, setCollapsed] = useState(true);
   const previousStage = getNextStage(stages, person.stage, -1);
   const nextStage = getNextStage(stages, person.stage, 1);
+  // Archive can only be entered via the Archive button (with a reason). The
+  // move-arrows skip `archive` as an entry target, but a contact already in
+  // archive can still arrow back out to the previous stage.
+  const arrowPreviousStage =
+    previousStage === "archive" && person.stage !== "archive" ? undefined : previousStage;
+  const arrowNextStage =
+    nextStage === "archive" && person.stage !== "archive" ? undefined : nextStage;
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -3872,8 +4185,29 @@ function SortablePersonCard({
         latestStudyDate ? `, ${formatDate(latestStudyDate)}` : ""
       }`
     : collapsedStudyLabel;
+  // Archived contacts show their archive reason in place of the study subtitle,
+  // falling back to a muted "Archived" label when no reason note exists.
+  const isArchived = person.stage === "archive";
+  const archiveReason = isArchived ? getArchiveReason(person.events) : null;
+  const collapsedSubtitleText = isArchived
+    ? archiveReason ?? "Archived"
+    : collapsedStudyLabel;
+  const collapsedSubtitleClass = isArchived
+    ? archiveReason
+      ? "text-[var(--neu-text)]"
+      : "text-muted-foreground"
+    : latestStudyTitle
+      ? "text-[var(--neu-text)]"
+      : "contact-no-study";
+  const collapsedSubtitleAriaLabel = isArchived
+    ? archiveReason
+      ? `Archive reason: ${archiveReason}`
+      : "Archived"
+    : collapsedStudyAriaLabel;
   const totalStudies = person.studies.length;
   const overdueReaction = isReactionOverdue(latestReaction);
+  const daysQuiet = daysSinceDate(getLatestActivitySnapshot(person).value);
+  const isStale = daysQuiet >= STALE_CONTACT_GLOW_DAYS && person.stage !== "archive";
   const assignedProfileNames = assignedProfiles.map((profile) => profile.name).join(", ");
   const starToggleButton = (
     <button
@@ -3906,6 +4240,9 @@ function SortablePersonCard({
       )}
       whileTap={{ scale: 0.995 }}
     >
+      {isStale ? (
+        <span aria-hidden className="contact-stale-glow pointer-events-none absolute inset-0" />
+      ) : null}
       {isActive || overdueReaction ? (
         <span
           aria-hidden
@@ -3918,45 +4255,77 @@ function SortablePersonCard({
       ) : null}
 
       {collapsed ? (
-        <div className="relative flex min-h-[3.45rem] items-center py-1.5 pl-2 pr-10 sm:min-h-[3.65rem]">
+        <div className="relative flex min-h-[3.45rem] items-center gap-0.5 py-1.5 pl-1 pr-1 sm:min-h-[3.65rem] sm:gap-1 md:min-h-[4.25rem] md:py-2">
           <button
-            className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1.5 py-1.5 pr-2 text-left transition hover:bg-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+            aria-label={
+              arrowPreviousStage
+                ? `Move ${person.name} to ${getStageById(stages, arrowPreviousStage).label}`
+                : `${person.name} is already in the first stack`
+            }
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-transparent text-foreground/50 transition duration-200 ease-out hover:border-sky-200/70 hover:bg-white/65 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95 disabled:pointer-events-none disabled:opacity-25"
+            disabled={!configured || disabled || !arrowPreviousStage}
+            onClick={() => arrowPreviousStage && onMove(person, arrowPreviousStage)}
+            type="button"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <button
+            className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1 py-1.5 text-left transition hover:bg-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 md:gap-2 md:px-1.5"
             onClick={() => onSelect(person.id)}
             type="button"
           >
             <ContactAvatarSlot person={person} />
             <span className="min-w-0 flex-1">
-              <h3 className="truncate font-display text-lg leading-none tracking-display text-foreground">
-                {person.name}
-              </h3>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <h3 className="min-w-0 truncate font-display text-lg leading-none tracking-display text-foreground md:line-clamp-2 md:whitespace-normal md:leading-[1.05]">
+                  {person.name}
+                </h3>
+                <LifeStatusBadge lifeStatus={person.life_status} />
+              </span>
               <span
                 className={cn(
-                  "mt-1 flex min-w-0 items-center text-[0.68rem] font-semibold leading-none tracking-[0.05em]",
-                  latestStudyTitle ? "text-[var(--neu-text)]" : "contact-no-study"
+                  "mt-1 flex min-w-0 items-center text-[0.68rem] font-semibold leading-none tracking-[0.05em] md:leading-snug",
+                  collapsedSubtitleClass
                 )}
-                aria-label={collapsedStudyAriaLabel}
+                aria-label={collapsedSubtitleAriaLabel}
               >
-                <span className="truncate">{collapsedStudyLabel}</span>
+                <span className="truncate md:line-clamp-2 md:whitespace-normal">
+                  {collapsedSubtitleText}
+                </span>
               </span>
             </span>
           </button>
-          <span className="absolute inset-y-0 right-1 flex items-center justify-center">
-            {starToggleButton}
-          </span>
+          {starToggleButton}
+          <button
+            aria-label={
+              arrowNextStage
+                ? `Move ${person.name} to ${getStageById(stages, arrowNextStage).label}`
+                : `${person.name} is already in the last stack`
+            }
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-transparent text-foreground/50 transition duration-200 ease-out hover:border-sky-200/70 hover:bg-white/65 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95 disabled:pointer-events-none disabled:opacity-25"
+            disabled={!configured || disabled || !arrowNextStage}
+            onClick={() => arrowNextStage && onMove(person, arrowNextStage)}
+            type="button"
+          >
+            <ChevronRight className="size-4" />
+          </button>
         </div>
       ) : (
         <>
-          <div className="relative flex min-h-[3.65rem] items-center gap-3 px-2 py-2 pr-1.5">
+          <div className="relative flex min-h-[3.65rem] items-center gap-3 px-2 py-2 pr-1.5 md:min-h-[4.35rem] md:px-3">
             <button
-              className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-left transition hover:bg-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+              className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-left transition hover:bg-white/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 md:gap-2 md:px-2"
               type="button"
               onClick={() => onSelect(person.id)}
             >
               <ContactAvatarSlot person={person} />
               <span className="min-w-0 flex-1">
-                <h3 className="truncate font-display text-xl leading-none tracking-display text-foreground transition group-hover:text-foreground">
-                  {person.name}
-                </h3>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <h3 className="min-w-0 truncate font-display text-xl leading-none tracking-display text-foreground transition group-hover:text-foreground md:line-clamp-2 md:whitespace-normal md:leading-[1.05]">
+                    {person.name}
+                  </h3>
+                  <LifeStatusBadge lifeStatus={person.life_status} />
+                </span>
                 <span
                   className="mt-0.5 flex items-center gap-1.5 text-[0.66rem] font-bold uppercase tracking-[0.12em] text-sky-700/85"
                   title={`${totalStudies} total studies`}
@@ -3972,14 +4341,25 @@ function SortablePersonCard({
             {starToggleButton}
           </div>
 
-          <div className="relative px-3 pb-3 pl-[4.5rem]">
+          <div className="relative px-3 pb-3">
             {hasFollowUp ? (
               <span className="mb-2 inline-flex shrink-0 rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[0.6rem] font-medium tracking-[0.12em] text-foreground/70">
                 {formatDate(person.next_follow_up_at)}
               </span>
             ) : null}
 
-            {latestStudy ? (
+            {isArchived ? (
+              <p className="line-clamp-2 border-l-2 border-foreground/10 pl-3 text-[0.78rem] leading-5 text-muted-foreground">
+                {archiveReason ? (
+                  <>
+                    <span className="font-medium text-foreground/80">Archived:</span>{" "}
+                    {archiveReason}
+                  </>
+                ) : (
+                  "Archived"
+                )}
+              </p>
+            ) : latestStudy ? (
               <p className="line-clamp-2 border-l-2 border-foreground/10 pl-3 text-[0.78rem] leading-5 text-muted-foreground">
                 <span className="font-medium text-foreground/80">Last study:</span>{" "}
                 {latestStudyTitle}
@@ -3988,25 +4368,23 @@ function SortablePersonCard({
               </p>
             ) : null}
 
-            {person.stage === "baptized" && person.baptized_at ? (
+            {isLegacyOrCurrentBaptizedStage(person.stage) && person.baptized_at ? (
               <p className="mt-2 text-[0.62rem] font-medium uppercase tracking-[0.2em] text-amber-700">
                 Baptized {new Date(person.baptized_at).toLocaleDateString()}
               </p>
             ) : null}
           </div>
 
-          <div className="relative flex min-w-0 flex-wrap items-center gap-2 border-t border-slate-950/10 px-2 py-2 pl-[4.5rem]">
+          <div className="relative flex min-w-0 flex-wrap items-center gap-2 border-t border-slate-950/10 px-3 py-2">
             {assignedProfiles.length > 0 ? (
               <div
                 aria-label={`Assigned to ${assignedProfileNames}`}
-                className="absolute left-3.5 top-1/2 flex w-[3.25rem] -translate-y-1/2 justify-center"
+                className="flex shrink-0 -space-x-2"
                 title={`Assigned to ${assignedProfileNames}`}
               >
-                <div className="flex -space-x-2">
-                  {assignedProfiles.slice(0, 3).map((profile) => (
-                    <ProfileAvatar key={profile.id} profile={profile} size="xs" />
-                  ))}
-                </div>
+                {assignedProfiles.slice(0, 3).map((profile) => (
+                  <ProfileAvatar key={profile.id} profile={profile} size="xs" />
+                ))}
               </div>
             ) : (
               <span className="shrink-0 text-[0.6rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
@@ -4031,7 +4409,7 @@ function SortablePersonCard({
               </div>
             ) : null}
 
-            <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <div className="ml-auto flex shrink-0 items-center">
               <ContactReactionControls
                 person={person}
                 activeProfile={activeProfile}
@@ -4041,29 +4419,6 @@ function SortablePersonCard({
                 onReactionLogged={onReactionLogged}
                 compact
               />
-              <span className="h-5 w-px bg-foreground/[0.08]" />
-              <Button
-                aria-label={`Move ${person.name} backward`}
-                disabled={!configured || disabled || !previousStage}
-                onClick={() => previousStage && onMove(person, previousStage)}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-                className="size-7 rounded-full"
-              >
-                <ChevronLeft className="size-3.5" />
-              </Button>
-              <Button
-                aria-label={`Move ${person.name} forward`}
-                disabled={!configured || disabled || !nextStage}
-                onClick={() => nextStage && onMove(person, nextStage)}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-                className="size-7 rounded-full"
-              >
-                <ChevronRight className="size-3.5" />
-              </Button>
             </div>
           </div>
         </>
@@ -4156,8 +4511,17 @@ function PersonDetailPanel({
   } | null>(null);
   const [isAvatarPending, startAvatarTransition] = useTransition();
   const [isDeletePending, startDeleteTransition] = useTransition();
+  const [isLifeStatusPending, startLifeStatusTransition] = useTransition();
+  const [isArchivePending, startArchiveTransition] = useTransition();
+  const [lifeStatus, setLifeStatusState] = useState<BoardPerson["life_status"]>(
+    person?.life_status ?? null
+  );
+  const [archiveReasonOpen, setArchiveReasonOpen] = useState(false);
+  const [archiveReason, setArchiveReason] = useState("");
   const [swipeStartX, setSwipeStartX] = useState<number | null>(null);
   const deleteConfirmId = useId();
+  const archiveReasonId = useId();
+  const archiveReasonInputId = useId();
   const nameInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const isCommittingNameRef = useRef(false);
@@ -4194,6 +4558,7 @@ function PersonDetailPanel({
       setSelectedProfileIds(person.assigned_profile_ids);
       setDetailNotes(notes);
       setDeleteConfirmStep(0);
+      setLifeStatusState(person.life_status ?? null);
     });
 
     savedDetailNotesRef.current = notes;
@@ -4354,6 +4719,102 @@ function PersonDetailPanel({
       onNotice(undefined);
       setDeleteConfirmStep(0);
       onDeleted(result.data.id);
+    });
+  }
+
+  function setLifeStatus(next: NonNullable<BoardPerson["life_status"]>) {
+    if (!canEditPerson() || !person || !activeProfile) {
+      return;
+    }
+
+    // Clicking the active status clears it; clicking the other one switches.
+    const target = lifeStatus === next ? null : next;
+    const previous = lifeStatus;
+
+    setLifeStatusState(target);
+
+    startLifeStatusTransition(async () => {
+      const result = await updatePerson({
+        id: person.id,
+        lifeStatus: target,
+        actorProfileId: activeProfile.id,
+      });
+
+      if (!result.ok || !result.data) {
+        setLifeStatusState(previous);
+        onNotice(result.ok ? "The person could not be updated." : result.error);
+        return;
+      }
+
+      onNotice(undefined);
+      onUpdated(result.data);
+    });
+  }
+
+  function openArchiveReason() {
+    if (!canEditPerson() || !person || !activeProfile) {
+      return;
+    }
+
+    setArchiveReason("");
+    setArchiveReasonOpen(true);
+  }
+
+  function closeArchiveReason() {
+    if (isArchivePending) {
+      return;
+    }
+
+    setArchiveReasonOpen(false);
+  }
+
+  function confirmArchive() {
+    if (!canEditPerson() || !person || !activeProfile) {
+      return;
+    }
+
+    const personId = person.id;
+    const actorProfileId = activeProfile.id;
+    const reason = archiveReason.trim();
+
+    startArchiveTransition(async () => {
+      // Move the contact into the visible, reversible Archive column.
+      const moveResult = await updatePerson({
+        id: personId,
+        stage: "archive",
+        actorProfileId,
+      });
+
+      if (!moveResult.ok || !moveResult.data) {
+        onNotice(moveResult.ok ? "The contact could not be archived." : moveResult.error);
+        return;
+      }
+
+      let updatedPerson = moveResult.data;
+      let noteError: string | undefined;
+
+      // Log the reason as a note so it shows in the Activity timeline (who/when).
+      if (reason) {
+        const noteResult = await addPersonNote({
+          id: personId,
+          body: `${ARCHIVE_NOTE_PREFIX}${reason}`,
+          actorProfileId,
+        });
+
+        if (noteResult.ok && noteResult.data) {
+          updatedPerson = {
+            ...updatedPerson,
+            events: [noteResult.data, ...updatedPerson.events],
+          };
+        } else if (!noteResult.ok) {
+          noteError = noteResult.error;
+        }
+      }
+
+      onUpdated(updatedPerson);
+      onNotice(noteError);
+      setArchiveReason("");
+      setArchiveReasonOpen(false);
     });
   }
 
@@ -4622,6 +5083,178 @@ function PersonDetailPanel({
                         )}
                       </div>
                     </div>
+                    <div className="mt-4 rounded-[1.25rem] border border-foreground/10 bg-white/35 p-4 shadow-[0_1px_0_oklch(1_0_0_/_0.8)_inset] transition focus-within:border-ring/30 focus-within:ring-2 focus-within:ring-ring/15">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="block text-[0.6rem] font-black uppercase tracking-[0.22em] text-muted-foreground">
+                          Contact notes
+                        </span>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <button
+                            type="button"
+                            aria-label={
+                              lifeStatus === "worker"
+                                ? "Remove worker status"
+                                : "Mark as worker"
+                            }
+                            aria-pressed={lifeStatus === "worker"}
+                            title={lifeStatus === "worker" ? "Remove worker status" : "Worker"}
+                            disabled={isLifeStatusPending}
+                            onClick={() => setLifeStatus("worker")}
+                            className={cn(
+                              "soft-control inline-flex size-7 items-center justify-center rounded-full border transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60",
+                              lifeStatus === "worker"
+                                ? "border-amber-300 bg-amber-100 text-amber-700 shadow-[0_1px_0_oklch(1_0_0_/_0.8)_inset]"
+                                : "text-muted-foreground hover:border-amber-300 hover:text-amber-700"
+                            )}
+                          >
+                            <Briefcase className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={
+                              lifeStatus === "student"
+                                ? "Remove student status"
+                                : "Mark as student"
+                            }
+                            aria-pressed={lifeStatus === "student"}
+                            title={lifeStatus === "student" ? "Remove student status" : "Student"}
+                            disabled={isLifeStatusPending}
+                            onClick={() => setLifeStatus("student")}
+                            className={cn(
+                              "soft-control inline-flex size-7 items-center justify-center rounded-full border transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60",
+                              lifeStatus === "student"
+                                ? "border-sky-300 bg-sky-100 text-sky-700 shadow-[0_1px_0_oklch(1_0_0_/_0.8)_inset]"
+                                : "text-muted-foreground hover:border-sky-300 hover:text-sky-700"
+                            )}
+                          >
+                            <GraduationCap className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={
+                              person?.stage === "archive"
+                                ? "In Archive — open archive options"
+                                : "Move to Archive"
+                            }
+                            aria-pressed={person?.stage === "archive"}
+                            title={person?.stage === "archive" ? "In Archive" : "Move to Archive"}
+                            disabled={isArchivePending}
+                            onClick={openArchiveReason}
+                            className={cn(
+                              "soft-control inline-flex size-7 items-center justify-center rounded-full border transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60",
+                              person?.stage === "archive"
+                                ? "border-violet-300 bg-violet-100 text-violet-700 shadow-[0_1px_0_oklch(1_0_0_/_0.8)_inset]"
+                                : "text-muted-foreground hover:border-amber-400 hover:text-amber-700"
+                            )}
+                          >
+                            <Archive className="size-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      {archiveReasonOpen
+                        ? createPortal(
+                            <div className="fixed inset-0 z-[130] flex items-center justify-center px-4 py-6 sm:px-6">
+                              <button
+                                aria-label="Cancel archive"
+                                className="absolute inset-0 cursor-default bg-foreground/10 backdrop-blur-[1px]"
+                                disabled={isArchivePending}
+                                onClick={closeArchiveReason}
+                                type="button"
+                              />
+                              <motion.div
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                className="relative z-10 max-h-[calc(100vh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl border border-white/75 bg-white/90 p-3 text-foreground shadow-[0_24px_70px_-28px_oklch(0.2_0.028_264_/_0.55)] backdrop-blur-xl dark:border-foreground/10 dark:bg-card/95 sm:p-4"
+                                id={archiveReasonId}
+                                initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                                role="dialog"
+                                aria-modal="true"
+                                transition={{ duration: 0.16, ease: "easeOut" }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    closeArchiveReason();
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <label
+                                    className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-sky-700"
+                                    htmlFor={archiveReasonInputId}
+                                  >
+                                    Move to Archive
+                                  </label>
+                                  <button
+                                    aria-label="Cancel archive"
+                                    className="rounded-full p-1 text-muted-foreground transition hover:bg-foreground/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                                    disabled={isArchivePending}
+                                    onClick={closeArchiveReason}
+                                    type="button"
+                                  >
+                                    <X className="size-3.5" />
+                                  </button>
+                                </div>
+                                <textarea
+                                  autoFocus
+                                  className="soft-inset mt-2 min-h-20 w-full resize-none rounded-xl border px-3 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-ring/20"
+                                  id={archiveReasonInputId}
+                                  onChange={(event) => setArchiveReason(event.target.value)}
+                                  placeholder="Why are you archiving them? e.g. stopped studying"
+                                  rows={3}
+                                  value={archiveReason}
+                                />
+                                <div className="mt-2 flex items-center justify-between gap-2">
+                                  <span className="text-[0.64rem] font-medium text-muted-foreground">
+                                    Moves them to the Archive column.
+                                  </span>
+                                  <div className="flex gap-1.5">
+                                    <Button
+                                      className="h-7 px-2.5 text-[0.68rem]"
+                                      disabled={isArchivePending}
+                                      onClick={closeArchiveReason}
+                                      size="sm"
+                                      type="button"
+                                      variant="ghost"
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      className="h-7 px-3 text-[0.68rem]"
+                                      disabled={isArchivePending}
+                                      onClick={confirmArchive}
+                                      size="sm"
+                                      type="button"
+                                    >
+                                      {isArchivePending ? "Moving..." : "Move to Archive"}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            </div>,
+                            document.body
+                          )
+                        : null}
+                      <textarea
+                        name="notes"
+                        aria-label="Contact notes"
+                        value={detailNotes}
+                        onBlur={() => saveContactDetails()}
+                        onChange={(event) => {
+                          const nextNotes = event.target.value;
+
+                          setDetailNotes(nextNotes);
+                          detailDraftRef.current = {
+                            ...detailDraftRef.current,
+                            notes: nextNotes,
+                          };
+                        }}
+                        rows={3}
+                        placeholder="Add details, care notes, prayer points, or follow-up context..."
+                        className="mt-2 w-full resize-none border-0 bg-transparent p-0 text-sm leading-5 text-foreground outline-none placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-0"
+                      />
+                      <p className="mt-1.5 text-[0.66rem] font-medium leading-4 text-muted-foreground">
+                        Saves automatically when you leave the box.
+                      </p>
+                    </div>
                   </div>
                 <div className="absolute right-6 top-6 flex shrink-0 items-start gap-2">
                   <span className="relative flex shrink-0 items-center text-sky-500">
@@ -4840,23 +5473,6 @@ function PersonDetailPanel({
                         saveContactDetails(detailNotes, ids);
                       }}
                       onProfilesChange={onProfilesChange}
-                    />
-                    <textarea
-                      name="notes"
-                      value={detailNotes}
-                      onBlur={() => saveContactDetails()}
-                      onChange={(event) => {
-                        const nextNotes = event.target.value;
-
-                        setDetailNotes(nextNotes);
-                        detailDraftRef.current = {
-                          ...detailDraftRef.current,
-                          notes: nextNotes,
-                        };
-                      }}
-                      rows={4}
-                      placeholder="Care notes"
-                      className="mt-3 w-full resize-none rounded-xl border border-foreground/10 bg-card px-3 py-2 text-sm leading-5 outline-none transition focus-visible:border-foreground/30 focus-visible:ring-2 focus-visible:ring-ring/15"
                     />
                   </div>
                 </div>,
@@ -5126,9 +5742,7 @@ function StudySlotsCard({
   const [studyNumber, setStudyNumber] = useState(() =>
     initialStudyNumber
   );
-  const initialStudyDate = getDateValue(
-    initialStudy?.studied_at ?? sortStudies(person.studies).at(-1)?.studied_at ?? person.created_at
-  );
+  const initialStudyDate = getDateValue(initialStudy?.studied_at);
   const [studyDate, setStudyDate] = useState(() => initialStudyDate);
   const [calendarRange, setCalendarRange] = useState(() => ({
     startDate: shiftDateValue(getWeekStartDateValue(initialStudyDate), -28),
@@ -5467,7 +6081,7 @@ function StudySlotsCard({
               role="dialog"
             >
               <div
-                className="flex max-h-[78vh] w-full max-w-md flex-col overflow-hidden"
+                className="neu-raised flex max-h-[78vh] w-full max-w-md flex-col overflow-hidden"
                 onClick={(event) => event.stopPropagation()}
               >
                 <div className="flex items-center gap-3 px-4 py-3">
@@ -5821,11 +6435,14 @@ function ActivityTimelineList({
                     {formatDateTime(event.created_at)}
                   </p>
                 ) : null}
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-start gap-2.5">
                   <ProfileAvatar profile={actor ?? null} size="xs" />
                   <div className="min-w-0 flex-1">
+                    <p className="truncate text-[0.7rem] font-semibold tracking-tight text-foreground/80">
+                      {actor?.name ?? "Someone"}
+                    </p>
                     {event.body ? (
-                      <p className="border-l-2 border-foreground/10 pl-3 text-[0.78rem] leading-5 text-muted-foreground">
+                      <p className="mt-1 border-l-2 border-foreground/10 pl-3 text-[0.78rem] leading-5 text-muted-foreground">
                         {displayStageCopy(event.body)}
                       </p>
                     ) : null}
@@ -6160,6 +6777,10 @@ function StudyTimelineItem({
                   )
                 : null}
             </div>
+            <p className="mt-0.5 truncate text-[0.66rem] font-medium leading-4 text-muted-foreground">
+              Logged by {actor?.name ?? "Unknown"} ·{" "}
+              {formatDate(study.studied_at ?? study.created_at)}
+            </p>
             {hasStudyNote ? (
               <button
                 aria-label={`Open ${studyTitle}`}

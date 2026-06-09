@@ -2,11 +2,14 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-export type Theme = "light" | "dark";
+export type Theme = "light" | "dark" | "star";
 
 const THEME_KEY = "sd-theme";
 const DEFAULT_THEME: Theme = "light";
 const THEME_CHANGE_EVENT = "sd-theme-change";
+
+// Order the toggle cycles through: light → dark → star → light.
+const THEME_CYCLE: Theme[] = ["light", "dark", "star"];
 
 const listeners = new Set<() => void>();
 
@@ -15,7 +18,7 @@ function isBrowser() {
 }
 
 function isTheme(value: string | null): value is Theme {
-  return value === "light" || value === "dark";
+  return value === "light" || value === "dark" || value === "star";
 }
 
 function applyTheme(theme: Theme) {
@@ -25,11 +28,18 @@ function applyTheme(theme: Theme) {
 
   const root = document.documentElement;
 
-  if (theme === "dark") {
-    root.dataset.theme = "dark";
-  } else {
+  // "light" is the default (no attribute); "dark" and "star" set data-theme.
+  if (theme === "light") {
     delete root.dataset.theme;
+  } else {
+    root.dataset.theme = theme;
   }
+}
+
+export function nextTheme(theme: Theme): Theme {
+  const index = THEME_CYCLE.indexOf(theme);
+
+  return THEME_CYCLE[(index + 1) % THEME_CYCLE.length] ?? DEFAULT_THEME;
 }
 
 export function getTheme(): Theme {

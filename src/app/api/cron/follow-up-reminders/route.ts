@@ -100,8 +100,8 @@ export async function GET(request: Request) {
     );
   }
 
-  // Reuse the board's data loader so the cron sees exactly the same contacts
-  // (archived + past-month baptized filtering, hydrated studies/events).
+  // Reuse the board's data loader so the cron sees exactly the same active
+  // contacts (archived filtering, legacy stage promotion, hydrated studies/events).
   const board = await listPeople();
 
   if (!board.configured) {

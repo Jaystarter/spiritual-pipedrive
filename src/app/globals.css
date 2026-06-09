@@ -217,6 +217,70 @@
   --surface-shadow-strong: rgba(0, 0, 0, 0.7);
 }
 
+/* ------------------------------------------------------------------- */
+/* Star neumorphic theme. Activated by setting `data-theme="star"` on  */
+/* the root <html> element (see src/lib/theme-client.ts). Mirrors the  */
+/* dark block's structure: deep-navy (#021A60) raised surfaces and     */
+/* shadows on a royal-blue (#0532B3) page, with a gold (#FFD600)       */
+/* accent and white text for high contrast.                            */
+/* ------------------------------------------------------------------- */
+[data-theme="star"] {
+  color-scheme: dark;
+
+  /* Neumorphism palette */
+  --neu-bg: #0532B3;
+  --neu-surface: #0532B3;
+  --neu-text: #EAF0FF;
+  --neu-text-strong: #FFFFFF;
+  /* Off-white muted text reads clearly on the #0532B3 page; the periwinkle
+     used before was too dim for card subtitles, dates, and meta. */
+  --neu-text-muted: rgba(255, 255, 255, 0.86);
+  --neu-accent: #FFD600;
+  --neu-accent-soft: #FFE45C;
+  --neu-danger: #FF8A8A;
+  --neu-shadow-light: rgba(96, 142, 255, 0.22);
+  --neu-shadow-dark: rgba(2, 26, 96, 0.72);
+
+  /* shadcn / Tailwind tokens */
+  --background: #0532B3;
+  --foreground: #F4F7FF;
+  --card: #021A60;
+  --card-foreground: #F4F7FF;
+  --popover: #021A60;
+  --popover-foreground: #F4F7FF;
+  --primary: #FFD600;
+  --primary-foreground: #021A60;
+  --secondary: #021A60;
+  --secondary-foreground: #F4F7FF;
+  --muted: #0A2C93;
+  --muted-foreground: rgba(255, 255, 255, 0.86);
+  --accent: #FFD600;
+  --accent-foreground: #021A60;
+  --destructive: #FF8A8A;
+  --border: rgba(255, 255, 255, 0.16);
+  --input: rgba(255, 255, 255, 0.18);
+  --ring: rgba(255, 214, 0, 0.65);
+  --chart-1: #FFD600;
+  --chart-2: #FFE45C;
+  --chart-3: #AFC2F2;
+  --chart-4: #EAF0FF;
+  --chart-5: #FFD600;
+  --sidebar: #0532B3;
+  --sidebar-foreground: #F4F7FF;
+  --sidebar-primary: #FFD600;
+  --sidebar-primary-foreground: #021A60;
+  --sidebar-accent: #021A60;
+  --sidebar-accent-foreground: #F4F7FF;
+  --sidebar-border: rgba(255, 255, 255, 0.16);
+  --sidebar-ring: rgba(255, 214, 0, 0.65);
+
+  --hairline: rgba(255, 255, 255, 0.1);
+  --hairline-strong: rgba(255, 255, 255, 0.18);
+  --surface-highlight: var(--neu-shadow-light);
+  --surface-shadow: var(--neu-shadow-dark);
+  --surface-shadow-strong: rgba(2, 26, 96, 0.85);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -847,6 +911,9 @@
   [data-theme="dark"] .circuit-bg {
     display: none;
   }
+  [data-theme="star"] .circuit-bg {
+    display: none;
+  }
 
   /* ------------------------------------------------------------------ */
   /* Stack-view active stage badge — thin orange glowing ring + pulse.  */
@@ -878,6 +945,87 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* Stale-contact glow — soft pulsing red halo around a contact card   */
+  /* with no activity in STALE_CONTACT_GLOW_DAYS days. The overlay span  */
+  /* (.contact-stale-glow, inset-0) is rendered in board.tsx. Uses the   */
+  /* theme-aware --neu-danger so it reads in light, dark, and star.      */
+  /* ------------------------------------------------------------------ */
+  .contact-stale-glow {
+    border-radius: 0.9rem;
+    box-shadow:
+      inset 0 0 0 1.5px color-mix(in srgb, var(--neu-danger) 50%, transparent),
+      inset 0 0 16px 1px color-mix(in srgb, var(--neu-danger) 20%, transparent),
+      0 0 12px color-mix(in srgb, var(--neu-danger) 25%, transparent);
+    animation: contact-stale-pulse 2.6s ease-in-out infinite;
+  }
+
+  @keyframes contact-stale-pulse {
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Stage water motif — small animated "water" box shown next to the   */
+  /* Brothers/Baptized lane title. Two off-center rotating blobs make    */
+  /* the surface undulate like water.                                    */
+  /* ------------------------------------------------------------------ */
+  .stage-water {
+    position: relative;
+    display: inline-block;
+    width: 1.6rem;
+    height: 1.15rem;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: linear-gradient(
+      180deg,
+      rgba(125, 185, 255, 0.35),
+      rgba(37, 99, 235, 0.55)
+    );
+    box-shadow: inset 0 0 0 1px rgba(56, 132, 255, 0.3);
+  }
+  .stage-water::before,
+  .stage-water::after {
+    content: "";
+    position: absolute;
+    left: -50%;
+    top: 32%;
+    width: 200%;
+    height: 200%;
+    border-radius: 40%;
+    background: rgba(255, 255, 255, 0.35);
+    animation: stage-water-rotate 7s linear infinite;
+  }
+  .stage-water::after {
+    top: 36%;
+    border-radius: 44%;
+    background: rgba(255, 255, 255, 0.16);
+    animation-duration: 11s;
+    animation-direction: reverse;
+  }
+
+  @keyframes stage-water-rotate {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .contact-stale-glow {
+      animation: none;
+      opacity: 0.85;
+    }
+    .stage-water::before,
+    .stage-water::after {
+      animation: none;
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
   /* Header hero wordmark — small engraved S-Drive in top-left corner.  */
   /* ------------------------------------------------------------------ */
   .header-hero-wordmark {
@@ -898,6 +1046,14 @@
       0 1px 0 rgba(255, 255, 255, 0.08),
       0 2px 1px rgba(255, 255, 255, 0.04),
       0 0 10px rgba(0, 0, 0, 0.7);
+  }
+  [data-theme="star"] .header-hero-wordmark {
+    text-shadow:
+      0 -1px 0 rgba(2, 10, 40, 0.9),
+      0 -2px 2px rgba(2, 10, 40, 0.55),
+      0 1px 0 rgba(255, 255, 255, 0.12),
+      0 2px 1px rgba(255, 255, 255, 0.06),
+      0 0 12px rgba(2, 10, 40, 0.7);
   }
 
   /* ------------------------------------------------------------------ */
@@ -1058,6 +1214,95 @@
   }
   [data-theme="dark"] .border-slate-950\/35 {
     border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Star-theme overrides for the same hard-coded utility classes the   */
+  /* dark block patches. Frosted-white surfaces become translucent      */
+  /* deep-navy (#021A60 = rgb(2, 26, 96)) panels on the royal-blue page */
+  /* so cards/panels read as raised, and slate text rides the light     */
+  /* neumorphic text tokens for contrast.                               */
+  /* ------------------------------------------------------------------ */
+  [data-theme="star"] .bg-white {
+    background-color: rgba(2, 26, 96, 0.55);
+  }
+  [data-theme="star"] .bg-white\/15 {
+    background-color: rgba(2, 26, 96, 0.3);
+  }
+  [data-theme="star"] .bg-white\/30,
+  [data-theme="star"] .bg-white\/35 {
+    background-color: rgba(2, 26, 96, 0.34);
+  }
+  [data-theme="star"] .bg-white\/40,
+  [data-theme="star"] .bg-white\/45 {
+    background-color: rgba(2, 26, 96, 0.42);
+  }
+  [data-theme="star"] .bg-white\/50,
+  [data-theme="star"] .bg-white\/60 {
+    background-color: rgba(2, 26, 96, 0.5);
+  }
+  [data-theme="star"] .bg-white\/65,
+  [data-theme="star"] .bg-white\/70 {
+    background-color: rgba(2, 26, 96, 0.58);
+  }
+  [data-theme="star"] .bg-white\/80,
+  [data-theme="star"] .bg-white\/85,
+  [data-theme="star"] .bg-white\/90 {
+    background-color: rgba(2, 26, 96, 0.66);
+  }
+
+  [data-theme="star"] .hover\:bg-white\/25:hover {
+    background-color: rgba(2, 26, 96, 0.34);
+  }
+  [data-theme="star"] .hover\:bg-white\/35:hover {
+    background-color: rgba(2, 26, 96, 0.4);
+  }
+  [data-theme="star"] .hover\:bg-white\/50:hover {
+    background-color: rgba(2, 26, 96, 0.48);
+  }
+  [data-theme="star"] .hover\:bg-white:hover,
+  [data-theme="star"] .hover\:bg-white\/70:hover {
+    background-color: rgba(2, 26, 96, 0.58);
+  }
+  [data-theme="star"] .focus-within\:bg-white\/40:focus-within {
+    background-color: rgba(2, 26, 96, 0.42);
+  }
+  [data-theme="star"] .sm\:hover\:bg-white\/35:hover {
+    background-color: rgba(2, 26, 96, 0.4);
+  }
+
+  [data-theme="star"] .border-white,
+  [data-theme="star"] .border-white\/70,
+  [data-theme="star"] .border-white\/75,
+  [data-theme="star"] .border-white\/90 {
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  /* Faint/meta slate text → ~62% white; secondary slate-600 → ~86% white. */
+  [data-theme="star"] .text-slate-400,
+  [data-theme="star"] .text-slate-500 {
+    color: rgba(255, 255, 255, 0.62);
+  }
+  [data-theme="star"] .text-slate-600 {
+    color: rgba(255, 255, 255, 0.86);
+  }
+  [data-theme="star"] .text-slate-700,
+  [data-theme="star"] .text-slate-800,
+  [data-theme="star"] .text-slate-900 {
+    color: var(--neu-text);
+  }
+  [data-theme="star"] .text-slate-950,
+  [data-theme="star"] .text-slate-950\/95 {
+    color: var(--neu-text-strong);
+  }
+  [data-theme="star"] .placeholder\:text-slate-900\/70::placeholder {
+    color: rgba(234, 240, 255, 0.55);
+  }
+  [data-theme="star"] .border-slate-950\/10 {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  [data-theme="star"] .border-slate-950\/35 {
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   /* Tailwind blue/sky text-700+ utilities are already remapped above to */

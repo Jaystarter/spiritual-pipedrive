@@ -292,7 +292,15 @@ function isCurrentMonth(value: string | null) {
   return date >= start && date < end;
 }
 
-async function promoteExpiredBaptizedPeople(stages: Stage[]) {
+function isBaptizedLane(stageId: StageId) {
+  return stageId === "brothers";
+}
+
+function isLegacyOrCurrentBaptizedStage(stageId: StageId) {
+  return stageId === "baptized" || isBaptizedLane(stageId);
+}
+
+async function promoteLegacyBaptizedPeople(stages: Stage[]) {
   if (!getVisibleStages(stages).some((stage) => stage.id === "brothers")) {
     return;
   }
@@ -303,22 +311,21 @@ async function promoteExpiredBaptizedPeople(stages: Stage[]) {
     return;
   }
 
-  const { data: expiredPeople, error } = await supabase
+  const { data: legacyPeople, error } = await supabase
     .from("people")
     .select("*")
     .eq("stage", "baptized")
     .is("archived_at", null)
-    .lt("baptized_at", currentMonthWindow().start.toISOString())
     .order("baptized_at", { ascending: true })
     .order("created_at", { ascending: true });
 
-  if (error || !expiredPeople || expiredPeople.length === 0) {
+  if (error || !legacyPeople || legacyPeople.length === 0) {
     return;
   }
 
   const firstSortOrder = await getNextSortOrder("brothers");
 
-  for (const [index, person] of expiredPeople.entries()) {
+  for (const [index, person] of legacyPeople.entries()) {
     const { error: updateError } = await supabase
       .from("people")
       .update({
@@ -336,7 +343,7 @@ async function promoteExpiredBaptizedPeople(stages: Stage[]) {
     await insertEvent(person.id, {
       event_type: "stage_moved",
       title: `Moved to ${getStageLabel("brothers", stages)}`,
-      body: "Automatically moved after the baptism month ended.",
+      body: "Automatically moved into the single baptized lane.",
       from_stage: "baptized",
       to_stage: "brothers",
     });
@@ -654,7 +661,7 @@ async function listProfilesWithStats(people?: PersonRow[]) {
       ).length,
       baptized_this_month: activePeople.filter(
         (person) =>
-          person.stage === "baptized" &&
+          isLegacyOrCurrentBaptizedStage(person.stage) &&
           isCurrentMonth(person.baptized_at) &&
           person.assigned_profile_ids.includes(profile.id)
       ).length,
@@ -694,7 +701,7 @@ export async function listPeople(): Promise<BoardState> {
     };
   }
 
-  await promoteExpiredBaptizedPeople(stages);
+  await promoteLegacyBaptizedPeople(stages);
 
   const { data, error } = await supabase
     .from("people")
@@ -1165,7 +1172,7 @@ export async function createPerson(
     : getVisibleAutomaticStudyStageId(0, stageResult.stages) ?? input.stage;
   const sortOrder = await getNextSortOrder(targetStage);
   const baptizedAt =
-    targetStage === "baptized" ? new Date().toISOString() : null;
+    isBaptizedLane(targetStage) ? new Date().toISOString() : null;
   const insert: PersonInsert = {
     name,
     stage: targetStage,
@@ -1273,9 +1280,9 @@ export async function updatePerson(
 
   if (input.stage) {
     patch.stage = input.stage;
-    if (input.stage === "baptized") {
+    if (isBaptizedLane(input.stage)) {
       patch.baptized_at = new Date().toISOString();
-    } else if (input.stage !== "brothers") {
+    } else {
       patch.baptized_at = null;
     }
     detailsChanged = true;
@@ -1422,7 +1429,7 @@ export async function movePerson(
 
   const { data: currentPerson } = await supabase
     .from("people")
-    .select("stage")
+    .select("stage,baptized_at")
     .eq("id", input.id)
     .is("archived_at", null)
     .maybeSingle();
@@ -1435,12 +1442,9 @@ export async function movePerson(
     };
 
     if (movedCard) {
-      if (input.stage === "baptized") {
-        update.baptized_at = new Date().toISOString();
-      } else if (
-        input.stage !== "brothers" ||
-        (fromStage !== "baptized" && fromStage !== "brothers")
-      ) {
+      if (isBaptizedLane(input.stage)) {
+        update.baptized_at = currentPerson?.baptized_at ?? new Date().toISOString();
+      } else {
         update.baptized_at = null;
       }
     }

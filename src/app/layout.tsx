@@ -25,8 +25,9 @@ export const metadata: Metadata = {
 };
 
 // Runs synchronously before hydration so the saved theme is applied before
-// first paint, preventing a light-to-dark flash on reload.
-const themeBootstrapScript = `(function(){try{var t=localStorage.getItem('sd-theme');if(t==='dark'){document.documentElement.dataset.theme='dark';}}catch(e){}})();`;
+// first paint, preventing a flash of the wrong theme on reload. Handles the
+// light (no attribute), dark, and star modes.
+const themeBootstrapScript = `(function(){try{var t=localStorage.getItem('sd-theme');if(t==='dark'||t==='star'){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
