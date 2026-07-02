@@ -2,44 +2,61 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Kept so the generated ui/ primitives' `dark:` variants stay class-scoped
+   (and therefore inert — theming happens via [data-theme], not .dark). */
 @custom-variant dark (&:is(.dark *));
 
+/* ===================================================================== */
+/* THE ILLUMINATED LEDGER                                                */
+/*                                                                       */
+/* A hand-kept ledger of journeys: names in serif like entries in a      */
+/* parish book, dates and counts in the registrar's mono voice, stages   */
+/* marked with ribbon bookmarks. Chrome recedes to paper, hairlines,     */
+/* and ink; color is reserved for meaning (stage identity + urgency).    */
+/*                                                                       */
+/* Themes: Daybreak (light) · Vespers (dark) · Night Watch (star).       */
+/*                                                                       */
+/* The discipline: GOLD is the app's hand (actions, edges, light) ·     */
+/* TONE is the person's place (identity, ambient wash) · SIGNAL is      */
+/* urgency only. No region mixes two roles at the same weight. Gold is  */
+/* light, not paint: brand fills are lit from above (.btn-illuminated), */
+/* raised paper carries a gilt top edge (--sd-edge-gilt), shadows are   */
+/* warm ink. Tone arrives via the --tone custom property (set inline    */
+/* with toneVars() from lib/stage-theme.ts) and the .tone-* utilities.  */
+/* ===================================================================== */
+
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Fonts — the three voices */
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-display: var(--font-instrument-serif), "Iowan Old Style", "Apple Garamond", "Baskerville", "Times New Roman", serif;
+  --font-display: var(--font-instrument-serif), "Iowan Old Style",
+    "Apple Garamond", "Baskerville", "Times New Roman", serif;
   --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
+
+  /* shadcn tokens (consumed by the generated ui/ primitives) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--tone-amber-core);
+  --color-chart-2: var(--tone-sky-core);
+  --color-chart-3: var(--tone-indigo-core);
+  --color-chart-4: var(--tone-emerald-core);
+  --color-chart-5: var(--tone-violet-core);
   --radius-sm: calc(var(--radius) * 0.55);
   --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
@@ -47,1265 +64,547 @@
   --radius-2xl: calc(var(--radius) * 1.75);
   --radius-3xl: calc(var(--radius) * 2.15);
   --radius-4xl: calc(var(--radius) * 2.55);
+
+  /* Surfaces & ink */
+  --color-canvas: var(--sd-canvas);
+  --color-canvas-deep: var(--sd-canvas-deep);
+  --color-surface: var(--sd-surface);
+  --color-surface-raised: var(--sd-surface-raised);
+  --color-surface-sunken: var(--sd-surface-sunken);
+  --color-veil: var(--sd-veil);
+  --color-ink: var(--sd-ink);
+  --color-ink-2: var(--sd-ink-2);
+  --color-ink-3: var(--sd-ink-3);
+  --color-ink-4: var(--sd-ink-4);
+  --color-brand: var(--sd-accent);
+  --color-brand-ink: var(--sd-accent-ink);
+  --color-line: var(--sd-line);
+  --color-line-strong: var(--sd-line-strong);
+
+  /* Stage tones — six real hues forming the journey arc */
+  --color-tone-amber: var(--tone-amber-core);
+  --color-tone-amber-ink: var(--tone-amber-ink);
+  --color-tone-sky: var(--tone-sky-core);
+  --color-tone-sky-ink: var(--tone-sky-ink);
+  --color-tone-indigo: var(--tone-indigo-core);
+  --color-tone-indigo-ink: var(--tone-indigo-ink);
+  --color-tone-violet: var(--tone-violet-core);
+  --color-tone-violet-ink: var(--tone-violet-ink);
+  --color-tone-emerald: var(--tone-emerald-core);
+  --color-tone-emerald-ink: var(--tone-emerald-ink);
+  --color-tone-green: var(--tone-green-core);
+  --color-tone-green-ink: var(--tone-green-ink);
+
+  /* Urgency semantics — the ONE attention system */
+  --color-signal-calm: var(--sd-signal-calm);
+  --color-signal-wane: var(--sd-signal-wane);
+  --color-signal-urgent: var(--sd-signal-urgent);
+  --color-signal-joy: var(--sd-signal-joy);
 }
 
 :root {
-  /* Neumorphism / Soft UI palette */
-  --neu-bg: #ECEFF3;
-  --neu-surface: #ECEFF3;
-  --neu-text: #4B5563;
-  --neu-text-strong: #1F2937;
-  --neu-text-muted: #9CA3AF;
-  --neu-accent: #FF7A00;
-  --neu-accent-soft: #FFA052;
-  --neu-danger: #EF4444;
-  --neu-shadow-light: rgba(255, 255, 255, 0.95);
-  --neu-shadow-dark: rgba(163, 177, 198, 0.45);
+  /* --- Daybreak: a morning ledger open on a desk ---------------------- */
+  --sd-canvas: oklch(0.963 0.012 83);
+  --sd-canvas-deep: oklch(0.94 0.016 80);
+  --sd-surface: oklch(0.992 0.004 90);
+  --sd-surface-raised: oklch(1 0 0);
+  --sd-surface-sunken: oklch(0.942 0.013 83);
+  --sd-veil: oklch(0.25 0.02 270 / 0.32);
 
-  /* ----------------------------------------------------------------- */
-  /* Circuit-board background texture (LIGHT THEME ONLY).              */
-  /* Tuning knobs: raise --circuit-opacity to make the traces more     */
-  /* visible (0 hides it); change --circuit-size to scale the tile.    */
-  /* The pattern itself is a tiny inline SVG (no external asset) and    */
-  /* is rendered by the `.circuit-bg` layer below. Disabled in dark.   */
-  /* ----------------------------------------------------------------- */
-  --circuit-opacity: 0.16;
-  --circuit-size: 80px;
-  --circuit-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80' fill='none' stroke='rgb(120,135,160)' stroke-width='1'%3e%3cpath d='M0 16 H80'/%3e%3cpath d='M56 0 V80'/%3e%3cpath d='M16 16 V60 H40'/%3e%3cpath d='M56 36 H32'/%3e%3cpath d='M56 64 H72 V40'/%3e%3cg stroke='none' fill='rgb(120,135,160)'%3e%3ccircle cx='16' cy='16' r='2'/%3e%3ccircle cx='40' cy='60' r='2'/%3e%3ccircle cx='56' cy='36' r='2'/%3e%3ccircle cx='32' cy='36' r='2'/%3e%3ccircle cx='56' cy='64' r='2'/%3e%3ccircle cx='72' cy='40' r='2'/%3e%3c/g%3e%3c/svg%3e");
+  --sd-ink: oklch(0.24 0.02 270);
+  --sd-ink-2: oklch(0.45 0.02 270);
+  --sd-ink-3: oklch(0.6 0.015 270);
+  --sd-ink-4: oklch(0.72 0.01 270);
 
-  /* shadcn / Tailwind tokens mapped onto the neumorphic palette */
-  --background: #ECEFF3;
-  --foreground: #4B5563;
-  --card: #ECEFF3;
-  --card-foreground: #4B5563;
-  --popover: #ECEFF3;
-  --popover-foreground: #4B5563;
-  --primary: #FF7A00;
-  --primary-foreground: #FFFFFF;
-  --secondary: #ECEFF3;
-  --secondary-foreground: #1F2937;
-  --muted: #ECEFF3;
-  --muted-foreground: #9CA3AF;
-  --accent: #FF7A00;
-  --accent-foreground: #FFFFFF;
-  --destructive: #EF4444;
-  --border: rgba(163, 177, 198, 0.35);
-  --input: rgba(163, 177, 198, 0.35);
-  --ring: rgba(255, 122, 0, 0.45);
-  --chart-1: #FF7A00;
-  --chart-2: #FFA052;
-  --chart-3: #9CA3AF;
-  --chart-4: #4B5563;
-  --chart-5: #FF7A00;
-  --radius: 1rem;
-  --sidebar: #ECEFF3;
-  --sidebar-foreground: #4B5563;
-  --sidebar-primary: #FF7A00;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #ECEFF3;
-  --sidebar-accent-foreground: #1F2937;
-  --sidebar-border: rgba(163, 177, 198, 0.35);
-  --sidebar-ring: rgba(255, 122, 0, 0.45);
+  --sd-accent: oklch(0.52 0.145 58);
+  --sd-accent-hi: oklch(0.57 0.14 65);
+  --sd-accent-lo: oklch(0.47 0.145 48);
+  --sd-accent-ink: oklch(0.99 0.005 90);
+  --sd-line: oklch(0.24 0.02 270 / 0.12);
+  --sd-line-strong: oklch(0.24 0.02 270 / 0.22);
 
-  /* Legacy aliases kept so existing utility lookups still resolve. */
-  --hairline: rgba(163, 177, 198, 0.35);
-  --hairline-strong: rgba(163, 177, 198, 0.55);
-  --surface-highlight: var(--neu-shadow-light);
-  --surface-shadow: var(--neu-shadow-dark);
-  --surface-shadow-strong: rgba(163, 177, 198, 0.6);
-  --surface-cyan: var(--neu-accent);
-  --serif-leading: 0.95;
+  /* Stage tones (validated: lightness band, chroma, CVD, contrast) */
+  --tone-amber-core: oklch(0.72 0.145 70);
+  --tone-amber-ink: oklch(0.51 0.13 62);
+  --tone-sky-core: oklch(0.67 0.125 235);
+  --tone-sky-ink: oklch(0.47 0.11 240);
+  --tone-indigo-core: oklch(0.55 0.17 268);
+  --tone-indigo-ink: oklch(0.42 0.15 270);
+  --tone-violet-core: oklch(0.63 0.17 318);
+  --tone-violet-ink: oklch(0.46 0.15 318);
+  --tone-emerald-core: oklch(0.64 0.115 175);
+  --tone-emerald-ink: oklch(0.45 0.1 178);
+  --tone-green-core: oklch(0.66 0.15 150);
+  --tone-green-ink: oklch(0.46 0.13 150);
+
+  /* Urgency signals */
+  --sd-signal-calm: var(--sd-ink-3);
+  --sd-signal-wane: oklch(0.6 0.145 45);
+  --sd-signal-urgent: oklch(0.55 0.19 25);
+  --sd-signal-joy: var(--tone-green-core);
+
+  /* Radius scale */
+  --sd-r-xs: 4px;
+  --sd-r-sm: 6px;
+  --sd-r-md: 10px;
+  --sd-r-lg: 14px;
+  --sd-r-xl: 20px;
+  --sd-r-pill: 999px;
+  --radius: 0.875rem;
+
+  /* Elevation — warm ink, layered falloff; never dual-shadow */
+  --sd-shadow-1: 0 1px 2px oklch(0.32 0.035 60 / 0.07),
+    0 1px 1px oklch(0.32 0.035 60 / 0.05);
+  --sd-shadow-2: 0 1px 2px oklch(0.32 0.035 60 / 0.07),
+    0 4px 12px oklch(0.32 0.04 60 / 0.07),
+    0 16px 32px oklch(0.34 0.045 58 / 0.09);
+  --sd-shadow-3: 0 2px 6px oklch(0.3 0.045 55 / 0.12),
+    0 24px 64px oklch(0.3 0.05 55 / 0.24);
+  --sd-shadow-well: inset 0 1px 2px oklch(0.32 0.035 60 / 0.07);
+  --sd-edge-gilt: inset 0 1px 0
+    color-mix(in oklch, var(--sd-accent) 18%, transparent);
+
+  /* Z-index scale */
+  --z-card: 10;
+  --z-lane-header: 20;
+  --z-appbar: 30;
+  --z-drawer: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-toast: 70;
+  --z-dnd-overlay: 80;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-enter: 260ms;
+  --dur-slow: 320ms;
+
+  /* Background layer knobs (see .sky-bg below) */
+  --sky-grain: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3e%3cfilter id='n'%3e%3cfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3e%3cfeColorMatrix type='saturate' values='0'/%3e%3c/filter%3e%3crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3e%3c/svg%3e");
+  --sky-stars-sm: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3e%3cg fill='white'%3e%3ccircle cx='24' cy='36' r='1'/%3e%3ccircle cx='92' cy='14' r='1.3' opacity='0.8'/%3e%3ccircle cx='160' cy='58' r='0.9' opacity='0.7'/%3e%3ccircle cx='231' cy='30' r='1.1'/%3e%3ccircle cx='58' cy='118' r='1' opacity='0.75'/%3e%3ccircle cx='143' cy='141' r='1.4'/%3e%3ccircle cx='210' cy='112' r='0.8' opacity='0.65'/%3e%3ccircle cx='262' cy='168' r='1.1' opacity='0.85'/%3e%3ccircle cx='33' cy='197' r='1.2'/%3e%3ccircle cx='112' cy='222' r='0.9' opacity='0.7'/%3e%3ccircle cx='187' cy='202' r='1'/%3e%3ccircle cx='247' cy='249' r='1.3' opacity='0.8'/%3e%3ccircle cx='75' cy='266' r='1' opacity='0.75'/%3e%3c/g%3e%3c/svg%3e");
+  --sky-stars-lg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='460' height='460'%3e%3cg%3e%3ccircle cx='60' cy='80' r='1.6' fill='%23ffe9a8'/%3e%3ccircle cx='215' cy='45' r='1.2' fill='white' opacity='0.9'/%3e%3ccircle cx='356' cy='120' r='1.8' fill='%23ffe9a8' opacity='0.9'/%3e%3ccircle cx='130' cy='230' r='1.3' fill='white' opacity='0.8'/%3e%3ccircle cx='300' cy='280' r='1.5' fill='%23ffe9a8'/%3e%3ccircle cx='420' cy='360' r='1.2' fill='white' opacity='0.85'/%3e%3ccircle cx='80' cy='390' r='1.7' fill='white'/%3e%3ccircle cx='240' cy='420' r='1.2' fill='%23ffe9a8' opacity='0.8'/%3e%3c/g%3e%3c/svg%3e");
+  --sky-constellations: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='720' height='720'%3e%3cg stroke='white' stroke-opacity='0.14' stroke-width='0.7' fill='none'%3e%3cpath d='M80 120 L150 90 L210 150'/%3e%3cpath d='M420 260 L500 230 L560 300 L500 340'/%3e%3cpath d='M180 520 L260 480 L300 560'/%3e%3c/g%3e%3cg fill='white' fill-opacity='0.5'%3e%3ccircle cx='80' cy='120' r='1.2'/%3e%3ccircle cx='150' cy='90' r='1.4'/%3e%3ccircle cx='210' cy='150' r='1.1'/%3e%3ccircle cx='420' cy='260' r='1.2'/%3e%3ccircle cx='500' cy='230' r='1.5'/%3e%3ccircle cx='560' cy='300' r='1.1'/%3e%3ccircle cx='500' cy='340' r='1.2'/%3e%3ccircle cx='180' cy='520' r='1.3'/%3e%3ccircle cx='260' cy='480' r='1.5'/%3e%3ccircle cx='300' cy='560' r='1.1'/%3e%3c/g%3e%3c/svg%3e");
+
+  /* shadcn tokens mapped onto the ledger (theme-aware via --sd vars) */
+  --background: var(--sd-canvas);
+  --foreground: var(--sd-ink);
+  --card: var(--sd-surface);
+  --card-foreground: var(--sd-ink);
+  --popover: var(--sd-surface-raised);
+  --popover-foreground: var(--sd-ink);
+  --primary: var(--sd-accent);
+  --primary-foreground: var(--sd-accent-ink);
+  --secondary: var(--sd-surface-sunken);
+  --secondary-foreground: var(--sd-ink-2);
+  --muted: var(--sd-surface-sunken);
+  --muted-foreground: var(--sd-ink-3);
+  --accent: var(--sd-surface-sunken);
+  --accent-foreground: var(--sd-ink);
+  --destructive: var(--sd-signal-urgent);
+  --border: var(--sd-line);
+  --input: var(--sd-line-strong);
+  --ring: color-mix(in oklch, var(--sd-accent) 55%, transparent);
 }
 
-.dark {
-  /* Dark theme is unused in the neumorphic skin but we keep tokens defined to
-     avoid breaking any consumer that reads them. */
-  --background: #ECEFF3;
-  --foreground: #4B5563;
-  --card: #ECEFF3;
-  --card-foreground: #4B5563;
-  --popover: #ECEFF3;
-  --popover-foreground: #4B5563;
-  --primary: #FF7A00;
-  --primary-foreground: #FFFFFF;
-  --secondary: #ECEFF3;
-  --secondary-foreground: #1F2937;
-  --muted: #ECEFF3;
-  --muted-foreground: #9CA3AF;
-  --accent: #FF7A00;
-  --accent-foreground: #FFFFFF;
-  --destructive: #EF4444;
-  --border: rgba(163, 177, 198, 0.35);
-  --input: rgba(163, 177, 198, 0.35);
-  --ring: rgba(255, 122, 0, 0.45);
-  --chart-1: #FF7A00;
-  --chart-2: #FFA052;
-  --chart-3: #9CA3AF;
-  --chart-4: #4B5563;
-  --chart-5: #FF7A00;
-  --sidebar: #ECEFF3;
-  --sidebar-foreground: #4B5563;
-  --sidebar-primary: #FF7A00;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #ECEFF3;
-  --sidebar-accent-foreground: #1F2937;
-  --sidebar-border: rgba(163, 177, 198, 0.35);
-  --sidebar-ring: rgba(255, 122, 0, 0.45);
-
-  --hairline: rgba(163, 177, 198, 0.35);
-  --hairline-strong: rgba(163, 177, 198, 0.55);
-}
-
-/* ------------------------------------------------------------------- */
-/* Dark neumorphic theme. Activated by setting `data-theme="dark"` on  */
-/* the root <html> element (see src/lib/theme-client.ts). Tokens are   */
-/* intentionally tuned so the existing `.neu-*` utilities still read   */
-/* as "raised" / "inset" against a slate-graphite surface.             */
-/* ------------------------------------------------------------------- */
 [data-theme="dark"] {
+  /* --- Vespers: the same ledger read by lamplight --------------------- */
   color-scheme: dark;
 
-  /* Neumorphism palette */
-  --neu-bg: #2A2D33;
-  --neu-surface: #2A2D33;
-  --neu-text: #CBD5E1;
-  --neu-text-strong: #F1F5F9;
-  --neu-text-muted: #94A3B8;
-  --neu-accent: #FF7A00;
-  --neu-accent-soft: #FFA052;
-  --neu-danger: #F87171;
-  --neu-shadow-light: rgba(255, 255, 255, 0.04);
-  --neu-shadow-dark: rgba(0, 0, 0, 0.55);
+  --sd-canvas: oklch(0.18 0.016 265);
+  --sd-canvas-deep: oklch(0.18 0.016 265);
+  --sd-surface: oklch(0.22 0.018 265);
+  --sd-surface-raised: oklch(0.262 0.02 265);
+  --sd-surface-sunken: oklch(0.155 0.015 265);
+  --sd-veil: oklch(0.1 0.02 265 / 0.55);
 
-  /* shadcn / Tailwind tokens */
-  --background: oklch(0.22 0.01 250);
-  --foreground: oklch(0.96 0.005 250);
-  --card: oklch(0.24 0.012 250);
-  --card-foreground: oklch(0.96 0.005 250);
-  --popover: oklch(0.24 0.012 250);
-  --popover-foreground: oklch(0.96 0.005 250);
-  --primary: #FF7A00;
-  --primary-foreground: #FFFFFF;
-  --secondary: oklch(0.27 0.012 250);
-  --secondary-foreground: oklch(0.96 0.005 250);
-  --muted: oklch(0.27 0.012 250);
-  --muted-foreground: oklch(0.78 0.01 250);
-  --accent: #FF7A00;
-  --accent-foreground: #FFFFFF;
-  --destructive: #F87171;
-  --border: oklch(0.34 0.012 250 / 0.6);
-  --input: oklch(0.34 0.012 250 / 0.6);
-  --ring: oklch(0.7 0.18 50);
-  --chart-1: #FF7A00;
-  --chart-2: #FFA052;
-  --chart-3: #94A3B8;
-  --chart-4: #CBD5E1;
-  --chart-5: #FF7A00;
-  --sidebar: oklch(0.22 0.01 250);
-  --sidebar-foreground: oklch(0.96 0.005 250);
-  --sidebar-primary: #FF7A00;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: oklch(0.27 0.012 250);
-  --sidebar-accent-foreground: oklch(0.96 0.005 250);
-  --sidebar-border: oklch(0.34 0.012 250 / 0.6);
-  --sidebar-ring: oklch(0.7 0.18 50);
+  --sd-ink: oklch(0.945 0.01 85);
+  --sd-ink-2: oklch(0.8 0.012 85);
+  --sd-ink-3: oklch(0.66 0.012 85);
+  --sd-ink-4: oklch(0.5 0.01 85);
 
-  --hairline: rgba(255, 255, 255, 0.08);
-  --hairline-strong: rgba(255, 255, 255, 0.14);
-  --surface-highlight: var(--neu-shadow-light);
-  --surface-shadow: var(--neu-shadow-dark);
-  --surface-shadow-strong: rgba(0, 0, 0, 0.7);
+  --sd-accent: oklch(0.82 0.11 85);
+  --sd-accent-hi: oklch(0.86 0.115 92);
+  --sd-accent-lo: oklch(0.76 0.115 78);
+  --sd-accent-ink: oklch(0.2 0.02 265);
+  /* Brass wire hairlines */
+  --sd-line: oklch(0.9 0.04 85 / 0.1);
+  --sd-line-strong: oklch(0.9 0.04 85 / 0.18);
+
+  /* Cores validated for chart marks (dark band, CVD-safe); inks brighter
+     for text legibility on dark surfaces. */
+  --tone-amber-core: oklch(0.66 0.13 75);
+  --tone-amber-ink: oklch(0.8 0.13 75);
+  --tone-sky-core: oklch(0.65 0.105 230);
+  --tone-sky-ink: oklch(0.78 0.105 230);
+  --tone-indigo-core: oklch(0.57 0.13 268);
+  --tone-indigo-ink: oklch(0.76 0.115 268);
+  --tone-violet-core: oklch(0.665 0.12 320);
+  --tone-violet-ink: oklch(0.8 0.12 320);
+  --tone-emerald-core: oklch(0.64 0.105 172);
+  --tone-emerald-ink: oklch(0.8 0.105 172);
+  --tone-green-core: oklch(0.66 0.135 150);
+  --tone-green-ink: oklch(0.8 0.135 150);
+
+  --sd-signal-wane: oklch(0.78 0.13 55);
+  --sd-signal-urgent: oklch(0.72 0.16 25);
+
+  --sd-shadow-1: 0 1px 2px oklch(0 0 0 / 0.3);
+  --sd-shadow-2: 0 2px 6px oklch(0 0 0 / 0.35), 0 10px 28px oklch(0 0 0 / 0.4);
+  --sd-shadow-3: 0 16px 56px oklch(0 0 0 / 0.55);
+  --sd-shadow-well: inset 0 1px 2px oklch(0 0 0 / 0.3);
+  --sd-edge-gilt: inset 0 1px 0
+    color-mix(in oklch, var(--sd-accent) 24%, transparent);
 }
 
-/* ------------------------------------------------------------------- */
-/* Star neumorphic theme. Activated by setting `data-theme="star"` on  */
-/* the root <html> element (see src/lib/theme-client.ts). Mirrors the  */
-/* dark block's structure: deep-navy (#021A60) raised surfaces and     */
-/* shadows on a royal-blue (#0532B3) page, with a gold (#FFD600)       */
-/* accent and white text for high contrast.                            */
-/* ------------------------------------------------------------------- */
 [data-theme="star"] {
+  /* --- Night Watch: an illuminated manuscript under the stars --------- */
   color-scheme: dark;
 
-  /* Neumorphism palette */
-  --neu-bg: #0532B3;
-  --neu-surface: #0532B3;
-  --neu-text: #EAF0FF;
-  --neu-text-strong: #FFFFFF;
-  /* Off-white muted text reads clearly on the #0532B3 page; the periwinkle
-     used before was too dim for card subtitles, dates, and meta. */
-  --neu-text-muted: rgba(255, 255, 255, 0.86);
-  --neu-accent: #FFD600;
-  --neu-accent-soft: #FFE45C;
-  --neu-danger: #FF8A8A;
-  --neu-shadow-light: rgba(96, 142, 255, 0.22);
-  --neu-shadow-dark: rgba(2, 26, 96, 0.72);
+  --sd-canvas: oklch(0.365 0.185 264);
+  --sd-canvas-deep: oklch(0.255 0.13 266);
+  --sd-surface: oklch(0.29 0.105 266);
+  --sd-surface-raised: oklch(0.335 0.105 266);
+  --sd-surface-sunken: oklch(0.23 0.11 266);
+  --sd-veil: oklch(0.14 0.07 266 / 0.6);
 
-  /* shadcn / Tailwind tokens */
-  --background: #0532B3;
-  --foreground: #F4F7FF;
-  --card: #021A60;
-  --card-foreground: #F4F7FF;
-  --popover: #021A60;
-  --popover-foreground: #F4F7FF;
-  --primary: #FFD600;
-  --primary-foreground: #021A60;
-  --secondary: #021A60;
-  --secondary-foreground: #F4F7FF;
-  --muted: #0A2C93;
-  --muted-foreground: rgba(255, 255, 255, 0.86);
-  --accent: #FFD600;
-  --accent-foreground: #021A60;
-  --destructive: #FF8A8A;
-  --border: rgba(255, 255, 255, 0.16);
-  --input: rgba(255, 255, 255, 0.18);
-  --ring: rgba(255, 214, 0, 0.65);
-  --chart-1: #FFD600;
-  --chart-2: #FFE45C;
-  --chart-3: #AFC2F2;
-  --chart-4: #EAF0FF;
-  --chart-5: #FFD600;
-  --sidebar: #0532B3;
-  --sidebar-foreground: #F4F7FF;
-  --sidebar-primary: #FFD600;
-  --sidebar-primary-foreground: #021A60;
-  --sidebar-accent: #021A60;
-  --sidebar-accent-foreground: #F4F7FF;
-  --sidebar-border: rgba(255, 255, 255, 0.16);
-  --sidebar-ring: rgba(255, 214, 0, 0.65);
+  --sd-ink: oklch(0.975 0.008 264);
+  --sd-ink-2: oklch(0.88 0.03 264);
+  --sd-ink-3: oklch(0.78 0.05 264);
+  --sd-ink-4: oklch(0.65 0.07 264);
 
-  --hairline: rgba(255, 255, 255, 0.1);
-  --hairline-strong: rgba(255, 255, 255, 0.18);
-  --surface-highlight: var(--neu-shadow-light);
-  --surface-shadow: var(--neu-shadow-dark);
-  --surface-shadow-strong: rgba(2, 26, 96, 0.85);
+  --sd-accent: oklch(0.87 0.165 95);
+  --sd-accent-hi: oklch(0.905 0.16 100);
+  --sd-accent-lo: oklch(0.815 0.17 88);
+  --sd-accent-ink: oklch(0.22 0.1 266);
+  --sd-line: oklch(1 0 0 / 0.14);
+  --sd-line-strong: oklch(1 0 0 / 0.24);
+
+  --tone-amber-core: oklch(0.83 0.135 72);
+  --tone-amber-ink: oklch(0.83 0.135 72);
+  --tone-sky-core: oklch(0.83 0.095 220);
+  --tone-sky-ink: oklch(0.83 0.095 220);
+  --tone-indigo-core: oklch(0.79 0.1 275);
+  --tone-indigo-ink: oklch(0.79 0.1 275);
+  --tone-violet-core: oklch(0.85 0.115 322);
+  --tone-violet-ink: oklch(0.85 0.115 322);
+  --tone-emerald-core: oklch(0.84 0.1 175);
+  --tone-emerald-ink: oklch(0.84 0.1 175);
+  --tone-green-core: oklch(0.84 0.125 150);
+  --tone-green-ink: oklch(0.84 0.125 150);
+
+  --sd-signal-wane: oklch(0.83 0.125 60);
+  --sd-signal-urgent: oklch(0.79 0.14 20);
+
+  --sd-shadow-1: 0 1px 2px oklch(0 0 0 / 0.35);
+  --sd-shadow-2: 0 2px 6px oklch(0 0 0 / 0.4), 0 10px 28px oklch(0 0 0 / 0.45);
+  --sd-shadow-3: 0 16px 56px oklch(0 0 0 / 0.6);
+  --sd-shadow-well: inset 0 1px 2px oklch(0 0 0 / 0.35);
+  --sd-edge-gilt: inset 0 1px 0
+    color-mix(in oklch, var(--sd-accent) 28%, transparent);
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    background: var(--neu-bg);
-    color: var(--neu-text);
-    font-feature-settings: "ss01" on, "ss02" on, "cv11" on;
-  }
   html {
     @apply font-sans;
   }
+  body {
+    background: var(--sd-canvas);
+    color: var(--sd-ink);
+    font-feature-settings: "ss01" on, "ss02" on, "cv11" on;
+  }
   ::selection {
-    background: var(--neu-accent);
-    color: #FFFFFF;
+    background: color-mix(in oklch, var(--sd-accent) 26%, transparent);
   }
 }
 
+/* --- The three typographic voices ------------------------------------ */
+/* Serif "the name" · Sans "the hand" · Mono "the registrar".            */
 @layer utilities {
-  /* Core neumorphic surface utilities. */
-  .neu-raised {
-    background: var(--neu-bg);
-    box-shadow:
-      -6px -6px 14px var(--neu-shadow-light),
-      6px 6px 16px var(--neu-shadow-dark);
-    border-radius: 1.25rem;
-  }
-  .neu-raised-sm {
-    background: var(--neu-bg);
-    box-shadow:
-      -3px -3px 8px var(--neu-shadow-light),
-      3px 3px 10px var(--neu-shadow-dark);
-    border-radius: 0.875rem;
-  }
-  .neu-inset {
-    background: var(--neu-bg);
-    box-shadow:
-      inset 3px 3px 8px var(--neu-shadow-dark),
-      inset -3px -3px 8px var(--neu-shadow-light);
-    border-radius: 999px;
-  }
-  .neu-inset-card {
-    background: var(--neu-bg);
-    box-shadow:
-      inset 4px 4px 10px var(--neu-shadow-dark),
-      inset -4px -4px 10px var(--neu-shadow-light);
-    border-radius: 1.25rem;
-  }
-  .neu-pressed {
-    background: var(--neu-bg);
-    box-shadow:
-      inset 2px 2px 6px var(--neu-shadow-dark),
-      inset -2px -2px 6px var(--neu-shadow-light);
-    border-radius: 999px;
-  }
-  .neu-accent-fill {
-    background: linear-gradient(135deg, var(--neu-accent), var(--neu-accent-soft));
-    box-shadow:
-      inset -2px -2px 4px rgba(0, 0, 0, 0.12),
-      inset 2px 2px 4px rgba(255, 255, 255, 0.35);
-  }
-
-  .font-display {
+  .t-display-xl {
     font-family: var(--font-display);
-    font-feature-settings: "liga" on, "dlig" on, "ss01" on;
-    letter-spacing: -0.01em;
-  }
-
-  .tracking-display {
+    font-size: clamp(2.6rem, 6vw, 4rem);
+    line-height: 0.95;
     letter-spacing: -0.02em;
   }
-
-  /* ------------------------------------------------------------------ */
-  /* Legacy utility classes — repurposed to render the neumorphic look.  */
-  /* The original definitions remain referenced from board.tsx and the   */
-  /* button variants in shadcn/ui, so redefining them here lets the look */
-  /* propagate without touching every consumer.                          */
-  /* ------------------------------------------------------------------ */
-
-  .app-header-band,
-  .app-header-band::before,
-  .app-header-band::after {
-    background: var(--neu-bg);
-    box-shadow: none;
-    animation: none;
-    mix-blend-mode: normal;
-    opacity: 1;
-  }
-  .app-header-band::before,
-  .app-header-band::after {
-    content: none;
-  }
-
-  .app-header-wordmark {
-    display: none;
-  }
-
-  .profile-hero-bg {
-    isolation: isolate;
-    background: var(--neu-bg);
-  }
-
-  .profile-hero-light,
-  .profile-hero-light::before,
-  .profile-hero-light::after {
-    display: none;
-    background: none;
-    animation: none;
-    mix-blend-mode: normal;
-    opacity: 0;
-  }
-
-  .stack-view-ambient,
-  .stack-view-ambient::before,
-  .stack-view-ambient::after {
-    background: var(--neu-bg);
-    mix-blend-mode: normal;
-    opacity: 1;
-    box-shadow: none;
-  }
-  .stack-view-ambient::before,
-  .stack-view-ambient::after {
-    content: none;
-  }
-
-  .gospel-worker-carve {
-    color: var(--neu-text-strong);
-    text-shadow: none;
-    animation: none;
-    filter: none;
-  }
-
-  .s-drive-wordmark {
-    position: relative;
-    display: inline-block;
-    padding: 0.16em 0.42em 0.28em 0.24em;
-    color: var(--neu-text-strong);
-    font-family: var(--font-display), "Snell Roundhand", cursive;
-    font-size: clamp(2.8rem, 9vw, 5.8rem);
-    font-style: italic;
-    font-weight: 700;
-    letter-spacing: -0.05em;
-    line-height: 0.9;
-    text-shadow: none;
-    transform: none;
-  }
-  .s-drive-wordmark::before,
-  .s-drive-wordmark::after {
-    content: none;
-  }
-
-  .hairline {
-    border-color: rgba(163, 177, 198, 0.35);
-  }
-
-  .hairline-strong {
-    border-color: rgba(163, 177, 198, 0.55);
-  }
-
-  .grain {
-    position: relative;
-    isolation: isolate;
-  }
-  .grain::after {
-    content: none;
-  }
-
-  /* Soft panels are the bread-and-butter card chrome — make them raised. */
-  .soft-panel {
-    border: 1px solid transparent;
-    background: var(--neu-bg);
-    box-shadow:
-      -6px -6px 14px var(--neu-shadow-light),
-      6px 6px 16px var(--neu-shadow-dark);
-    border-radius: 1.25rem;
-  }
-  .soft-panel-strong {
-    border: 1px solid transparent;
-    background: var(--neu-bg);
-    box-shadow:
-      -10px -10px 24px var(--neu-shadow-light),
-      10px 10px 26px var(--neu-shadow-dark);
-    border-radius: 1.5rem;
-  }
-  .soft-control {
-    border: 1px solid transparent;
-    background: var(--neu-bg);
-    color: var(--neu-text);
-    box-shadow:
-      -3px -3px 8px var(--neu-shadow-light),
-      3px 3px 10px var(--neu-shadow-dark);
-    border-radius: 0.875rem;
-  }
-  .soft-inset {
-    border: 1px solid transparent;
-    background: var(--neu-bg);
-    color: var(--neu-text);
-    box-shadow:
-      inset 3px 3px 8px var(--neu-shadow-dark),
-      inset -3px -3px 8px var(--neu-shadow-light);
-    border-radius: 0.875rem;
-  }
-
-  .cyan-accent {
-    box-shadow:
-      0 0 0 1px rgba(255, 122, 0, 0.32),
-      0 0 14px rgba(255, 122, 0, 0.18);
-  }
-
-  /* ---------- Star toggle (contact row) ---------- */
-  .contact-star-button {
-    position: relative;
-    isolation: isolate;
-    overflow: visible;
-    border: 1px solid transparent;
-    background: var(--neu-bg);
-    color: var(--neu-text-muted);
-    box-shadow:
-      -3px -3px 8px var(--neu-shadow-light),
-      3px 3px 10px var(--neu-shadow-dark);
-    backdrop-filter: none;
-  }
-  .contact-star-button::before,
-  .contact-star-button::after {
-    content: none;
-  }
-
-  .contact-star-glass {
-    border: 1px solid transparent;
-    background: var(--neu-bg);
-    color: var(--neu-text-muted);
-    box-shadow:
-      -3px -3px 8px var(--neu-shadow-light),
-      3px 3px 10px var(--neu-shadow-dark);
-  }
-  .contact-star-glass:hover,
-  .contact-star-glass:focus-visible {
-    color: var(--neu-text);
-  }
-  .contact-star-glass .contact-star-icon {
-    fill: transparent;
-    stroke: currentColor;
-    stroke-width: 2;
-  }
-
-  .contact-star-active {
-    border: 1px solid transparent;
-    background: var(--neu-bg);
-    color: var(--neu-accent);
-    box-shadow:
-      inset 2px 2px 6px var(--neu-shadow-dark),
-      inset -2px -2px 6px var(--neu-shadow-light);
-  }
-  .contact-star-active:hover,
-  .contact-star-active:focus-visible {
-    color: var(--neu-accent);
-  }
-  .contact-star-active .contact-star-icon {
-    fill: var(--neu-accent);
-    stroke: var(--neu-accent);
-    stroke-width: 2;
-    filter: none;
-  }
-
-  .contact-star-icon {
-    position: relative;
-    z-index: 1;
-    transition: fill 180ms ease, stroke 180ms ease, transform 180ms ease;
-  }
-  .contact-star-button:hover .contact-star-icon,
-  .contact-star-button:focus-visible .contact-star-icon {
-    transform: scale(1.05);
-  }
-
-  /* Baby-blue button → neumorphic orange pill. */
-  .baby-blue-button {
-    border: 1px solid transparent;
-    background: linear-gradient(135deg, var(--neu-accent), var(--neu-accent-soft));
-    color: #FFFFFF;
-    box-shadow:
-      -3px -3px 8px var(--neu-shadow-light),
-      3px 3px 10px var(--neu-shadow-dark),
-      inset -1px -1px 2px rgba(0, 0, 0, 0.15),
-      inset 1px 1px 2px rgba(255, 255, 255, 0.4);
-  }
-
-  /* ---------- Avatar shells — flatten to neumorphic tiles ---------- */
-  .profile-avatar-shell {
-    position: relative;
-    display: inline-flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    overflow: visible;
-    border-radius: 28%;
-    background: var(--neu-bg);
-    box-shadow:
-      -3px -3px 8px var(--neu-shadow-light),
-      3px 3px 10px var(--neu-shadow-dark);
-    isolation: isolate;
-  }
-  .profile-avatar-shell::before {
-    content: "";
-    position: absolute;
-    inset: 10%;
-    z-index: 0;
-    border-radius: inherit;
-    background: var(--neu-bg);
-    box-shadow:
-      inset 2px 2px 4px var(--neu-shadow-dark),
-      inset -2px -2px 4px var(--neu-shadow-light);
-  }
-  .profile-avatar-inner {
-    position: absolute;
-    inset: 18%;
-    z-index: 1;
-    overflow: hidden;
-    border-radius: inherit;
-    background: var(--neu-bg);
-    box-shadow: none;
-  }
-  .profile-avatar-photo {
-    position: absolute;
-    inset: 2%;
-    z-index: 1;
-    width: 96%;
-    height: 96%;
-    border-radius: inherit;
-    object-fit: cover;
-    filter: none;
-  }
-  .profile-avatar-glyph {
-    position: absolute;
-    inset: 18%;
-    z-index: 1;
-    fill: var(--neu-text-muted);
-    filter: none;
-  }
-  .profile-avatar-gloss {
-    display: none;
-  }
-  .profile-avatar-live {
-    box-shadow:
-      -3px -3px 8px var(--neu-shadow-light),
-      3px 3px 10px var(--neu-shadow-dark),
-      0 0 0 2px var(--neu-accent);
-  }
-
-  /* Contact-row avatar: neumorphic paper tile with soft dual shadow. */
-  .contact-avatar-neu {
-    background: var(--neu-bg);
-    color: var(--neu-text-strong);
-    box-shadow:
-      -3px -3px 8px var(--neu-shadow-light),
-      3px 3px 10px var(--neu-shadow-dark);
-  }
-  .contact-avatar-flat {
-    background: var(--neu-bg);
-    color: var(--neu-text-strong);
-    box-shadow:
-      -1px -1px 3px var(--neu-shadow-light),
-      1px 1px 3px var(--neu-shadow-dark);
-  }
-
-  /* Secondary label shown when a contact has no documented study yet. */
-  .contact-no-study {
-    color: var(--neu-accent);
-    font-weight: 600;
-  }
-
-  /* ---------- Mobile stack stage chrome ---------- */
-  @media (max-width: 39.999rem) {
-    .mobile-stack-stage-flat {
-      background: transparent;
-      box-shadow: none;
-      border: 0;
-    }
-    .mobile-stack-stage-open {
-      border-radius: 1.25rem;
-      background: var(--neu-bg);
-      box-shadow:
-        -6px -6px 14px var(--neu-shadow-light),
-        6px 6px 16px var(--neu-shadow-dark);
-    }
-    .mobile-stack-stage-header-open {
-      background: transparent;
-      box-shadow: none;
-    }
-    .mobile-stack-stage-count {
-      color: var(--neu-text);
-      text-shadow: none;
-    }
-    .mobile-stack-stage-count-open {
-      color: var(--neu-text-strong);
-    }
-    .mobile-stack-stage-count-accent {
-      background: linear-gradient(135deg, var(--neu-accent), var(--neu-accent-soft));
-      box-shadow: none;
-    }
-    .mobile-stack-stage-chevron {
-      border-color: transparent;
-      background: var(--neu-bg);
-      color: var(--neu-text-muted);
-      box-shadow:
-        -3px -3px 8px var(--neu-shadow-light),
-        3px 3px 10px var(--neu-shadow-dark);
-    }
-    .mobile-stack-stage-chevron-open {
-      border-color: transparent;
-      background: var(--neu-bg);
-      color: var(--neu-accent);
-      box-shadow:
-        inset 2px 2px 6px var(--neu-shadow-dark),
-        inset -2px -2px 6px var(--neu-shadow-light);
-    }
-    .mobile-dashboard-panel-flat {
-      padding: 0;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
-    }
-  }
-
-  /* Quick-action floating button — collapse the diamond shimmer entirely. */
-  .quick-actions-diamond-shine,
-  .quick-actions-diamond-shine::before,
-  .quick-actions-diamond-shine::after {
-    background: var(--neu-bg);
-    box-shadow:
-      -6px -6px 14px var(--neu-shadow-light),
-      6px 6px 16px var(--neu-shadow-dark);
-    animation: none;
-    border: none;
-    clip-path: none;
-  }
-  .quick-actions-diamond-shine::before,
-  .quick-actions-diamond-shine::after {
-    content: none;
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Tailwind blue/sky/cyan colour remap → neumorphic accent / gray.    */
-  /* The board.tsx file uses hundreds of `*-sky-*`, `*-blue-*`, and     */
-  /* `*-cyan-*` utilities. Remapping them at the CSS layer prevents     */
-  /* having to touch every className while still giving us a coherent   */
-  /* orange-on-soft-gray palette.                                       */
-  /* ------------------------------------------------------------------ */
-
-  .text-sky-50,
-  .text-sky-100,
-  .text-sky-200,
-  .text-sky-300,
-  .text-sky-400,
-  .text-blue-50,
-  .text-blue-100,
-  .text-blue-200,
-  .text-blue-300,
-  .text-blue-400,
-  .text-cyan-50,
-  .text-cyan-100,
-  .text-cyan-200,
-  .text-cyan-300,
-  .text-cyan-400 {
-    color: var(--neu-text-muted);
-  }
-  .text-sky-500,
-  .text-sky-600,
-  .text-blue-500,
-  .text-blue-600,
-  .text-cyan-500,
-  .text-cyan-600 {
-    color: var(--neu-accent);
-  }
-  .text-sky-700,
-  .text-sky-800,
-  .text-sky-900,
-  .text-sky-950,
-  .text-blue-700,
-  .text-blue-800,
-  .text-blue-900,
-  .text-blue-950,
-  .text-cyan-700,
-  .text-cyan-800,
-  .text-cyan-900,
-  .text-cyan-950 {
-    color: var(--neu-text);
-  }
-  .text-slate-950 {
-    color: var(--neu-text-strong);
-  }
-
-  .bg-sky-50,
-  .bg-sky-100,
-  .bg-blue-50,
-  .bg-blue-100,
-  .bg-cyan-50,
-  .bg-cyan-100 {
-    background-color: var(--neu-bg);
-  }
-  .bg-sky-200,
-  .bg-sky-300,
-  .bg-sky-400,
-  .bg-sky-500,
-  .bg-blue-200,
-  .bg-blue-300,
-  .bg-blue-400,
-  .bg-blue-500,
-  .bg-cyan-200,
-  .bg-cyan-300,
-  .bg-cyan-400,
-  .bg-cyan-500 {
-    background-color: var(--neu-accent);
-  }
-  .bg-sky-600,
-  .bg-sky-700,
-  .bg-blue-600,
-  .bg-blue-700,
-  .bg-cyan-600,
-  .bg-cyan-700 {
-    background-color: var(--neu-accent);
-  }
-
-  .border-sky-50,
-  .border-sky-100,
-  .border-sky-200,
-  .border-sky-300,
-  .border-blue-50,
-  .border-blue-100,
-  .border-blue-200,
-  .border-blue-300,
-  .border-cyan-50,
-  .border-cyan-100,
-  .border-cyan-200,
-  .border-cyan-300 {
-    border-color: rgba(163, 177, 198, 0.35);
-  }
-  .border-sky-400,
-  .border-sky-500,
-  .border-blue-400,
-  .border-blue-500,
-  .border-cyan-400,
-  .border-cyan-500 {
-    border-color: var(--neu-accent);
-  }
-
-  /* Hover-state remaps that the file relies on. */
-  .hover\:text-sky-700:hover,
-  .hover\:text-sky-600:hover,
-  .hover\:text-sky-500:hover,
-  .hover\:text-sky-800:hover,
-  .hover\:text-sky-200:hover,
-  .hover\:text-blue-700:hover,
-  .hover\:text-blue-600:hover {
-    color: var(--neu-accent);
-  }
-  .hover\:bg-sky-50\/90:hover,
-  .hover\:bg-sky-50:hover,
-  .hover\:bg-sky-100:hover {
-    background-color: var(--neu-bg);
-  }
-  .focus-within\:border-sky-500:focus-within,
-  .focus-within\:border-sky-400:focus-within {
-    border-color: var(--neu-accent);
-  }
-  .hover\:border-sky-200:hover,
-  .hover\:border-sky-200\/90:hover,
-  .hover\:border-sky-300:hover {
-    border-color: rgba(163, 177, 198, 0.55);
-  }
-
-  /* Amber notice band keeps a warm but soft hue. */
-  .bg-amber-50\/80,
-  .bg-amber-50\/70 {
-    background-color: var(--neu-bg);
-  }
-  .text-amber-950,
-  .text-amber-900 {
-    color: var(--neu-text-strong);
-  }
-  .border-amber-300\/60,
-  .border-amber-300 {
-    border-color: rgba(255, 122, 0, 0.35);
-  }
-
-  /* Red destructive cues stay red but in the muted neumorphic family. */
-  .bg-red-50\/25,
-  .bg-red-50\/30 {
-    background-color: var(--neu-bg);
-  }
-  .bg-red-400\/70 {
-    background-color: var(--neu-danger);
-  }
-
-  /* Profile carousel indicator dot — keep crisp white for the active pill. */
-  .bg-white {
-    background-color: #FFFFFF;
-  }
-
-  /* Page-fade radial background overlay neutralised. */
-  .pipeline-flat-bg {
-    background: var(--neu-bg) !important;
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Circuit-board background texture — LIGHT THEME ONLY.               */
-  /* `.circuit-bg` is a single decorative, fixed, full-viewport layer.  */
-  /* It is rendered once at the app root (see layout.tsx) so it sits    */
-  /* behind every page and shows through the translucent backdrops of   */
-  /* portaled dialogs/popups, and again inside the two near-opaque      */
-  /* light-veil overlays (profile sheet + avatar adjuster) where a      */
-  /* behind-layer would be hidden. It tiles a faint PCB pattern on the  */
-  /* solid --neu-bg base at z-index:0 — above the base but below the    */
-  /* z-10 content/cards — so it only reads in the gaps as a subtle      */
-  /* technical overlay. It is purely decorative (callers pass           */
-  /* aria-hidden) and is fully disabled in dark mode below.             */
-  /* ------------------------------------------------------------------ */
-  .circuit-bg {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image: var(--circuit-image);
-    background-repeat: repeat;
-    background-size: var(--circuit-size) var(--circuit-size);
-    opacity: var(--circuit-opacity);
-  }
-  [data-theme="dark"] .circuit-bg {
-    display: none;
-  }
-  [data-theme="star"] .circuit-bg {
-    display: none;
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Stack-view active stage badge — thin orange glowing ring + pulse.  */
-  /* ------------------------------------------------------------------ */
-  .stack-stage-number-active::after {
-    content: "";
-    position: absolute;
-    inset: -3px;
-    border-radius: inherit;
-    border: 1px solid var(--neu-accent);
-    box-shadow:
-      0 0 8px 1px rgba(255, 122, 0, 0.55),
-      0 0 18px 2px rgba(255, 122, 0, 0.22),
-      inset 0 0 6px rgba(255, 122, 0, 0.25);
-    pointer-events: none;
-    animation: stack-stage-number-pulse 2.4s ease-in-out infinite;
-  }
-
-  @keyframes stack-stage-number-pulse {
-    0%,
-    100% {
-      opacity: 0.6;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1.04);
-    }
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Stale-contact glow — soft pulsing red halo around a contact card   */
-  /* with no activity in STALE_CONTACT_GLOW_DAYS days. The overlay span  */
-  /* (.contact-stale-glow, inset-0) is rendered in board.tsx. Uses the   */
-  /* theme-aware --neu-danger so it reads in light, dark, and star.      */
-  /* ------------------------------------------------------------------ */
-  .contact-stale-glow {
-    border-radius: 0.9rem;
-    box-shadow:
-      inset 0 0 0 1.5px color-mix(in srgb, var(--neu-danger) 50%, transparent),
-      inset 0 0 16px 1px color-mix(in srgb, var(--neu-danger) 20%, transparent),
-      0 0 12px color-mix(in srgb, var(--neu-danger) 25%, transparent);
-    animation: contact-stale-pulse 2.6s ease-in-out infinite;
-  }
-
-  @keyframes contact-stale-pulse {
-    0%,
-    100% {
-      opacity: 0.5;
-    }
-    50% {
-      opacity: 1;
-    }
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Stage water motif — small animated "water" box shown next to the   */
-  /* Brothers/Baptized lane title. Two off-center rotating blobs make    */
-  /* the surface undulate like water.                                    */
-  /* ------------------------------------------------------------------ */
-  .stage-water {
-    position: relative;
-    display: inline-block;
-    width: 1.6rem;
-    height: 1.15rem;
-    border-radius: 0.5rem;
-    overflow: hidden;
-    background: linear-gradient(
-      180deg,
-      rgba(125, 185, 255, 0.35),
-      rgba(37, 99, 235, 0.55)
-    );
-    box-shadow: inset 0 0 0 1px rgba(56, 132, 255, 0.3);
-  }
-  .stage-water::before,
-  .stage-water::after {
-    content: "";
-    position: absolute;
-    left: -50%;
-    top: 32%;
-    width: 200%;
-    height: 200%;
-    border-radius: 40%;
-    background: rgba(255, 255, 255, 0.35);
-    animation: stage-water-rotate 7s linear infinite;
-  }
-  .stage-water::after {
-    top: 36%;
-    border-radius: 44%;
-    background: rgba(255, 255, 255, 0.16);
-    animation-duration: 11s;
-    animation-direction: reverse;
-  }
-
-  @keyframes stage-water-rotate {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .contact-stale-glow {
-      animation: none;
-      opacity: 0.85;
-    }
-    .stage-water::before,
-    .stage-water::after {
-      animation: none;
-    }
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* Header hero wordmark — small engraved S-Drive in top-left corner.  */
-  /* ------------------------------------------------------------------ */
-  .header-hero-wordmark {
-    color: var(--neu-accent);
+  .t-display-lg {
+    font-family: var(--font-display);
+    font-size: 2.25rem;
+    line-height: 1;
+    letter-spacing: -0.015em;
+  }
+  .t-display-md {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+  .t-display-sm {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    line-height: 1.1;
+    letter-spacing: -0.005em;
+  }
+  .t-body {
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+  .t-body-sm {
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+  }
+  .t-label {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    line-height: 1.2;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .t-meta {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1.3;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    font-weight: 700;
-    text-shadow:
-      0 -1px 0 rgba(0, 0, 0, 0.55),
-      0 -2px 1px rgba(0, 0, 0, 0.28),
-      0 1px 0 rgba(255, 255, 255, 0.7),
-      0 2px 1px rgba(255, 255, 255, 0.35),
-      0 0 8px rgba(0, 0, 0, 0.16);
+    font-variant-numeric: tabular-nums;
   }
-  [data-theme="dark"] .header-hero-wordmark {
-    text-shadow:
-      0 -1px 0 rgba(0, 0, 0, 0.9),
-      0 -2px 2px rgba(0, 0, 0, 0.55),
-      0 1px 0 rgba(255, 255, 255, 0.08),
-      0 2px 1px rgba(255, 255, 255, 0.04),
-      0 0 10px rgba(0, 0, 0, 0.7);
+  .t-meta-sm {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    line-height: 1.2;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
   }
-  [data-theme="star"] .header-hero-wordmark {
-    text-shadow:
-      0 -1px 0 rgba(2, 10, 40, 0.9),
-      0 -2px 2px rgba(2, 10, 40, 0.55),
-      0 1px 0 rgba(255, 255, 255, 0.12),
-      0 2px 1px rgba(255, 255, 255, 0.06),
-      0 0 12px rgba(2, 10, 40, 0.7);
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Header hero bottom beam — soft orange light sweeping back & forth. */
-  /* ------------------------------------------------------------------ */
-  .header-hero-beam {
-    position: absolute;
-    inset: auto 0 0 0;
-    height: 2px;
-    pointer-events: none;
-    z-index: 5;
-    overflow: visible;
-  }
-  .header-hero-beam::before,
-  .header-hero-beam::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-  }
-  .header-hero-beam::before {
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      transparent 32%,
-      var(--neu-accent-soft) 44%,
-      var(--neu-accent) 50%,
-      var(--neu-accent-soft) 56%,
-      transparent 68%,
-      transparent 100%
+  /* Brand actions, lit from above. Gold is light, not paint. */
+  .btn-illuminated {
+    background-color: var(--sd-accent);
+    background-image: linear-gradient(
+      to bottom,
+      var(--sd-accent-hi),
+      var(--sd-accent-lo)
     );
-    background-size: 320% 100%;
-    background-repeat: no-repeat;
-    animation: header-hero-beam-sweep 5.2s ease-in-out infinite alternate;
-    will-change: background-position;
+    color: var(--sd-accent-ink);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.25),
+      inset 0 -1px 0 oklch(0 0 0 / 0.12),
+      var(--sd-shadow-1);
   }
-  .header-hero-beam::after {
-    top: -7px;
-    bottom: -7px;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      transparent 36%,
-      rgba(255, 122, 0, 0.5) 48%,
-      rgba(255, 160, 82, 0.6) 50%,
-      rgba(255, 122, 0, 0.5) 52%,
-      transparent 64%,
-      transparent 100%
+  .btn-illuminated:hover {
+    filter: brightness(1.05) saturate(1.03);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.28),
+      inset 0 -1px 0 oklch(0 0 0 / 0.12),
+      0 2px 10px color-mix(in oklch, var(--sd-accent) 28%, transparent);
+  }
+  .btn-illuminated:active {
+    filter: brightness(0.97);
+  }
+
+  /* Raised paper: gilt top edge + warm ambient shadow. */
+  .card-lit {
+    box-shadow: var(--sd-edge-gilt), var(--sd-shadow-1);
+  }
+  .card-lit-2 {
+    box-shadow: var(--sd-edge-gilt), var(--sd-shadow-2);
+  }
+
+  /* Gold breath under app-level page headers (Almanac, dialogs). */
+  .gilt-wash-head {
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--sd-accent) 5%, transparent),
+      transparent
     );
-    background-size: 320% 100%;
-    background-repeat: no-repeat;
-    filter: blur(6px);
-    opacity: 0.85;
-    animation: header-hero-beam-sweep 5.2s ease-in-out infinite alternate;
-    will-change: background-position;
   }
 
-  @keyframes header-hero-beam-sweep {
-    0% {
-      background-position: 0% 50%;
-    }
-    100% {
-      background-position: 100% 50%;
-    }
+  /* Tone family — consumes the --tone property set via toneVars(). */
+  .tone-wash-head {
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--tone) 8%, transparent),
+      transparent
+    );
+  }
+  .tone-wash-card {
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--tone) 9%, transparent),
+      transparent 55%
+    );
+  }
+  .tone-border {
+    border-color: color-mix(in oklch, var(--tone) 28%, var(--sd-line));
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .gospel-worker-carve,
-    .profile-hero-light,
-    .app-header-band::after,
-    .quick-actions-diamond-shine::after,
-    .header-hero-beam::before,
-    .header-hero-beam::after,
-    .stack-stage-number-active::after {
-      animation: none;
-      will-change: auto;
-    }
+  /* Gold-leaf lettering (falls back to flat accent). */
+  .text-gilt {
+    color: var(--sd-accent);
+    background-image: linear-gradient(
+      to bottom,
+      var(--sd-accent-hi),
+      var(--sd-accent-lo)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
+}
 
-  /* ------------------------------------------------------------------ */
-  /* Dark-theme overrides for utility classes whose colour values are   */
-  /* hard-coded (not driven by tokens). The full token swap happens via */
-  /* the [data-theme="dark"] block above; the rules below patch the    */
-  /* remaining `bg-white/*`, `border-white/*`, and slate-* utilities so */
-  /* card chrome and frosted overlays still read correctly on a dark    */
-  /* surface instead of producing milky-white panels.                   */
-  /* ------------------------------------------------------------------ */
-  [data-theme="dark"] .bg-white {
-    background-color: rgba(255, 255, 255, 0.08);
-  }
-  [data-theme="dark"] .bg-white\/15 {
-    background-color: rgba(255, 255, 255, 0.06);
-  }
-  [data-theme="dark"] .bg-white\/30,
-  [data-theme="dark"] .bg-white\/35 {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  [data-theme="dark"] .bg-white\/40,
-  [data-theme="dark"] .bg-white\/45 {
-    background-color: rgba(255, 255, 255, 0.06);
-  }
-  [data-theme="dark"] .bg-white\/50,
-  [data-theme="dark"] .bg-white\/60 {
-    background-color: rgba(255, 255, 255, 0.08);
-  }
-  [data-theme="dark"] .bg-white\/65,
-  [data-theme="dark"] .bg-white\/70 {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  [data-theme="dark"] .bg-white\/80,
-  [data-theme="dark"] .bg-white\/85,
-  [data-theme="dark"] .bg-white\/90 {
-    background-color: rgba(255, 255, 255, 0.12);
-  }
+/* --- The sky: one fixed ambient layer per theme ----------------------- */
+/* Mounted once in layout.tsx as <div aria-hidden class="sky-bg" />.      */
 
-  [data-theme="dark"] .hover\:bg-white\/25:hover {
-    background-color: rgba(255, 255, 255, 0.04);
-  }
-  [data-theme="dark"] .hover\:bg-white\/35:hover {
-    background-color: rgba(255, 255, 255, 0.06);
-  }
-  [data-theme="dark"] .hover\:bg-white\/50:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-  }
-  [data-theme="dark"] .hover\:bg-white:hover,
-  [data-theme="dark"] .hover\:bg-white\/70:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-  [data-theme="dark"] .focus-within\:bg-white\/40:focus-within {
-    background-color: rgba(255, 255, 255, 0.06);
-  }
-  [data-theme="dark"] .sm\:hover\:bg-white\/35:hover {
-    background-color: rgba(255, 255, 255, 0.06);
-  }
+.sky-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* Daybreak: laid paper — faint horizontal lines, film grain, a warm
+     lamp falling from the top of the page, and a dusk vignette at its
+     foot. */
+  background-image:
+    radial-gradient(
+      120% 55% at 50% -10%,
+      oklch(1 0.016 95 / 0.75),
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 50% at 50% 110%,
+      oklch(0.86 0.035 75 / 0.18),
+      transparent 60%
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 27px,
+      oklch(0.24 0.02 270 / 0.035) 27px 28px
+    ),
+    var(--sky-grain);
+  background-size:
+    auto,
+    auto,
+    auto,
+    140px 140px;
+  opacity: 1;
+}
 
-  [data-theme="dark"] .border-white,
-  [data-theme="dark"] .border-white\/70,
-  [data-theme="dark"] .border-white\/75,
-  [data-theme="dark"] .border-white\/90 {
-    border-color: rgba(255, 255, 255, 0.1);
-  }
+[data-theme="dark"] .sky-bg {
+  /* Vespers: candlelight above, a barely-there vignette breathing below. */
+  background-image:
+    radial-gradient(
+      90% 40% at 50% -5%,
+      oklch(0.55 0.07 85 / 0.1),
+      transparent 60%
+    ),
+    radial-gradient(
+      120% 90% at 50% 42%,
+      transparent 52%,
+      oklch(0 0 0 / 0.34)
+    ),
+    var(--sky-grain);
+  background-size:
+    auto,
+    auto,
+    140px 140px;
+  animation: vespers-breathe 30s var(--ease-in-out) infinite alternate;
+}
 
-  /* The board renders text-slate-700 / 900 / 950 against light tiles. */
-  /* In dark mode push these onto the neumorphic text token family.    */
-  [data-theme="dark"] .text-slate-700,
-  [data-theme="dark"] .text-slate-800,
-  [data-theme="dark"] .text-slate-900 {
-    color: var(--neu-text);
-  }
-  [data-theme="dark"] .text-slate-950,
-  [data-theme="dark"] .text-slate-950\/95 {
-    color: var(--neu-text-strong);
-  }
-  [data-theme="dark"] .placeholder\:text-slate-900\/70::placeholder {
-    color: rgba(203, 213, 225, 0.55);
-  }
-  [data-theme="dark"] .border-slate-950\/10 {
-    border-color: rgba(255, 255, 255, 0.08);
-  }
-  [data-theme="dark"] .border-slate-950\/35 {
-    border-color: rgba(255, 255, 255, 0.18);
-  }
+[data-theme="star"] .sky-bg {
+  /* Night Watch: the constellation field — deeper sky at the top,
+     two star layers, sparse connecting lines. */
+  background-image:
+    var(--sky-stars-lg),
+    var(--sky-stars-sm),
+    var(--sky-constellations),
+    linear-gradient(to bottom, var(--sd-canvas-deep), transparent 55vh);
+  background-size:
+    460px 460px,
+    280px 280px,
+    720px 720px,
+    auto;
+  /* Keep the masthead area clean. */
+  mask-image: linear-gradient(to bottom, transparent 0, black 120px);
+}
 
-  /* ------------------------------------------------------------------ */
-  /* Star-theme overrides for the same hard-coded utility classes the   */
-  /* dark block patches. Frosted-white surfaces become translucent      */
-  /* deep-navy (#021A60 = rgb(2, 26, 96)) panels on the royal-blue page */
-  /* so cards/panels read as raised, and slate text rides the light     */
-  /* neumorphic text tokens for contrast.                               */
-  /* ------------------------------------------------------------------ */
-  [data-theme="star"] .bg-white {
-    background-color: rgba(2, 26, 96, 0.55);
-  }
-  [data-theme="star"] .bg-white\/15 {
-    background-color: rgba(2, 26, 96, 0.3);
-  }
-  [data-theme="star"] .bg-white\/30,
-  [data-theme="star"] .bg-white\/35 {
-    background-color: rgba(2, 26, 96, 0.34);
-  }
-  [data-theme="star"] .bg-white\/40,
-  [data-theme="star"] .bg-white\/45 {
-    background-color: rgba(2, 26, 96, 0.42);
-  }
-  [data-theme="star"] .bg-white\/50,
-  [data-theme="star"] .bg-white\/60 {
-    background-color: rgba(2, 26, 96, 0.5);
-  }
-  [data-theme="star"] .bg-white\/65,
-  [data-theme="star"] .bg-white\/70 {
-    background-color: rgba(2, 26, 96, 0.58);
-  }
-  [data-theme="star"] .bg-white\/80,
-  [data-theme="star"] .bg-white\/85,
-  [data-theme="star"] .bg-white\/90 {
-    background-color: rgba(2, 26, 96, 0.66);
-  }
+/* Twinkle: a second, offset star layer fading in counterpoint. */
+[data-theme="star"] .sky-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--sky-stars-sm);
+  background-size: 280px 280px;
+  background-position: 140px 90px;
+  animation: star-twinkle 5.5s var(--ease-in-out) infinite alternate;
+}
 
-  [data-theme="star"] .hover\:bg-white\/25:hover {
-    background-color: rgba(2, 26, 96, 0.34);
-  }
-  [data-theme="star"] .hover\:bg-white\/35:hover {
-    background-color: rgba(2, 26, 96, 0.4);
-  }
-  [data-theme="star"] .hover\:bg-white\/50:hover {
-    background-color: rgba(2, 26, 96, 0.48);
-  }
-  [data-theme="star"] .hover\:bg-white:hover,
-  [data-theme="star"] .hover\:bg-white\/70:hover {
-    background-color: rgba(2, 26, 96, 0.58);
-  }
-  [data-theme="star"] .focus-within\:bg-white\/40:focus-within {
-    background-color: rgba(2, 26, 96, 0.42);
-  }
-  [data-theme="star"] .sm\:hover\:bg-white\/35:hover {
-    background-color: rgba(2, 26, 96, 0.4);
-  }
+/* One shooting star on the long watch (~90s cycle). */
+[data-theme="star"] .sky-bg::after {
+  content: "";
+  position: absolute;
+  top: 12%;
+  left: 0;
+  width: 90px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: linear-gradient(to left, white, transparent);
+  opacity: 0;
+  transform: translateX(110vw) rotate(-16deg);
+  animation: shooting-star 90s linear infinite;
+}
 
-  [data-theme="star"] .border-white,
-  [data-theme="star"] .border-white\/70,
-  [data-theme="star"] .border-white\/75,
-  [data-theme="star"] .border-white\/90 {
-    border-color: rgba(255, 255, 255, 0.16);
+@keyframes vespers-breathe {
+  from {
+    opacity: 0.88;
   }
+  to {
+    opacity: 1;
+  }
+}
 
-  /* Faint/meta slate text → ~62% white; secondary slate-600 → ~86% white. */
-  [data-theme="star"] .text-slate-400,
-  [data-theme="star"] .text-slate-500 {
-    color: rgba(255, 255, 255, 0.62);
+@keyframes star-twinkle {
+  from {
+    opacity: 0.35;
   }
-  [data-theme="star"] .text-slate-600 {
-    color: rgba(255, 255, 255, 0.86);
+  to {
+    opacity: 0.9;
   }
-  [data-theme="star"] .text-slate-700,
-  [data-theme="star"] .text-slate-800,
-  [data-theme="star"] .text-slate-900 {
-    color: var(--neu-text);
-  }
-  [data-theme="star"] .text-slate-950,
-  [data-theme="star"] .text-slate-950\/95 {
-    color: var(--neu-text-strong);
-  }
-  [data-theme="star"] .placeholder\:text-slate-900\/70::placeholder {
-    color: rgba(234, 240, 255, 0.55);
-  }
-  [data-theme="star"] .border-slate-950\/10 {
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  [data-theme="star"] .border-slate-950\/35 {
-    border-color: rgba(255, 255, 255, 0.2);
-  }
+}
 
-  /* Tailwind blue/sky text-700+ utilities are already remapped above to */
-  /* the muted neumorphic text token, which inherits the dark-theme       */
-  /* override automatically — no extra rules needed for those.            */
+@keyframes shooting-star {
+  0% {
+    opacity: 0;
+    transform: translate(110vw, 0) rotate(-16deg);
+  }
+  1% {
+    opacity: 0.9;
+  }
+  3.2% {
+    opacity: 0;
+    transform: translate(38vw, 20vh) rotate(-16deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(38vw, 20vh) rotate(-16deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky-bg,
+  .sky-bg::before,
+  .sky-bg::after {
+    animation: none !important;
+  }
+  [data-theme="star"] .sky-bg::before {
+    opacity: 0.6;
+  }
 }

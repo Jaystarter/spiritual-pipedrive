@@ -112,6 +112,12 @@ type UpdatePersonStudyNoteInput = {
   actorProfileId: string;
 };
 
+type UpdatePersonStudyTeacherInput = {
+  id: string;
+  teacherProfileId: string;
+  actorProfileId: string;
+};
+
 type DeletePersonStudyInput = {
   id: string;
   actorProfileId: string;
@@ -1800,6 +1806,59 @@ export async function updatePersonStudyTitle(
   const { data, error } = await supabase
     .from("person_studies")
     .update(patch)
+    .eq("id", input.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { ok: true, data };
+}
+
+export async function updatePersonStudyTeacher(
+  input: UpdatePersonStudyTeacherInput
+): Promise<ActionResult<PersonStudy>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const actor = await validateActorProfile(input.actorProfileId);
+
+  if ("error" in actor) {
+    return { ok: false, error: actor.error };
+  }
+
+  const teacherProfileId = input.teacherProfileId.trim();
+
+  if (!uuidPattern.test(teacherProfileId)) {
+    return { ok: false, error: "Choose a valid profile." };
+  }
+
+  const { data: teacher, error: teacherError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", teacherProfileId)
+    .maybeSingle();
+
+  if (teacherError) {
+    return { ok: false, error: teacherError.message };
+  }
+
+  if (!teacher) {
+    return { ok: false, error: "That profile no longer exists." };
+  }
+
+  // Attribution edit only — deliberately logs no person_event, so
+  // re-crediting a study never resets the follow-up quiet clock.
+  const patch2: StudyUpdate = { actor_profile_id: teacherProfileId };
+  const { data, error } = await supabase
+    .from("person_studies")
+    .update(patch2)
     .eq("id", input.id)
     .select("*")
     .single();

@@ -20,8 +20,9 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Pipeline — Bible Study CRM",
-  description: "An editorial CRM for the journey from first contact to baptism.",
+  title: "S-Drive — Bible Study CRM",
+  description:
+    "An illuminated ledger for the journey from first contact to baptism.",
 };
 
 // Runs synchronously before hydration so the saved theme is applied before
@@ -46,7 +47,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         {children}
-        <div aria-hidden className="circuit-bg" />
+        <div aria-hidden className="sky-bg" />
       </body>
     </html>
   );

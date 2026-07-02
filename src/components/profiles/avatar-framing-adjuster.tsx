@@ -1,8 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Camera, RefreshCcw, Trash2, X } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useRef, useState } from "react";
+import { ImageOff, RefreshCcw } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Slider } from "@/components/ui/slider";
 
 export type AvatarFraming = {
   offsetX: number;
@@ -10,75 +20,54 @@ export type AvatarFraming = {
   scale: number;
 };
 
-const DEFAULT_FRAMING: AvatarFraming = {
+export const DEFAULT_AVATAR_FRAMING: AvatarFraming = {
   offsetX: 50,
   offsetY: 50,
   scale: 1,
 };
 
-const FRAME_DIAMETER = 240;
-
-type AvatarFramingAdjusterProps = {
-  open: boolean;
-  avatarUrl: string | null;
-  framing: AvatarFraming;
-  busy?: boolean;
-  saving?: boolean;
-  error?: string;
-  title?: string;
-  onCancel: () => void;
-  onSave: (framing: AvatarFraming) => void;
-  onReplacePhoto?: () => void;
-  onRemovePhoto?: () => void;
-};
-
 function clamp(value: number, min: number, max: number) {
-  if (Number.isNaN(value)) {
-    return min;
-  }
-
-  if (value < min) {
-    return min;
-  }
-
-  if (value > max) {
-    return max;
-  }
-
-  return value;
+  return Math.min(max, Math.max(min, value));
 }
 
 function roundTo(value: number, decimals: number) {
   const factor = 10 ** decimals;
+
   return Math.round(value * factor) / factor;
 }
 
-export function AvatarFramingAdjuster(props: AvatarFramingAdjusterProps) {
-  return (
-    <AnimatePresence>
-      {props.open ? <AvatarFramingAdjusterPanel {...props} /> : null}
-    </AnimatePresence>
-  );
-}
+type AvatarFramingAdjusterProps = {
+  name: string;
+  avatarUrl: string | null;
+  framing: AvatarFraming;
+  saving?: boolean;
+  error?: string;
+  onSave: (framing: AvatarFraming) => void;
+  onCancel: () => void;
+  onReplacePhoto: () => void;
+  onRemovePhoto: () => void;
+};
 
-function AvatarFramingAdjusterPanel({
+/**
+ * Frame the portrait: drag to pan, slide to zoom (avatar_scale — stored and
+ * rendered for years, finally editable).
+ */
+export function AvatarFramingAdjuster({
+  name,
   avatarUrl,
   framing,
-  busy = false,
   saving = false,
   error,
-  title = "Adjust photo",
-  onCancel,
   onSave,
+  onCancel,
   onReplacePhoto,
   onRemovePhoto,
 }: AvatarFramingAdjusterProps) {
-  const headingId = useId();
-  const [draft, setDraft] = useState<AvatarFraming>(() => ({
+  const [draft, setDraft] = useState<AvatarFraming>({
     offsetX: clamp(framing.offsetX, 0, 100),
     offsetY: clamp(framing.offsetY, 0, 100),
-    scale: 1,
-  }));
+    scale: clamp(framing.scale || 1, 1, 3),
+  });
   const frameRef = useRef<HTMLDivElement>(null);
   const draggingPointerRef = useRef<number | null>(null);
   const dragStartRef = useRef<{
@@ -88,21 +77,9 @@ function AvatarFramingAdjusterPanel({
     offsetY: number;
   } | null>(null);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !saving && !busy) {
-        event.preventDefault();
-        onCancel();
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [saving, busy, onCancel]);
-
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!avatarUrl || saving || busy) {
+      if (!avatarUrl || saving) {
         return;
       }
 
@@ -122,15 +99,12 @@ function AvatarFramingAdjusterPanel({
         offsetY: draft.offsetY,
       };
     },
-    [avatarUrl, busy, draft.offsetX, draft.offsetY, saving]
+    [avatarUrl, draft.offsetX, draft.offsetY, saving]
   );
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (
-        draggingPointerRef.current !== event.pointerId ||
-        !dragStartRef.current
-      ) {
+      if (draggingPointerRef.current !== event.pointerId || !dragStartRef.current) {
         return;
       }
 
@@ -144,218 +118,139 @@ function AvatarFramingAdjusterPanel({
       const denom = Math.max(rect.width, 1);
       const deltaX = event.clientX - dragStartRef.current.x;
       const deltaY = event.clientY - dragStartRef.current.y;
-      // Dragging the visible image to the right (positive deltaX) means the
-      // user wants to see more of the image's LEFT portion, which corresponds
-      // to a SMALLER object-position X percentage.
-      const nextX = clamp(
-        dragStartRef.current.offsetX - (deltaX / denom) * 100,
-        0,
-        100
-      );
-      const nextY = clamp(
-        dragStartRef.current.offsetY - (deltaY / denom) * 100,
-        0,
-        100
-      );
 
+      // Dragging the image right reveals more of its LEFT portion — a
+      // smaller object-position X percentage.
       setDraft((current) => ({
         ...current,
-        offsetX: roundTo(nextX, 2),
-        offsetY: roundTo(nextY, 2),
+        offsetX: roundTo(
+          clamp(dragStartRef.current!.offsetX - (deltaX / denom) * 100, 0, 100),
+          2
+        ),
+        offsetY: roundTo(
+          clamp(dragStartRef.current!.offsetY - (deltaY / denom) * 100, 0, 100),
+          2
+        ),
       }));
     },
     []
   );
 
-  const endDrag = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (draggingPointerRef.current !== event.pointerId) {
-        return;
-      }
+  const endDrag = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (draggingPointerRef.current !== event.pointerId) {
+      return;
+    }
 
-      const frame = frameRef.current;
-
-      if (frame && frame.hasPointerCapture(event.pointerId)) {
-        frame.releasePointerCapture(event.pointerId);
-      }
-
-      draggingPointerRef.current = null;
-      dragStartRef.current = null;
-    },
-    []
-  );
-
-  function handleSave() {
-    onSave({
-      offsetX: roundTo(clamp(draft.offsetX, 0, 100), 2),
-      offsetY: roundTo(clamp(draft.offsetY, 0, 100), 2),
-      scale: 1,
-    });
-  }
-
-  const disabled = !avatarUrl;
+    draggingPointerRef.current = null;
+    dragStartRef.current = null;
+  }, []);
 
   return (
-    <div className="fixed inset-0 z-[160] flex items-center justify-center px-3 py-6">
-      <motion.button
-        aria-label="Close adjuster"
-        className="absolute inset-0"
-        style={{ background: "rgba(236, 239, 243, 0.85)" }}
-        disabled={saving}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={saving ? undefined : onCancel}
-        type="button"
-      />
-      <div aria-hidden className="circuit-bg" />
-      <motion.div
-        className="neu-raised relative z-10 w-full max-w-sm overflow-hidden p-5"
-        style={{ borderRadius: "1.75rem", background: "var(--neu-bg)" }}
-        initial={{ opacity: 0, y: 60, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 60, scale: 0.98 }}
-        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={headingId}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p
-              id={headingId}
-              className="font-display text-xl leading-tight tracking-display text-[var(--neu-text-strong)]"
-            >
-              {title}
-            </p>
-            <p className="mt-1 text-[0.72rem] font-medium text-[var(--neu-text-muted)]">
-              Drag to reposition.
-            </p>
-          </div>
-          <button
-            type="button"
-            aria-label="Cancel"
-            onClick={onCancel}
-            disabled={saving}
-            className="neu-raised-sm inline-flex size-9 shrink-0 items-center justify-center rounded-full text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && !saving && onCancel()}>
+      <DialogContent className="max-w-sm gap-4 border-line bg-surface-raised">
+        <DialogHeader>
+          <DialogTitle className="t-display-md text-ink">
+            Frame {name}’s portrait
+          </DialogTitle>
+          <DialogDescription className="t-body-sm text-ink-3">
+            Drag to reposition · slide to zoom.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="mt-5 flex justify-center">
+        <div className="flex flex-col items-center gap-4">
           <div
-            className="neu-inset overflow-hidden"
-            style={{
-              width: FRAME_DIAMETER,
-              height: FRAME_DIAMETER,
-              borderRadius: "9999px",
-              padding: 0,
-            }}
+            ref={frameRef}
+            className="relative size-56 cursor-grab touch-none overflow-hidden rounded-full ring-1 ring-line active:cursor-grabbing"
+            onPointerCancel={endDrag}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={endDrag}
           >
-            <div
-              ref={frameRef}
-              aria-label="Drag to reposition photo"
-              role="presentation"
-              className="relative size-full select-none overflow-hidden"
-              style={{
-                borderRadius: "9999px",
-                cursor: disabled ? "default" : "grab",
-                touchAction: "none",
-              }}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={endDrag}
-              onPointerCancel={endDrag}
-            >
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  alt=""
-                  draggable={false}
-                  src={avatarUrl}
-                  className="pointer-events-none size-full select-none"
-                  style={{
-                    objectFit: "cover",
-                    objectPosition: `${draft.offsetX}% ${draft.offsetY}%`,
-                  }}
-                />
-              ) : (
-                <div className="flex size-full items-center justify-center text-sm text-[var(--neu-text-muted)]">
-                  Upload a photo to adjust framing.
-                </div>
-              )}
-            </div>
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                alt=""
+                className="size-full select-none object-cover"
+                draggable={false}
+                src={avatarUrl}
+                style={{
+                  objectPosition: `${draft.offsetX}% ${draft.offsetY}%`,
+                  transform: `scale(${draft.scale})`,
+                  transformOrigin: "center",
+                }}
+              />
+            ) : (
+              <div className="flex size-full items-center justify-center bg-surface-sunken text-ink-4">
+                <ImageOff className="size-6" />
+              </div>
+            )}
           </div>
+
+          <div className="flex w-full items-center gap-3">
+            <span className="t-meta-sm w-10 text-ink-4">Zoom</span>
+            <Slider
+              aria-label="Zoom"
+              disabled={!avatarUrl || saving}
+              max={3}
+              min={1}
+              onValueChange={([value]) =>
+                setDraft((current) => ({ ...current, scale: roundTo(value, 2) }))
+              }
+              step={0.05}
+              value={[draft.scale]}
+            />
+            <span className="t-meta-sm w-10 text-right tabular-nums text-ink-4">
+              {draft.scale.toFixed(2)}×
+            </span>
+          </div>
+
+          {error ? <p className="t-body-sm text-signal-urgent">{error}</p> : null}
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-3">
-          {onRemovePhoto && avatarUrl ? (
-            <button
-              type="button"
-              onClick={onRemovePhoto}
-              disabled={saving || busy}
-              aria-label="Remove photo"
-              title="Remove photo (show initial)"
-              className="neu-raised-sm inline-flex items-center justify-center gap-1.5 px-4 py-2 text-[0.78rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-danger)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-              style={{ borderRadius: "999px" }}
-            >
-              <Trash2 className="size-3.5" />
-              Remove
-            </button>
-          ) : null}
-          {onReplacePhoto ? (
-            <button
-              type="button"
+        <DialogFooter className="flex-wrap gap-2 sm:justify-between">
+          <div className="flex gap-2">
+            <Button
+              className="t-label gap-1.5 text-ink-2"
+              disabled={saving}
               onClick={onReplacePhoto}
-              disabled={saving || busy}
-              className="neu-raised-sm inline-flex items-center justify-center gap-1.5 px-4 py-2 text-[0.78rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-              style={{ borderRadius: "999px" }}
+              size="sm"
+              variant="ghost"
             >
-              <Camera className="size-3.5" />
+              <RefreshCcw className="size-3.5" />
               Replace
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="neu-raised-sm inline-flex items-center justify-center px-4 py-2 text-[0.78rem] font-semibold text-[var(--neu-text)] transition hover:text-[var(--neu-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ borderRadius: "999px" }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || disabled}
-            className="inline-flex items-center justify-center gap-1.5 px-5 py-2 text-[0.78rem] font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-            style={{
-              borderRadius: "999px",
-              background:
-                "linear-gradient(135deg, var(--neu-accent), var(--neu-accent-soft))",
-              boxShadow:
-                "-3px -3px 8px var(--neu-shadow-light), 3px 3px 10px var(--neu-shadow-dark)",
-            }}
-          >
-            {saving ? (
-              <RefreshCcw className="size-3.5 animate-spin" />
-            ) : null}
-            Save
-          </button>
-        </div>
-
-        {error ? (
-          <p
-            className="neu-inset mt-3 px-3 py-2 text-sm"
-            style={{ borderRadius: "0.875rem", color: "var(--neu-danger)" }}
-          >
-            {error}
-          </p>
-        ) : null}
-      </motion.div>
-    </div>
+            </Button>
+            <Button
+              className="t-label gap-1.5 text-signal-urgent hover:text-signal-urgent"
+              disabled={saving || !avatarUrl}
+              onClick={onRemovePhoto}
+              size="sm"
+              variant="ghost"
+            >
+              <ImageOff className="size-3.5" />
+              Remove
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              className="t-label"
+              disabled={saving}
+              onClick={onCancel}
+              size="sm"
+              variant="ghost"
+            >
+              Cancel
+            </Button>
+            <Button
+              className="btn-illuminated t-label"
+              disabled={saving || !avatarUrl}
+              onClick={() => onSave(draft)}
+              size="sm"
+            >
+              {saving ? "Saving…" : "Save framing"}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
-
-export { DEFAULT_FRAMING };

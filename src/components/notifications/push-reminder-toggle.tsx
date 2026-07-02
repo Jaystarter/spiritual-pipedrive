@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Bell, BellOff, BellRing } from "lucide-react";
 
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   disablePush,
@@ -142,32 +143,29 @@ export function PushReminderToggle({
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={disabled}
-        aria-pressed={status === "on"}
-        className={cn(
-          "inline-flex w-fit items-center gap-2 rounded-full px-3.5 py-2 text-[0.7rem] font-bold uppercase tracking-[0.12em] transition duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neu-accent)]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--neu-bg)] disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none",
-          status === "on"
-            ? "neu-accent-fill text-white"
-            : "neu-raised-sm text-[var(--neu-text)] hover:-translate-y-0.5 hover:text-[var(--neu-accent)] active:translate-y-0 active:scale-95 disabled:hover:translate-y-0 motion-reduce:hover:translate-y-0"
-        )}
-      >
-        {icon}
-        <span>{label}</span>
-      </button>
+      <label className="flex items-center justify-between gap-3">
+        <span className="flex items-center gap-2 text-ink-2">
+          {icon}
+          <span className="t-label">{label}</span>
+        </span>
+        <Switch
+          aria-label="Daily follow-up reminders"
+          checked={status === "on"}
+          disabled={disabled}
+          onCheckedChange={handleClick}
+        />
+      </label>
       {(feedback || hint) && (
         <p
           role="status"
           aria-live="polite"
           className={cn(
-            "text-[0.66rem] font-medium leading-4",
+            "t-meta-sm leading-4",
             feedback?.tone === "error"
-              ? "text-rose-600"
+              ? "text-signal-urgent"
               : feedback?.tone === "ok"
-                ? "text-[var(--neu-accent)]"
-                : "text-muted-foreground/80"
+                ? "text-tone-green-ink"
+                : "text-ink-4"
           )}
         >
           {feedback?.text ?? hint}
