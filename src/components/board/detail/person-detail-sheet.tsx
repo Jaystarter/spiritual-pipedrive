@@ -48,10 +48,9 @@ import { fileToAvatarDataUrl } from "../lib/avatar";
 import {
   ARCHIVE_NOTE_PREFIX,
   getArchiveReason,
-  getAssignedProfiles,
   getStageById,
 } from "../lib/derive";
-import { daysInPipeline } from "../lib/format";
+import { formatDate } from "../lib/format";
 import { toneVars } from "../lib/stage-theme";
 import { FramedAvatar } from "../primitives/framed-avatar";
 import { SectionHeading } from "../primitives/section-heading";
@@ -68,7 +67,7 @@ import { NextStudyComposer } from "./next-study-composer";
  * everything about one soul in one scroll.
  */
 export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
-  const { visibleStages, profiles, configured, activeProfile } = useBoardData();
+  const { visibleStages, configured, activeProfile } = useBoardData();
   const actions = useBoardActions();
   const autosave = useAutosaveDetails(person);
 
@@ -111,15 +110,6 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
   const stage = getStageById(visibleStages, person.stage);
   const archived = person.stage === "archive";
   const journeyDone = archived || person.stage === "brothers" || person.stage === "baptized";
-  const ownerProfile =
-    profiles.find(
-      (profile) =>
-        profile.id ===
-        person.events.find((event) => event.event_type === "created")?.actor_profile_id
-    ) ??
-    getAssignedProfiles(person, profiles)[0] ??
-    null;
-
   function canEdit() {
     if (!configured) {
       actions.onNotice("Connect Supabase before editing people.");
@@ -455,21 +445,16 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                   </Popover>
                 </div>
               )}
-              {/* The registrar line: everything about them, one baseline. */}
+              {/* The registrar line: the stage, and the day it began. */}
               <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                 <StageStepper person={person} stages={visibleStages} />
                 <span aria-hidden className="t-meta-sm text-ink-4">·</span>
-                <span className="t-meta-sm whitespace-nowrap text-ink-4">
-                  {daysInPipeline(person.created_at)}d in pipeline
+                <span
+                  className="t-meta-sm whitespace-nowrap text-ink-4"
+                  title="First contact"
+                >
+                  {formatDate(person.created_at)}
                 </span>
-                {ownerProfile ? (
-                  <>
-                    <span aria-hidden className="t-meta-sm text-ink-4">·</span>
-                    <span className="t-meta-sm truncate text-ink-4">
-                      By {ownerProfile.name}
-                    </span>
-                  </>
-                ) : null}
               </div>
             </div>
 

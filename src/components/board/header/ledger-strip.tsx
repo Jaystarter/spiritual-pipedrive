@@ -34,7 +34,7 @@ function StripDivider() {
   return (
     <div
       aria-hidden
-      className="h-10 w-px bg-gradient-to-b from-transparent via-line-strong to-transparent"
+      className="hidden h-10 w-px bg-gradient-to-b from-transparent via-line-strong to-transparent sm:block"
     />
   );
 }
@@ -196,7 +196,8 @@ export function LedgerStrip({
 
   return (
     <section className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-      <div className="flex flex-wrap items-end gap-5 sm:gap-7">
+      {/* Phones get a balanced 3+2 grid; wider screens a divided row. */}
+      <div className="grid w-full grid-cols-3 items-end gap-x-3 gap-y-5 sm:flex sm:w-auto sm:flex-wrap sm:gap-x-7">
         <LedgerStat
           label={activeProfile ? `${activeProfile.name}’s contacts` : "Active contacts"}
           value={<CountUp value={activeCount} />}
@@ -220,13 +221,16 @@ export function LedgerStrip({
             <StripDivider />
             <StreakStat people={people} profileId={activeProfile.id} />
             <StripDivider />
-            <WeeklyGoalRing people={people} profileId={activeProfile.id} />
+            <div className="col-span-2 sm:col-span-1">
+              <WeeklyGoalRing people={people} profileId={activeProfile.id} />
+            </div>
           </>
         ) : null}
       </div>
 
+      {/* On phones the Almanac lives in the bottom bar already. */}
       <Button
-        className="t-meta gap-1 self-end text-ink-3 underline-offset-4 hover:text-brand hover:underline"
+        className="t-meta hidden gap-1 self-end text-ink-3 underline-offset-4 hover:text-brand hover:underline sm:flex"
         onClick={onOpenGraphs}
         variant="ghost"
       >

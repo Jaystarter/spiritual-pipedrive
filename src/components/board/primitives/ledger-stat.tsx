@@ -19,7 +19,7 @@ export function LedgerStat({
 }) {
   return (
     <div className={cn("flex min-w-0 flex-col gap-1", className)}>
-      <span className="t-meta-sm text-ink-3">{label}</span>
+      <span className="t-meta-sm truncate text-ink-3">{label}</span>
       <span
         className={cn(
           "t-display-lg tabular-nums leading-none",
