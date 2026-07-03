@@ -64,7 +64,6 @@ export function NextStudyComposer({
   const tone = getToneStyle(stage.tone);
   const [isPending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [dateOpen, setDateOpen] = useState(false);
   const [chosenNumber, setChosenNumber] = useState<number | null>(null);
   const [studyDate, setStudyDate] = useState(() => getDateValue(null));
   const pendingRef = useRef(false);
@@ -296,75 +295,20 @@ export function NextStudyComposer({
         </PopoverContent>
       </Popover>
 
-      {/* One split control: the gold face logs, the tail picks the date. */}
-      <div
+      {/* One whole gold button — the date lives in the catalog dropdown. */}
+      <button
+        ref={logButtonRef}
         className={cn(
-          "btn-illuminated flex h-10 w-full items-stretch overflow-hidden rounded-(--sd-r-md)",
+          "btn-illuminated t-label flex h-10 w-full items-center justify-center gap-1.5 rounded-(--sd-r-md) px-3",
           (isPending || !configured) && "pointer-events-none opacity-50"
         )}
+        disabled={isPending || !configured}
+        onClick={logStudy}
+        type="button"
       >
-        <button
-          ref={logButtonRef}
-          className="t-label flex flex-1 items-center justify-center gap-1.5 px-3"
-          disabled={isPending || !configured}
-          onClick={logStudy}
-          type="button"
-        >
-          <BookOpenText className="size-4" />
-          Log as studied · {dateLabel ?? formatPillDate(studyDate)}
-        </button>
-        <span aria-hidden className="my-1.5 w-px self-stretch bg-brand-ink/30" />
-        <Popover open={dateOpen} onOpenChange={setDateOpen}>
-          <PopoverTrigger asChild>
-            <button
-              aria-label="Change the study date"
-              className="flex items-center px-3 transition-[background] hover:bg-brand-ink/10"
-              disabled={isPending || !configured}
-              type="button"
-            >
-              <ChevronDown className="size-4" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-auto p-2">
-            <div className="flex flex-col gap-1.5">
-              <div className="flex gap-1.5">
-                {[
-                  ["Today", today],
-                  ["Yesterday", yesterday],
-                ].map(([optionLabel, optionValue]) => (
-                  <button
-                    key={optionLabel}
-                    className={cn(
-                      "t-label rounded-(--sd-r-sm) border border-line px-2.5 py-1.5 transition-colors hover:border-line-strong",
-                      studyDate === optionValue && "border-brand text-brand"
-                    )}
-                    onClick={() => {
-                      setStudyDate(optionValue);
-                      setDateOpen(false);
-                    }}
-                    type="button"
-                  >
-                    {optionLabel}
-                  </button>
-                ))}
-              </div>
-              <input
-                aria-label="Study date"
-                className="t-body-sm rounded-(--sd-r-sm) border border-line bg-surface px-2.5 py-1.5 text-ink shadow-(--sd-shadow-well)"
-                max={today}
-                onChange={(event) => {
-                  if (event.target.value) {
-                    setStudyDate(event.target.value);
-                    setDateOpen(false);
-                  }
-                }}
-                type="date"
-                value={studyDate}
-              />
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
+        <BookOpenText className="size-4" />
+        Log as studied · {dateLabel ?? formatPillDate(studyDate)}
+      </button>
     </div>
   );
 }
