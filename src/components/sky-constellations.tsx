@@ -98,7 +98,7 @@ const CONSTELLATIONS: Constellation[] = [
       [5, 6],
       [0, 6],
     ],
-    style: { left: "10%", bottom: "12%" },
+    style: { right: "7%", top: "55%" },
     drift: "c-drift-c",
   },
 ];
