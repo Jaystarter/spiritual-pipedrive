@@ -316,7 +316,7 @@ export function EditStagesDialog({
                 )}
               >
                 <div className="flex items-center gap-2.5">
-                  <StageRibbon tone={stage.tone} size="full" className="-ml-1 -mt-1" />
+                  <StageRibbon tone={stage.tone} size="full" className="mt-0.5" />
                   <Input
                     aria-label={`Name for ${stage.label}`}
                     className="t-display-sm h-9 border-transparent bg-transparent px-1.5 text-ink hover:border-line focus-visible:border-line"

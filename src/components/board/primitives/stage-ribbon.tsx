@@ -2,14 +2,13 @@ import type { StageToneName } from "@/lib/stages";
 import { cn } from "@/lib/utils";
 
 import { getToneStyle } from "../lib/stage-theme";
-import { WebGlyph } from "./web-glyph";
 
 /**
- * The signature stage mark: a corner of spider silk spun in the stage's
- * tone. Three spokes anchor at the corner and three threads sag between
- * them. Reused on lanes, pickers, and steppers so stage identity reads
- * the same everywhere. The "sliver" size stays a plain silk edge bar
- * for cards and list rows.
+ * The signature stage mark: a miniature diamond seal in the stage's
+ * tone, kin to the logo seal, the Path milestones, and the FAB. Reused
+ * on lanes, pickers, and steppers so stage identity reads the same
+ * everywhere. The "sliver" size stays a plain edge bar for cards and
+ * list rows.
  */
 export function StageRibbon({
   tone,
@@ -36,12 +35,27 @@ export function StageRibbon({
   }
 
   return (
-    <WebGlyph
-      className={cn("shrink-0", size === "full" ? "size-6" : "size-4", className)}
-      style={{
-        color: toneStyle.coreVar,
-        filter: `drop-shadow(0 0 3px color-mix(in oklch, ${toneStyle.coreVar} 45%, transparent))`,
-      }}
-    />
+    <span
+      aria-hidden
+      className={cn(
+        "relative inline-flex shrink-0 items-center justify-center",
+        size === "full" ? "size-5" : "size-3.5",
+        className
+      )}
+      style={{ color: toneStyle.coreVar }}
+    >
+      <span
+        className="absolute inset-0 rotate-45 rounded-[2px] border border-current opacity-70"
+        style={{
+          boxShadow: "0 0 6px color-mix(in oklch, currentcolor 30%, transparent)",
+        }}
+      />
+      <span
+        className="size-1 rounded-full bg-current"
+        style={{
+          boxShadow: "0 0 6px color-mix(in oklch, currentcolor 70%, transparent)",
+        }}
+      />
+    </span>
   );
 }
