@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, Flame } from "lucide-react";
 
@@ -20,7 +20,6 @@ import {
   setWeeklyGoal,
 } from "../lib/engagement";
 import { CountUp } from "../primitives/count-up";
-import { LedgerStat } from "../primitives/ledger-stat";
 
 type LedgerStripProps = {
   people: BoardPerson[];
@@ -30,17 +29,55 @@ type LedgerStripProps = {
   onOpenNotifications: () => void;
 };
 
-function StripDivider() {
+/** One vital sign: a figure breathing over a single quiet word. */
+function Vital({
+  label,
+  hint,
+  onClick,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  onClick?: () => void;
+  children: ReactNode;
+}) {
+  const body = (
+    <>
+      <span className="flex h-11 items-end">{children}</span>
+      <span className="t-meta-sm text-ink-4">{label}</span>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        className="flex min-w-0 flex-col items-center gap-1.5"
+        onClick={onClick}
+        title={hint}
+        type="button"
+      >
+        {body}
+      </button>
+    );
+  }
+
   return (
-    <div
-      aria-hidden
-      className="hidden h-10 w-px bg-gradient-to-b from-transparent via-line-strong to-transparent sm:block"
-    />
+    <div className="flex min-w-0 flex-col items-center gap-1.5" title={hint}>
+      {body}
+    </div>
   );
 }
 
-/** The lamp: consecutive active days. Lit when today already counts. */
-function StreakStat({
+function Figure({ value, className }: { value: number; className?: string }) {
+  return (
+    <span className={cn("t-display-lg tabular-nums leading-none", className)}>
+      <CountUp value={value} />
+    </span>
+  );
+}
+
+/** The lamp: consecutive active days, the flame lit once today counts. */
+function StreakVital({
   people,
   profileId,
 }: {
@@ -50,17 +87,19 @@ function StreakStat({
   const streak = getStreak(people, profileId);
 
   return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <span className="t-meta-sm text-ink-3">Day streak</span>
-      <span className="flex items-end gap-1.5">
-        <span
-          className={cn(
-            "t-display-lg tabular-nums leading-none",
-            streak.count > 0 ? "text-ink" : "text-ink-3"
-          )}
-        >
-          <CountUp value={streak.count} />
-        </span>
+    <Vital
+      label="Streak"
+      hint={
+        streak.litToday
+          ? "The lamp is lit — you logged something today"
+          : "Log anything today to keep the streak"
+      }
+    >
+      <span className="flex items-end gap-1">
+        <Figure
+          value={streak.count}
+          className={streak.count > 0 ? "text-ink" : "text-ink-3"}
+        />
         <Flame
           className={cn(
             "mb-0.5 size-4 transition-colors",
@@ -69,18 +108,13 @@ function StreakStat({
               : "text-ink-4"
           )}
           fill={streak.litToday ? "currentColor" : "none"}
-          aria-label={
-            streak.litToday
-              ? "The lamp is lit — you logged something today"
-              : "Log anything today to keep the streak"
-          }
         />
       </span>
-    </div>
+    </Vital>
   );
 }
 
-/** The week's course: an arc that fills as studies are logged toward the goal. */
+/** The week's course: an arc filling toward the goal; tap to change it. */
 function WeeklyGoalRing({
   people,
   profileId,
@@ -101,8 +135,8 @@ function WeeklyGoalRing({
     <Popover>
       <PopoverTrigger asChild>
         <button
-          aria-label={`Weekly studies: ${done} of ${goal}. Tap to change the goal.`}
-          className="flex min-w-0 items-center gap-2.5 text-left"
+          aria-label={`This week: ${done} of ${goal} studies. Tap to change the goal.`}
+          className="flex min-w-0 flex-col items-center gap-1.5"
           type="button"
         >
           <span className="relative inline-flex size-11 items-center justify-center">
@@ -142,16 +176,13 @@ function WeeklyGoalRing({
               {done}
             </span>
           </span>
-          <span className="flex min-w-0 flex-col gap-0.5">
-            <span className="t-meta-sm text-ink-3">This week</span>
-            <span className="t-body-sm text-ink-2">
-              {reached ? "Goal reached" : `of ${goal} studies`}
-            </span>
-          </span>
+          <span className="t-meta-sm text-ink-4">Week</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-56 p-3">
-        <p className="t-meta-sm mb-2 text-ink-3">Weekly study goal</p>
+      <PopoverContent align="end" className="w-56 p-3">
+        <p className="t-meta-sm mb-2 text-ink-3">
+          {done} of {goal} studies this week
+        </p>
         <div className="flex items-center gap-1.5">
           {[3, 5, 7, 10].map((option) => (
             <button
@@ -171,7 +202,7 @@ function WeeklyGoalRing({
           ))}
         </div>
         <p className="t-meta-sm mt-2 text-ink-4">
-          Studies you log each week. Kept on this device.
+          Your weekly study goal. Kept on this device.
         </p>
       </PopoverContent>
     </Popover>
@@ -179,8 +210,8 @@ function WeeklyGoalRing({
 }
 
 /**
- * The folio line under the masthead — now a living one: tallies count up,
- * the streak lamp burns, the week's ring fills toward the goal.
+ * The vitals: one airy line of five figures, each over a single word.
+ * No dividers, no long labels — the air between columns does the work.
  */
 export function LedgerStrip({
   people,
@@ -195,42 +226,48 @@ export function LedgerStrip({
   const baptizedThisMonth = activeProfile?.baptized_this_month ?? 0;
 
   return (
-    <section className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-      {/* Phones get a balanced 3+2 grid; wider screens a divided row. */}
-      <div className="grid w-full grid-cols-3 items-end gap-x-3 gap-y-5 sm:flex sm:w-auto sm:flex-wrap sm:gap-x-7">
-        <LedgerStat
-          label={activeProfile ? `${activeProfile.name}’s contacts` : "Active contacts"}
-          value={<CountUp value={activeCount} />}
+    <section className="flex items-end justify-between gap-x-2 sm:justify-start sm:gap-x-12">
+      <Vital
+        label="People"
+        hint={
+          activeProfile
+            ? `${activeProfile.name}’s active contacts`
+            : "Active contacts"
+        }
+      >
+        <Figure value={activeCount} className="text-ink" />
+      </Vital>
+
+      <Vital label="Baptized" hint="Baptized this month">
+        <Figure
+          value={baptizedThisMonth}
+          className={
+            baptizedThisMonth > 0 ? "text-tone-green-ink" : "text-ink-3"
+          }
         />
-        <StripDivider />
-        <LedgerStat
-          label="Baptized this month"
-          value={<CountUp value={baptizedThisMonth} />}
-          tone={baptizedThisMonth > 0 ? "joy" : "muted"}
+      </Vital>
+
+      <Vital
+        label="Waiting"
+        hint="Contacts needing attention — tap to review"
+        onClick={onOpenNotifications}
+      >
+        <Figure
+          value={attentionCount}
+          className={attentionCount > 0 ? "text-signal-urgent" : "text-ink-3"}
         />
-        <StripDivider />
-        <button className="text-left" onClick={onOpenNotifications} type="button">
-          <LedgerStat
-            label="Needs attention"
-            value={<CountUp value={attentionCount} />}
-            tone={attentionCount > 0 ? "urgent" : "muted"}
-          />
-        </button>
-        {activeProfile ? (
-          <>
-            <StripDivider />
-            <StreakStat people={people} profileId={activeProfile.id} />
-            <StripDivider />
-            <div className="col-span-2 sm:col-span-1">
-              <WeeklyGoalRing people={people} profileId={activeProfile.id} />
-            </div>
-          </>
-        ) : null}
-      </div>
+      </Vital>
+
+      {activeProfile ? (
+        <>
+          <StreakVital people={people} profileId={activeProfile.id} />
+          <WeeklyGoalRing people={people} profileId={activeProfile.id} />
+        </>
+      ) : null}
 
       {/* On phones the Almanac lives in the bottom bar already. */}
       <Button
-        className="t-meta hidden gap-1 self-end text-ink-3 underline-offset-4 hover:text-brand hover:underline sm:flex"
+        className="t-meta hidden gap-1 self-end text-ink-3 underline-offset-4 hover:text-brand hover:underline sm:ml-auto sm:flex"
         onClick={onOpenGraphs}
         variant="ghost"
       >

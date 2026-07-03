@@ -641,13 +641,255 @@
   }
 }
 
+/* --- The constellations: living star-figures on the sky --------------- */
+/* Rendered by <SkyConstellations /> inside .sky-bg (layout.tsx): a field
+   of breathing stars, three drawn constellations (the Crook, the Fish,
+   the Crown) drifting on decade-slow loops, and two wanderers crossing
+   the whole sky. Daybreak wears them as faint gold watermarks; Vespers
+   and Night Watch let them shine. */
+
+.sky-bg {
+  --const-star: oklch(0.72 0.1 55 / 0.4);
+  --const-line: oklch(0.66 0.11 50 / 0.2);
+  --const-glow: oklch(0.8 0.12 55 / 0.22);
+}
+[data-theme="dark"] .sky-bg {
+  --const-star: oklch(0.88 0.05 300 / 0.85);
+  --const-line: oklch(0.75 0.12 300 / 0.3);
+  --const-glow: oklch(0.78 0.16 300 / 0.5);
+}
+[data-theme="star"] .sky-bg {
+  --const-star: oklch(0.97 0.01 260 / 0.95);
+  --const-line: oklch(0.85 0.05 260 / 0.35);
+  --const-glow: oklch(0.9 0.06 280 / 0.55);
+}
+
+.const-field {
+  position: absolute;
+  inset: 0;
+}
+
+/* Scattered stars, each breathing at its own tempo. */
+.c-star {
+  position: absolute;
+  border-radius: 999px;
+  background: var(--const-star);
+  box-shadow: 0 0 6px 1px var(--const-glow);
+  animation: c-blink 6s var(--ease-in-out) infinite alternate;
+}
+
+/* One brighter star in the east, pulsing slowly. */
+.c-star-east {
+  width: 4px;
+  height: 4px;
+  box-shadow: 0 0 14px 3px var(--const-glow);
+  animation-duration: 9s;
+}
+
+/* Star-figures: faint lines between named stars, adrift. */
+.c-const {
+  position: absolute;
+  color: var(--const-line);
+}
+.c-const line {
+  stroke: currentColor;
+  animation: c-breathe 12s var(--ease-in-out) infinite alternate;
+}
+.c-const circle {
+  fill: var(--const-star);
+  filter: drop-shadow(0 0 2px var(--const-glow));
+}
+.c-drift-a {
+  animation: c-drift-a 84s var(--ease-in-out) infinite alternate;
+}
+.c-drift-b {
+  animation: c-drift-b 108s var(--ease-in-out) infinite alternate;
+}
+.c-drift-c {
+  animation: c-drift-c 66s var(--ease-in-out) infinite alternate;
+}
+
+/* Wanderers: two slow travelers crossing the whole sky. */
+.c-wanderer {
+  position: absolute;
+  top: 9%;
+  left: 0;
+  width: 2px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--const-star);
+  box-shadow: 0 0 8px 2px var(--const-glow);
+  opacity: 0;
+  animation: c-wander-a 150s linear infinite;
+}
+.c-wanderer-2 {
+  top: auto;
+  bottom: 24%;
+  animation: c-wander-b 210s linear infinite;
+  animation-delay: -80s;
+}
+
+@keyframes c-blink {
+  from {
+    opacity: 0.15;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+
+@keyframes c-breathe {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes c-drift-a {
+  from {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate(16px, 10px) rotate(1.4deg);
+  }
+}
+
+@keyframes c-drift-b {
+  from {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate(-14px, 14px) rotate(-1.2deg);
+  }
+}
+
+@keyframes c-drift-c {
+  from {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate(12px, -12px) rotate(0.9deg);
+  }
+}
+
+@keyframes c-wander-a {
+  0% {
+    opacity: 0;
+    transform: translate(-4vw, 0);
+  }
+  4% {
+    opacity: 0.8;
+  }
+  96% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(104vw, 14vh);
+  }
+}
+
+@keyframes c-wander-b {
+  0% {
+    opacity: 0;
+    transform: translate(104vw, 0);
+  }
+  4% {
+    opacity: 0.6;
+  }
+  96% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-4vw, -12vh);
+  }
+}
+
+/* --- The Path: the signal on the journey line -------------------------- */
+/* A light packet runs the line top to bottom; each stage node is a tiny
+   orbital beacon — canvas disc, radar ping, orbit ring, satellite, core. */
+
+.path-comet {
+  animation: path-comet 9s var(--ease-in-out) infinite;
+}
+
+@keyframes path-comet {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  7% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: calc(100% - 10px);
+    opacity: 0;
+  }
+}
+
+.path-ping {
+  border: 1px solid var(--tone);
+  opacity: 0;
+  animation: path-ping 4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes path-ping {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.path-orbit {
+  animation: path-orbit 9s linear infinite;
+}
+
+@keyframes path-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sky-bg,
   .sky-bg::before,
-  .sky-bg::after {
+  .sky-bg::after,
+  .c-star,
+  .c-const line,
+  .c-drift-a,
+  .c-drift-b,
+  .c-drift-c,
+  .c-wanderer,
+  .path-ping,
+  .path-orbit,
+  .path-comet {
     animation: none !important;
   }
   [data-theme="star"] .sky-bg::before {
     opacity: 0.6;
+  }
+  .c-star {
+    opacity: 0.4;
+  }
+  .c-wanderer,
+  .path-comet {
+    display: none;
+  }
+  .path-ping {
+    opacity: 0;
   }
 }

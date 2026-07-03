@@ -54,12 +54,24 @@ export function StackBoard({ people, stages }: StackBoardProps) {
           background:
             "linear-gradient(to bottom, var(--tone-amber-core), var(--tone-sky-core), var(--tone-indigo-core), var(--tone-violet-core), var(--tone-emerald-core), var(--tone-green-core))",
         }}
-      />
+      >
+        {/* The signal: a light packet running the length of the journey. */}
+        <span
+          aria-hidden
+          className="path-comet absolute -left-0.5 size-1.5 rounded-full"
+          style={{
+            background: "var(--sd-accent-hi)",
+            boxShadow:
+              "0 0 10px 2px color-mix(in oklch, var(--sd-accent-hi) 70%, transparent)",
+          }}
+        />
+      </div>
 
-      {stages.map((stage) => (
+      {stages.map((stage, index) => (
         <StackStageSection
           key={stage.id}
           stage={stage}
+          index={index}
           people={sortPeople(people.filter((person) => person.stage === stage.id))}
           expanded={Boolean(expanded[stage.id])}
           onToggle={() => toggleStage(stage.id)}

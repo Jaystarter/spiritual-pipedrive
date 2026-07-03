@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 
@@ -14,18 +15,21 @@ import { PersonCard } from "../cards/person-card";
 
 type StackStageSectionProps = {
   stage: Stage;
+  index: number;
   people: BoardPerson[];
   expanded: boolean;
   onToggle: () => void;
 };
 
 /**
- * One milestone on the Path: a glowing tone node on the journey line, the
- * stage name in serif, the count in the stage's ink — and beneath it,
+ * One milestone on the Path: an orbital beacon on the journey line — a
+ * glowing core inside a thin orbit ring, a satellite circling it, and a
+ * radar ping that cascades down the line stage by stage. Beneath it,
  * people as bare rows. No chrome anywhere.
  */
 export function StackStageSection({
   stage,
+  index,
   people,
   expanded,
   onToggle,
@@ -35,15 +39,52 @@ export function StackStageSection({
 
   return (
     <section id={`stack-stage-${stage.id}`} className="relative scroll-mt-20">
-      {/* The node: this stage's light on the line. */}
+      {/* The beacon: this stage's orbital system on the line. */}
       <span
         aria-hidden
-        className="absolute -left-[26px] top-[18px] size-3.5 rounded-full ring-4 ring-canvas"
-        style={{
-          background: tone.coreVar,
-          boxShadow: `0 0 14px color-mix(in oklch, ${tone.coreVar} 65%, transparent)`,
-        }}
-      />
+        className="absolute -left-[26px] top-[17px] size-4"
+        style={{ "--tone": tone.coreVar } as CSSProperties}
+      >
+        {/* A canvas disc so the line passes behind the system. */}
+        <span className="absolute inset-0.5 rounded-full bg-canvas" />
+        {/* Radar ping, staggered so the pulse travels down the path. */}
+        <span
+          className="path-ping absolute inset-0 rounded-full"
+          style={{ animationDelay: `${index * 0.5}s` }}
+        />
+        {/* Orbit ring. */}
+        <span
+          className="absolute inset-0 rounded-full border"
+          style={{
+            borderColor: "color-mix(in oklch, var(--tone) 45%, transparent)",
+          }}
+        />
+        {/* The satellite riding the ring. */}
+        <span
+          className="path-orbit absolute inset-0"
+          style={{
+            animationDuration: `${9 + index * 1.6}s`,
+            animationDelay: `${index * -1.3}s`,
+          }}
+        >
+          <span
+            className="absolute left-1/2 top-0 size-1 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{ background: "var(--tone)" }}
+          />
+        </span>
+        {/* The core: brightens when the stage is open. */}
+        <span
+          className={cn(
+            "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-(--dur-base)",
+            expanded ? "size-2" : "size-1.5"
+          )}
+          style={{
+            background: "var(--tone)",
+            boxShadow:
+              "0 0 10px color-mix(in oklch, var(--tone) 80%, transparent)",
+          }}
+        />
+      </span>
 
       <button
         aria-expanded={expanded}

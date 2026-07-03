@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
+import { SkyConstellations } from "@/components/sky-constellations";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -47,7 +49,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         {children}
-        <div aria-hidden className="sky-bg" />
+        <div aria-hidden className="sky-bg">
+          <SkyConstellations />
+        </div>
       </body>
     </html>
   );
