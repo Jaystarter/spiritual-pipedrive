@@ -49,8 +49,10 @@ export function RegistrarLine({ person, stage }: { person: BoardPerson; stage: S
   }
 
   return (
-    <span className="t-meta-sm truncate text-ink-3">
-      Study {String(latestStudy.study_number).padStart(2, "0")} ·{" "}
+    <span
+      className="t-meta-sm truncate text-ink-3"
+      title={`Study ${String(latestStudy.study_number).padStart(2, "0")}`}
+    >
       {formatDate(latestStudy.studied_at ?? latestStudy.created_at)}
     </span>
   );
