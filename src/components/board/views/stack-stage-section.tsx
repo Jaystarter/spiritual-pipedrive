@@ -7,15 +7,9 @@ import type { BoardPerson } from "@/app/actions";
 import type { Stage } from "@/lib/stages";
 import { cn } from "@/lib/utils";
 
-import {
-  displayStageCopy,
-  getEmptyStageMessage,
-  getTopActivePreviewPeople,
-} from "../lib/derive";
-import { getToneStyle, toneVars } from "../lib/stage-theme";
-import { EmptyState } from "../primitives/empty-state";
+import { displayStageCopy, getEmptyStageMessage } from "../lib/derive";
+import { getToneStyle } from "../lib/stage-theme";
 import { PersonFramedAvatar } from "../primitives/framed-avatar";
-import { StageRibbon } from "../primitives/stage-ribbon";
 import { PersonCard } from "../cards/person-card";
 
 type StackStageSectionProps = {
@@ -25,7 +19,11 @@ type StackStageSectionProps = {
   onToggle: () => void;
 };
 
-/** One chapter of the table of contents. Collapsed, it previews the faces. */
+/**
+ * One milestone on the Path: a glowing tone node on the journey line, the
+ * stage name in serif, the count in the stage's ink — and beneath it,
+ * people as bare rows. No chrome anywhere.
+ */
 export function StackStageSection({
   stage,
   people,
@@ -33,44 +31,52 @@ export function StackStageSection({
   onToggle,
 }: StackStageSectionProps) {
   const tone = getToneStyle(stage.tone);
-  const preview = getTopActivePreviewPeople(people);
+  const preview = people.slice(0, 4);
 
   return (
-    <section
-      id={`stack-stage-${stage.id}`}
-      className="card-lit scroll-mt-20 overflow-hidden rounded-(--sd-r-lg) border border-line bg-surface"
-    >
+    <section id={`stack-stage-${stage.id}`} className="relative scroll-mt-20">
+      {/* The node: this stage's light on the line. */}
+      <span
+        aria-hidden
+        className="absolute -left-[26px] top-[18px] size-3.5 rounded-full ring-4 ring-canvas"
+        style={{
+          background: tone.coreVar,
+          boxShadow: `0 0 14px color-mix(in oklch, ${tone.coreVar} 65%, transparent)`,
+        }}
+      />
+
       <button
         aria-expanded={expanded}
-        className="tone-wash-head flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:brightness-[1.02]"
-        style={toneVars(stage.tone)}
+        className="group/milestone flex w-full items-center gap-3 py-3 text-left"
         onClick={onToggle}
         type="button"
       >
-        <StageRibbon tone={stage.tone} size="full" className="-mt-3" />
-        <div className="min-w-0 flex-1">
-          <h2 className="t-display-sm truncate text-ink">
-            {displayStageCopy(stage.label)}
-          </h2>
-          {stage.description ? (
-            <p className="t-meta-sm mt-0.5 truncate text-ink-4">
-              {displayStageCopy(stage.description)}
-            </p>
-          ) : null}
-        </div>
+        <h2
+          className={cn(
+            "t-display-md min-w-0 truncate transition-colors",
+            expanded ? "text-ink" : "text-ink-2 group-hover/milestone:text-ink"
+          )}
+        >
+          {displayStageCopy(stage.label)}
+        </h2>
         {!expanded && preview.length > 0 ? (
-          <span className="hidden -space-x-2 sm:flex">
-            {preview.slice(0, 5).map((person) => (
+          <span className="ml-1 hidden -space-x-2 sm:flex">
+            {preview.map((person) => (
               <PersonFramedAvatar
                 key={person.id}
                 person={person}
                 size="xs"
-                className="ring-2 ring-surface"
+                className="ring-2 ring-canvas"
               />
             ))}
           </span>
         ) : null}
-        <span className={cn("t-display-lg tabular-nums leading-none", tone.ink)}>
+        <span
+          className={cn(
+            "t-display-lg ml-auto tabular-nums leading-none",
+            tone.ink
+          )}
+        >
           {people.length}
         </span>
         <ChevronDown
@@ -89,25 +95,23 @@ export function StackStageSection({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
           >
-            <div aria-hidden className={cn("mx-3.5 border-b-[1.5px]", tone.rule)} />
             {people.length > 0 ? (
-              <div className="grid grid-cols-1 gap-2 p-2 lg:grid-cols-2 2xl:grid-cols-3">
+              <div className="divide-y divide-line/60 pb-3">
                 {people.map((person) => (
-                  <div
+                  <PersonCard
                     key={person.id}
-                    className="overflow-hidden rounded-(--sd-r-md) border border-line bg-surface-raised transition-[box-shadow,transform] duration-(--dur-base) hover:-translate-y-px hover:shadow-(--sd-shadow-2)"
-                  >
-                    <PersonCard person={person} stage={stage} sortableDisabled />
-                  </div>
+                    person={person}
+                    stage={stage}
+                    sortableDisabled
+                  />
                 ))}
               </div>
             ) : (
-              <EmptyState
-                className="m-3"
-                message={getEmptyStageMessage(stage)}
-                tone={stage.tone}
-              />
+              <p className="t-body-sm pb-4 pt-1 italic text-ink-4">
+                {getEmptyStageMessage(stage)}
+              </p>
             )}
           </motion.div>
         ) : null}
