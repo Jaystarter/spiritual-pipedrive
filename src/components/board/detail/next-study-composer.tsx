@@ -163,7 +163,9 @@ export function NextStudyComposer({
       </div>
 
       {/* The hero IS the picker: tap the title to choose another study. */}
-      <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+      {/* modal: the sheet's scroll lock would otherwise swallow wheel/touch
+          scrolling in the portaled catalog list. */}
+      <Popover modal open={pickerOpen} onOpenChange={setPickerOpen}>
         <PopoverTrigger asChild>
           <button
             aria-label="Choose which study to log"

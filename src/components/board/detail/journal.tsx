@@ -1,11 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import {
+  useRef,
+  useState,
+  useTransition,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import {
+  BookOpenText,
   Check,
   MoreHorizontal,
   NotebookPen,
-  Pencil,
   Trash2,
   UserRound,
 } from "lucide-react";
@@ -13,8 +19,8 @@ import {
 import {
   deletePersonStudy,
   updatePersonStudyNote,
+  updatePersonStudySelection,
   updatePersonStudyTeacher,
-  updatePersonStudyTitle,
   type BoardPerson,
   type PersonStudy,
 } from "@/app/actions";
@@ -30,6 +36,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -41,16 +55,29 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 import { useBoardActions, useBoardData } from "../board-context";
 import { formatDate } from "../lib/format";
-import { getStudyTitle, sortStudiesByLoggedNewest } from "../lib/studies";
+import {
+  CM_TITLES,
+  STUDY_TITLES,
+  TOTAL_STUDIES,
+  getStudyTitle,
+  sortStudiesByLoggedNewest,
+} from "../lib/studies";
 import { ProfileFramedAvatar } from "../primitives/framed-avatar";
 import { SectionHeading } from "../primitives/section-heading";
+
+/** Hold a row this long (without drifting) to open its actions menu. */
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_DRIFT_PX = 10;
 
 /** One study entry: mono date, teacher portrait, title, quiet row actions. */
 function StudyEntry({ person, study }: { person: BoardPerson; study: PersonStudy }) {
@@ -59,9 +86,85 @@ function StudyEntry({ person, study }: { person: BoardPerson; study: PersonStudy
   const [isPending, startTransition] = useTransition();
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState(study.notes ?? "");
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(getStudyTitle(study));
+  const [changeOpen, setChangeOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Long-press: touch has no hover to reveal the "…" actions, so holding the
+  // row opens the same menu. A drift or early release cancels it.
+  const rowRef = useRef<HTMLLIElement>(null);
+  const pressTimerRef = useRef<number | null>(null);
+  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const pressTypeRef = useRef<string>("mouse");
+  const longPressFiredRef = useRef(false);
+
+  function clearPress() {
+    if (pressTimerRef.current !== null) {
+      window.clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+
+    pressStartRef.current = null;
+  }
+
+  function handlePressStart(event: ReactPointerEvent<HTMLLIElement>) {
+    longPressFiredRef.current = false;
+
+    // Portaled dialogs/menus bubble through the React tree — only a press
+    // that lands on the row itself may arm the timer.
+    if (!rowRef.current?.contains(event.target as Node)) {
+      return;
+    }
+
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    pressTypeRef.current = event.pointerType;
+    pressStartRef.current = { x: event.clientX, y: event.clientY };
+    pressTimerRef.current = window.setTimeout(() => {
+      pressTimerRef.current = null;
+      longPressFiredRef.current = true;
+      setMenuOpen(true);
+    }, LONG_PRESS_MS);
+  }
+
+  function handlePressMove(event: ReactPointerEvent<HTMLLIElement>) {
+    const start = pressStartRef.current;
+
+    if (!start) {
+      return;
+    }
+
+    const drift = Math.hypot(event.clientX - start.x, event.clientY - start.y);
+
+    if (drift > LONG_PRESS_DRIFT_PX) {
+      clearPress();
+    }
+  }
+
+  function suppressClickAfterLongPress(event: ReactMouseEvent<HTMLLIElement>) {
+    if (!longPressFiredRef.current) {
+      return;
+    }
+
+    longPressFiredRef.current = false;
+
+    // Swallow only the ghost click on the row itself — clicks in the
+    // portaled menu/dialogs (which bubble here through the React tree)
+    // must go through.
+    if (rowRef.current?.contains(event.target as Node)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+
+  function handleContextMenu(event: ReactMouseEvent<HTMLLIElement>) {
+    // Touch long-press raises the platform context menu; ours replaces it.
+    if (pressTypeRef.current !== "mouse") {
+      event.preventDefault();
+    }
+  }
 
   function requireActor() {
     if (!configured) {
@@ -103,29 +206,34 @@ function StudyEntry({ person, study }: { person: BoardPerson; study: PersonStudy
     });
   }
 
-  function saveTitle() {
+  function changeStudy(studyNumber: number, catalogTitle: string) {
     const actorProfileId = requireActor();
-    const nextTitle = titleDraft.trim();
 
-    if (!actorProfileId || !nextTitle) {
+    if (!actorProfileId) {
+      return;
+    }
+
+    if (studyNumber === study.study_number) {
+      setChangeOpen(false);
       return;
     }
 
     startTransition(async () => {
-      const result = await updatePersonStudyTitle({
+      const result = await updatePersonStudySelection({
         id: study.id,
-        title: nextTitle,
+        studyNumber,
+        title: catalogTitle,
         actorProfileId,
       });
 
       if (!result.ok || !result.data) {
-        actions.onNotice(result.ok ? "The study could not be renamed." : result.error);
+        actions.onNotice(result.ok ? "The study could not be changed." : result.error);
         return;
       }
 
       actions.onNotice(undefined);
       actions.onStudyRenamed(person.id, result.data);
-      setRenameOpen(false);
+      setChangeOpen(false);
     });
   }
 
@@ -179,9 +287,20 @@ function StudyEntry({ person, study }: { person: BoardPerson; study: PersonStudy
 
   const teacher =
     profiles.find((profile) => profile.id === study.actor_profile_id) ?? null;
+  const completedNumbers = new Set(person.studies.map((item) => item.study_number));
 
   return (
-    <li className="group flex items-baseline gap-3 py-2">
+    <li
+      ref={rowRef}
+      className="group flex select-none items-baseline gap-3 py-2 [-webkit-touch-callout:none]"
+      onClickCapture={suppressClickAfterLongPress}
+      onContextMenu={handleContextMenu}
+      onPointerCancel={clearPress}
+      onPointerDown={handlePressStart}
+      onPointerLeave={clearPress}
+      onPointerMove={handlePressMove}
+      onPointerUp={clearPress}
+    >
       <span className="t-meta-sm w-14 shrink-0 text-ink-4">
         {formatDate(study.studied_at ?? study.created_at)}
       </span>
@@ -233,7 +352,7 @@ function StudyEntry({ person, study }: { person: BoardPerson; study: PersonStudy
       </span>
 
       <span className="self-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
-        <DropdownMenu>
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               aria-label={`Actions for ${getStudyTitle(study)}`}
@@ -244,14 +363,37 @@ function StudyEntry({ person, study }: { person: BoardPerson; study: PersonStudy
               <MoreHorizontal className="size-3.5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem className="gap-2" onSelect={() => setChangeOpen(true)}>
+              <BookOpenText className="size-3.5 text-ink-3" />
+              <span className="t-body-sm">Change study</span>
+            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="gap-2">
+                <UserRound className="size-3.5 text-ink-3" />
+                <span className="t-body-sm">Who studied with them</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-56">
+                {profiles.map((profile) => (
+                  <DropdownMenuItem
+                    key={profile.id}
+                    className="gap-2.5"
+                    onSelect={() => assignTeacher(profile.id)}
+                  >
+                    <ProfileFramedAvatar profile={profile} size="xs" />
+                    <span className="t-body-sm min-w-0 flex-1 truncate">
+                      {profile.name}
+                    </span>
+                    {profile.id === study.actor_profile_id ? (
+                      <Check className="size-3.5 text-brand" />
+                    ) : null}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
             <DropdownMenuItem className="gap-2" onSelect={() => setNoteOpen(true)}>
               <NotebookPen className="size-3.5 text-ink-3" />
               <span className="t-body-sm">{study.notes ? "Edit note" : "Add note"}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2" onSelect={() => setRenameOpen(true)}>
-              <Pencil className="size-3.5 text-ink-3" />
-              <span className="t-body-sm">Rename study</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               className="gap-2 text-signal-urgent focus:text-signal-urgent"
@@ -298,41 +440,90 @@ function StudyEntry({ person, study }: { person: BoardPerson; study: PersonStudy
         </DialogContent>
       </Dialog>
 
-      {/* Rename */}
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="t-display-md">Study title</DialogTitle>
+      {/* Change study — re-do the entry against the catalog. */}
+      <Dialog open={changeOpen} onOpenChange={setChangeOpen}>
+        <DialogContent className="gap-0 p-0">
+          <DialogHeader className="border-b border-line px-4 py-3 pr-10">
+            <DialogTitle className="t-display-md">Change study</DialogTitle>
           </DialogHeader>
-          <Input
-            autoFocus
-            className="t-body-sm"
-            onChange={(event) => setTitleDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                saveTitle();
-              }
-            }}
-            value={titleDraft}
-          />
-          <DialogFooter>
-            <Button
-              className="t-label"
-              onClick={() => setRenameOpen(false)}
-              size="sm"
-              variant="ghost"
-            >
-              Cancel
-            </Button>
-            <Button
-              className="btn-illuminated t-label"
-              disabled={isPending || !titleDraft.trim()}
-              onClick={saveTitle}
-              size="sm"
-            >
-              Rename
-            </Button>
-          </DialogFooter>
+          <Command>
+            <CommandInput autoFocus placeholder="Search the catalog…" />
+            <CommandList className="max-h-72">
+              <CommandEmpty>
+                <span className="t-body-sm italic text-ink-3">
+                  No study by that name.
+                </span>
+              </CommandEmpty>
+              <CommandGroup heading={`Bible studies · 1–${TOTAL_STUDIES}`}>
+                {STUDY_TITLES.map((catalogTitle, index) => {
+                  const number = index + 1;
+                  const done = completedNumbers.has(number);
+                  const isCurrent = number === study.study_number;
+
+                  return (
+                    <CommandItem
+                      key={number}
+                      className="gap-2"
+                      disabled={isPending || (done && !isCurrent)}
+                      value={`${number} ${catalogTitle}`}
+                      onSelect={() => changeStudy(number, catalogTitle)}
+                    >
+                      <span className="t-meta-sm w-6 shrink-0 text-ink-4">
+                        {String(number).padStart(2, "0")}
+                      </span>
+                      <span
+                        className={cn(
+                          "t-body-sm min-w-0 flex-1 truncate",
+                          done && !isCurrent && "text-ink-4"
+                        )}
+                      >
+                        {catalogTitle}
+                      </span>
+                      {isCurrent ? (
+                        <Check className="size-3.5 text-brand" />
+                      ) : done ? (
+                        <Check className="size-3.5 text-tone-green-ink" />
+                      ) : null}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+              <CommandGroup heading={`Counter-missionary · FI 1–${CM_TITLES.length}`}>
+                {CM_TITLES.map((catalogTitle, index) => {
+                  const number = TOTAL_STUDIES + index + 1;
+                  const done = completedNumbers.has(number);
+                  const isCurrent = number === study.study_number;
+
+                  return (
+                    <CommandItem
+                      key={number}
+                      className="gap-2"
+                      disabled={isPending || (done && !isCurrent)}
+                      value={`fi ${index + 1} ${catalogTitle}`}
+                      onSelect={() => changeStudy(number, catalogTitle)}
+                    >
+                      <span className="t-meta-sm w-6 shrink-0 text-ink-4">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span
+                        className={cn(
+                          "t-body-sm min-w-0 flex-1 truncate",
+                          done && !isCurrent && "text-ink-4"
+                        )}
+                      >
+                        {catalogTitle}
+                      </span>
+                      {isCurrent ? (
+                        <Check className="size-3.5 text-brand" />
+                      ) : done ? (
+                        <Check className="size-3.5 text-tone-green-ink" />
+                      ) : null}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
         </DialogContent>
       </Dialog>
 
@@ -369,8 +560,9 @@ function StudyEntry({ person, study }: { person: BoardPerson; study: PersonStudy
 
 /**
  * The study history: every study in the record as ledger lines inside one
- * clean lit box — date, teacher, title. (The all-activity feed is retired;
- * studies are the story.)
+ * clean lit box — date, teacher, title. The box stays about eight rows tall
+ * and scrolls within itself for longer records. (The all-activity feed is
+ * retired; studies are the story.)
  */
 export function Journal({ person }: { person: BoardPerson }) {
   const studies = sortStudiesByLoggedNewest(person.studies);
@@ -387,7 +579,7 @@ export function Journal({ person }: { person: BoardPerson }) {
         Study history
       </SectionHeading>
       {studies.length > 0 ? (
-        <ul className="card-lit divide-y divide-line rounded-(--sd-r-lg) border border-line bg-surface-raised px-3.5 py-1">
+        <ul className="card-lit max-h-112 divide-y divide-line overflow-y-auto overscroll-contain rounded-(--sd-r-lg) border border-line bg-surface-raised px-3.5 py-1">
           {studies.map((study) => (
             <StudyEntry key={study.id} person={person} study={study} />
           ))}

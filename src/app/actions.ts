@@ -106,6 +106,13 @@ type UpdatePersonStudyTitleInput = {
   actorProfileId: string;
 };
 
+type UpdatePersonStudySelectionInput = {
+  id: string;
+  studyNumber: number;
+  title: string;
+  actorProfileId: string;
+};
+
 type UpdatePersonStudyNoteInput = {
   id: string;
   notes: string;
@@ -1811,6 +1818,53 @@ export async function updatePersonStudyTitle(
     .single();
 
   if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { ok: true, data };
+}
+
+export async function updatePersonStudySelection(
+  input: UpdatePersonStudySelectionInput
+): Promise<ActionResult<PersonStudy>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const actor = await validateActorProfile(input.actorProfileId);
+
+  if ("error" in actor) {
+    return { ok: false, error: actor.error };
+  }
+
+  const studyNumber = Math.trunc(input.studyNumber);
+
+  if (studyNumber < 1 || studyNumber > MAX_PERSON_STUDIES) {
+    return { ok: false, error: `Choose a study from 1 to ${MAX_PERSON_STUDIES}.` };
+  }
+
+  // Correction of the record only — deliberately logs no person_event, so
+  // re-doing an entry never resets the follow-up quiet clock. The row count
+  // is unchanged, so the automatic stage needs no resync either.
+  const patch: StudyUpdate = {
+    study_number: studyNumber,
+    title: cleanStudyTitle(input.title, studyNumber),
+  };
+  const { data, error } = await supabase
+    .from("person_studies")
+    .update(patch)
+    .eq("id", input.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      return { ok: false, error: "That study is already in their record." };
+    }
+
     return { ok: false, error: error.message };
   }
 
