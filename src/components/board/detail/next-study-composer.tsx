@@ -170,8 +170,7 @@ export function NextStudyComposer({
 
       {baptized ? (
         <p className="t-body-sm text-tone-green-ink">
-          Baptized {person.baptized_at ? formatDate(person.baptized_at) : ""} — walking
-          in care and service.
+          Baptized {person.baptized_at ? formatDate(person.baptized_at) : ""}
         </p>
       ) : null}
 
