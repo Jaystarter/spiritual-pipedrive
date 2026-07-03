@@ -25,7 +25,6 @@ import { useBoardActions, useBoardData } from "../board-context";
 import { celebrateFrom } from "../lib/celebrate";
 import { getStreak } from "../lib/engagement";
 import { getDateValue, shiftDateValue } from "../lib/format";
-import { getToneStyle } from "../lib/stage-theme";
 import {
   CM_TITLES,
   STUDY_TITLES,
@@ -61,7 +60,6 @@ export function NextStudyComposer({
 }) {
   const { configured, activeProfile, people } = useBoardData();
   const actions = useBoardActions();
-  const tone = getToneStyle(stage.tone);
   const [isPending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [chosenNumber, setChosenNumber] = useState<number | null>(null);
@@ -71,8 +69,6 @@ export function NextStudyComposer({
 
   const completedNumbers = new Set(person.studies.map((study) => study.study_number));
   const nextNumber = chosenNumber ?? getNextStudyNumber(person.studies);
-  const isCm = nextNumber > TOTAL_STUDIES;
-  const alreadyLogged = completedNumbers.has(nextNumber);
   const existingStudy = person.studies.find(
     (study) => study.study_number === nextNumber
   );
@@ -173,13 +169,7 @@ export function NextStudyComposer({
             className="group/hero block w-full text-center"
             type="button"
           >
-            <p className={cn("t-meta-sm", tone.ink)}>
-              {alreadyLogged ? "Log again" : "Next study"} ·{" "}
-              {isCm
-                ? `FI ${String(nextNumber - TOTAL_STUDIES).padStart(2, "0")} of ${CM_TITLES.length}`
-                : `${String(nextNumber).padStart(2, "0")} of ${TOTAL_STUDIES}`}
-            </p>
-            <h3 className="t-display-md mt-1 flex items-center justify-center gap-2 text-ink transition-colors group-hover/hero:text-ink-2">
+            <h3 className="t-display-md flex items-center justify-center gap-2 text-ink transition-colors group-hover/hero:text-ink-2">
               <span className="min-w-0 underline-offset-4 group-hover/hero:underline decoration-[color-mix(in_oklch,var(--tone)_45%,transparent)]">
                 {title}
               </span>
