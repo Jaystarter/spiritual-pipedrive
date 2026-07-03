@@ -7,7 +7,7 @@ import {
   useTransition,
   type ChangeEvent,
 } from "react";
-import { Archive, Camera, Pencil, Trash2 } from "lucide-react";
+import { Archive, Camera, Pencil, Phone, Trash2 } from "lucide-react";
 
 import {
   addPersonNote,
@@ -431,6 +431,19 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                 In pipeline {daysInPipeline(person.created_at)}d
                 {ownerProfile ? ` · Entered by ${ownerProfile.name}` : ""}
               </p>
+              <label className="mt-1 flex items-center gap-1.5">
+                <Phone className="size-3 shrink-0 text-ink-4" />
+                <input
+                  aria-label="Phone number"
+                  className="t-meta-sm w-44 border-none bg-transparent text-ink-3 outline-none placeholder:text-ink-4"
+                  inputMode="tel"
+                  onBlur={commitPhone}
+                  onChange={(event) => setPhoneDraft(event.target.value)}
+                  placeholder="Add a number"
+                  type="tel"
+                  value={phoneDraft}
+                />
+              </label>
             </div>
 
             {!journeyDone ? <UrgencyMeter className="mt-1.5" person={person} /> : null}
@@ -458,18 +471,6 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
           <section className="flex flex-col gap-3">
             <SectionHeading>Notes</SectionHeading>
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex min-w-52 flex-1 items-center gap-2.5">
-                <span className="t-meta-sm text-ink-3">Phone</span>
-                <Input
-                  className="t-body-sm h-8"
-                  inputMode="tel"
-                  onBlur={commitPhone}
-                  onChange={(event) => setPhoneDraft(event.target.value)}
-                  placeholder="Add a number"
-                  type="tel"
-                  value={phoneDraft}
-                />
-              </label>
               <ToggleGroup
                 className="shrink-0"
                 onValueChange={(value) =>
