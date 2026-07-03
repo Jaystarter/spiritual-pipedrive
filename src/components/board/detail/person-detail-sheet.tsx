@@ -442,9 +442,8 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
 
         {/* ------------------------------------------------ body */}
         <div className="flex flex-1 flex-col gap-7 overflow-y-auto px-5 py-5">
-          {/* CARE & STUDIES — chromeless: the progress rule leads. */}
+          {/* Care & studies — chromeless and unlabeled: the progress rule leads. */}
           <section className="flex flex-col gap-3" style={toneVars(stage.tone)}>
-            <SectionHeading>Care &amp; Studies</SectionHeading>
             <NextStudyComposer person={person} stage={stage} />
           </section>
 
