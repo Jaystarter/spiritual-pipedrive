@@ -209,38 +209,50 @@
   --ring: color-mix(in oklch, var(--sd-accent) 55%, transparent);
 }
 
+:root {
+  /* Celebration sparks and hover glows default to the gold light;
+     Vespers overrides them with neon. */
+  --sd-spark: var(--sd-accent-hi);
+}
+
 [data-theme="dark"] {
-  /* --- Vespers: the ink figure — indigo body, fuchsia energy ----------- */
-  /* Palette drawn from ink-wash art: the canvas is the figure's deep
-     indigo body (not black), surfaces rise through richer violet-indigo
-     steps, and the energy colors are an electric fuchsia accent with
-     cyan counterlight in the sky. Depth ladder: abyss 0.08 → canvas
-     0.145 → surface 0.20 → raised 0.25; chroma rises with elevation. */
+  /* --- Vespers: obsidian void, neon energy ----------------------------- */
+  /* Palette drawn from ink-wash art: an obsidian/void canvas (#0A0612),
+     translucent midnight-purple containers (#160F24) with muted-violet
+     wire (#2A1E43), crisp white ink, and twin neon energies — hot
+     magenta (#FF00A8) as the acting hand, neon cyan (#00F0FF) as the
+     counterlight on satellites, sparks, and dividers. */
   color-scheme: dark;
 
-  --sd-canvas: oklch(0.145 0.035 292);
-  --sd-canvas-deep: oklch(0.08 0.025 292);
-  --sd-surface: oklch(0.2 0.05 292);
-  --sd-surface-raised: oklch(0.25 0.055 294);
-  --sd-surface-sunken: oklch(0.105 0.03 292);
+  --sd-canvas: oklch(0.136 0.028 300);
+  --sd-canvas-deep: oklch(0.09 0.02 300);
+  /* Translucent midnight purple: the sky's tendrils breathe through. */
+  --sd-surface: oklch(0.19 0.042 298 / 0.92);
+  --sd-surface-raised: oklch(0.24 0.05 298);
+  --sd-surface-sunken: oklch(0.11 0.025 298);
   --sd-veil: oklch(0.05 0.03 292 / 0.68);
+
+  /* The twin neons. */
+  --sd-cyan: oklch(0.87 0.148 203);
+  --sd-spark: oklch(0.87 0.148 203);
+  --path-sat: oklch(0.87 0.148 203);
 
   /* Velvet tooth: a whisper of grain over the indigo gradient. */
   --sky-grain-soft: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3e%3cfilter id='n'%3e%3cfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3e%3cfeColorMatrix type='saturate' values='0'/%3e%3c/filter%3e%3crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3e%3c/svg%3e");
 
-  --sd-ink: oklch(0.96 0.012 292);
-  --sd-ink-2: oklch(0.84 0.03 292);
-  --sd-ink-3: oklch(0.68 0.05 292);
-  --sd-ink-4: oklch(0.52 0.055 292);
+  --sd-ink: oklch(1 0 0);
+  --sd-ink-2: oklch(0.87 0.02 295);
+  --sd-ink-3: oklch(0.71 0.04 295);
+  --sd-ink-4: oklch(0.55 0.05 295);
 
-  /* The energy color: electric fuchsia, lit hot at the top. */
-  --sd-accent: oklch(0.7 0.23 338);
-  --sd-accent-hi: oklch(0.76 0.22 342);
-  --sd-accent-lo: oklch(0.63 0.24 332);
-  --sd-accent-ink: oklch(0.14 0.05 320);
-  /* Orchid wire hairlines */
-  --sd-line: oklch(0.88 0.07 310 / 0.16);
-  --sd-line-strong: oklch(0.88 0.07 310 / 0.26);
+  /* The acting hand: hot magenta, lit hotter at the top. */
+  --sd-accent: oklch(0.66 0.275 350);
+  --sd-accent-hi: oklch(0.72 0.26 352);
+  --sd-accent-lo: oklch(0.6 0.28 347);
+  --sd-accent-ink: oklch(0.13 0.04 310);
+  /* Muted violet wire (#2A1E43) */
+  --sd-line: oklch(0.27 0.067 297);
+  --sd-line-strong: oklch(0.34 0.08 297);
 
   /* Cores validated for chart marks (dark band, CVD-safe); inks brighter
      for text legibility on dark surfaces. */
@@ -257,22 +269,26 @@
   --tone-green-core: oklch(0.66 0.135 150);
   --tone-green-ink: oklch(0.8 0.135 150);
 
+  /* Urgency leans orange so it never reads as the magenta hand. */
   --sd-signal-wane: oklch(0.78 0.13 55);
-  --sd-signal-urgent: oklch(0.72 0.16 25);
+  --sd-signal-urgent: oklch(0.72 0.17 30);
 
-  /* Depth is three lights: a hard contact shadow, an indigo ambient
-     bloom, and (via edge-gilt) a lit top rim over a dark bottom seat. */
-  --sd-shadow-1: 0 1px 2px oklch(0 0 0 / 0.45),
-    0 4px 12px -2px oklch(0.1 0.06 300 / 0.45);
-  --sd-shadow-2: 0 1px 2px oklch(0 0 0 / 0.5),
-    0 6px 16px -4px oklch(0.1 0.06 300 / 0.55),
-    0 18px 44px -10px oklch(0.08 0.07 305 / 0.6);
-  --sd-shadow-3: 0 2px 4px oklch(0 0 0 / 0.5),
-    0 24px 72px -12px oklch(0.1 0.08 310 / 0.8);
+  /* Depth is cosmic glow, not harsh black: a whisper of contact shadow
+     for grounding, then translucent purple bloom with a cyan halo on
+     the higher layers; edge-gilt keeps the lit magenta rim over a dark
+     seat. */
+  --sd-shadow-1: 0 1px 2px oklch(0 0 0 / 0.35),
+    0 0 16px -2px oklch(0.5 0.18 305 / 0.28);
+  --sd-shadow-2: 0 1px 3px oklch(0 0 0 / 0.4),
+    0 0 24px -4px oklch(0.5 0.18 305 / 0.38),
+    0 0 48px -8px oklch(0.7 0.15 200 / 0.12);
+  --sd-shadow-3: 0 2px 6px oklch(0 0 0 / 0.4),
+    0 0 40px -6px oklch(0.5 0.2 310 / 0.5),
+    0 0 80px -12px oklch(0.7 0.15 200 / 0.16);
   --sd-shadow-well: inset 0 1px 3px oklch(0 0 0 / 0.5),
-    inset 0 -1px 0 oklch(0.85 0.07 310 / 0.07);
+    inset 0 -1px 0 oklch(0.87 0.148 203 / 0.08);
   --sd-edge-gilt: inset 0 1px 0
-      color-mix(in oklch, var(--sd-accent) 38%, transparent),
+      color-mix(in oklch, var(--sd-accent) 40%, transparent),
     inset 0 -1px 0 oklch(0 0 0 / 0.45);
 }
 
@@ -547,6 +563,8 @@
       oklch(0.3 0.11 292 / 0.5),
       transparent 55vh
     ),
+    radial-gradient(60% 22% at 18% 38%, oklch(0.35 0.14 290 / 0.22), transparent 70%),
+    radial-gradient(50% 18% at 80% 62%, oklch(0.32 0.13 320 / 0.18), transparent 70%),
     radial-gradient(
       120% 90% at 50% 48%,
       transparent 50%,
@@ -554,6 +572,8 @@
     );
   background-size:
     120px 120px,
+    auto,
+    auto,
     auto,
     auto;
 }
@@ -580,6 +600,44 @@
   text-shadow:
     1px 0 0 oklch(0.65 0.24 340 / 0.3),
     -1px 0 0 oklch(0.75 0.13 210 / 0.28);
+}
+
+/* Vespers: containers wear the ink-wash — smoky indigo marble flowing
+   from the corners. The final layer keeps the person's tone wash alive
+   on tone-set cards (transparent fallback elsewhere). */
+[data-theme="dark"] .card-lit,
+[data-theme="dark"] .card-lit-2 {
+  background-image:
+    radial-gradient(
+      120% 90% at 85% -10%,
+      oklch(0.34 0.12 285 / 0.28),
+      transparent 60%
+    ),
+    radial-gradient(
+      100% 80% at -10% 110%,
+      oklch(0.3 0.13 320 / 0.2),
+      transparent 55%
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--tone, transparent) 8%, transparent),
+      transparent
+    );
+}
+
+/* Rows parted by ink: a plain hairline by day; in the dark it runs
+   cyan → violet wire → magenta, a stroke with two live ends. */
+.divide-energy > * + * {
+  border-top: 1px solid var(--sd-line);
+}
+[data-theme="dark"] .divide-energy > * + * {
+  border-image: linear-gradient(
+      90deg,
+      oklch(0.87 0.148 203 / 0.3),
+      oklch(0.27 0.067 297 / 0.9) 22% 78%,
+      oklch(0.66 0.275 350 / 0.35)
+    )
+    1;
 }
 
 [data-theme="star"] .sky-bg {

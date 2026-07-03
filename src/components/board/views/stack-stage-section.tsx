@@ -69,7 +69,7 @@ export function StackStageSection({
         >
           <span
             className="absolute left-1/2 top-0 size-1 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{ background: "var(--tone)" }}
+            style={{ background: "var(--path-sat, var(--tone))" }}
           />
         </span>
         {/* The core: brightens when the stage is open. */}
@@ -139,7 +139,7 @@ export function StackStageSection({
             className="overflow-hidden"
           >
             {people.length > 0 ? (
-              <div className="divide-y divide-line/60 pb-3">
+              <div className="divide-energy pb-3">
                 {people.map((person) => (
                   <PersonCard
                     key={person.id}

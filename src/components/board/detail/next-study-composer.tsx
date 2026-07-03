@@ -131,6 +131,7 @@ export function NextStudyComposer({
         colors: [
           "var(--sd-accent-hi)",
           "var(--sd-accent)",
+          "var(--sd-spark)",
           `var(--tone-${stage.tone}-core)`,
         ],
       });
