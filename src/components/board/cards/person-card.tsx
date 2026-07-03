@@ -21,7 +21,6 @@ import { AvatarStack } from "../primitives/avatar-stack";
 import { PersonFramedAvatar } from "../primitives/framed-avatar";
 import { StageRibbon } from "../primitives/stage-ribbon";
 import { UrgencyMeter } from "../primitives/urgency-meter";
-import { TouchLogger } from "./touch-logger";
 
 /** The registrar line: one composed mono string, never competing chips. */
 export function RegistrarLine({ person, stage }: { person: BoardPerson; stage: Stage }) {
@@ -149,20 +148,6 @@ export const PersonCard = memo(function PersonCard({
         {!journeyDone ? <UrgencyMeter person={person} /> : null}
         <AvatarStack profiles={assignedProfiles} />
       </div>
-
-      {/* Quick actions surface on hover / focus; always reachable on touch
-          via the detail panel. */}
-      {!journeyDone ? (
-        <div
-          className={cn(
-            "absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity",
-            "card-lit-2 rounded-(--sd-r-sm) focus-within:opacity-100 group-hover:opacity-100",
-            "pointer-events-none focus-within:pointer-events-auto group-hover:pointer-events-auto"
-          )}
-        >
-          <TouchLogger person={person} />
-        </div>
-      ) : null}
 
       {/* The baptism moment: a single expanding ring in living green. */}
       <AnimatePresence>

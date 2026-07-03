@@ -7,7 +7,7 @@ import {
   useTransition,
   type ChangeEvent,
 } from "react";
-import { Archive, Camera, Pencil, Trash2 } from "lucide-react";
+import { Archive, Camera, NotebookPen, Pencil, Trash2 } from "lucide-react";
 
 import {
   addPersonNote,
@@ -27,6 +27,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Sheet,
   SheetContent,
@@ -378,19 +383,77 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                   value={nameDraft}
                 />
               ) : (
-                <button
-                  className="group/name flex min-w-0 max-w-full items-center gap-2 text-left"
-                  onClick={() => {
-                    if (canEdit()) {
-                      setNameDraft(person.name);
-                      setIsNameEditing(true);
-                    }
-                  }}
-                  type="button"
-                >
-                  <span className="t-display-md truncate text-ink">{person.name}</span>
-                  <Pencil className="size-3.5 shrink-0 text-ink-4 opacity-0 transition-opacity group-hover/name:opacity-100" />
-                </button>
+                <div className="flex min-w-0 max-w-full items-center gap-1.5">
+                  <button
+                    className="group/name flex min-w-0 items-center gap-2 text-left"
+                    onClick={() => {
+                      if (canEdit()) {
+                        setNameDraft(person.name);
+                        setIsNameEditing(true);
+                      }
+                    }}
+                    type="button"
+                  >
+                    <span className="t-display-md truncate text-ink">{person.name}</span>
+                    <Pencil className="size-3.5 shrink-0 text-ink-4 opacity-0 transition-opacity group-hover/name:opacity-100" />
+                  </button>
+                  <Popover
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        autosave.commitNotes();
+                      }
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <button
+                        aria-label={`Notes and people for ${person.name}`}
+                        className={cn(
+                          "shrink-0 rounded-(--sd-r-sm) p-1 transition-colors hover:bg-surface-sunken",
+                          autosave.notes.trim() ? "text-brand" : "text-ink-4 hover:text-ink-2"
+                        )}
+                        type="button"
+                      >
+                        <NotebookPen className="size-4" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-80 p-4" sideOffset={8}>
+                      <div className="flex flex-col gap-3">
+                        <ToggleGroup
+                          onValueChange={(value) =>
+                            setLifeStatus(
+                              value as NonNullable<BoardPerson["life_status"]> | ""
+                            )
+                          }
+                          type="single"
+                          value={lifeStatus ?? ""}
+                          variant="outline"
+                        >
+                          <ToggleGroupItem className="t-label gap-1.5" value="student">
+                            Student
+                          </ToggleGroupItem>
+                          <ToggleGroupItem className="t-label gap-1.5" value="worker">
+                            Worker
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                        <Textarea
+                          className="t-body min-h-28 border-line bg-surface"
+                          onBlur={autosave.commitNotes}
+                          onChange={(event) => autosave.updateNotes(event.target.value)}
+                          placeholder="Their story, their questions, what matters to them…"
+                          value={autosave.notes}
+                        />
+                        <p className="t-meta-sm text-ink-4">
+                          Saves when you leave the box.
+                        </p>
+                        <SectionHeading>People</SectionHeading>
+                        <AssignmentPicker
+                          assignedProfileIds={autosave.assignedProfileIds}
+                          onChange={autosave.updateAssignedProfiles}
+                        />
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               )}
               {/* The registrar line: everything about them, one baseline. */}
               <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -431,44 +494,6 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
 
           <Journal person={person} />
 
-          {/* Notes — unlabeled */}
-          <section className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <ToggleGroup
-                className="shrink-0"
-                onValueChange={(value) =>
-                  setLifeStatus(value as NonNullable<BoardPerson["life_status"]> | "")
-                }
-                type="single"
-                value={lifeStatus ?? ""}
-                variant="outline"
-              >
-                <ToggleGroupItem className="t-label gap-1.5" value="student">
-                  Student
-                </ToggleGroupItem>
-                <ToggleGroupItem className="t-label gap-1.5" value="worker">
-                  Worker
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-            <Textarea
-              className="t-body min-h-24 border-line bg-surface"
-              onBlur={autosave.commitNotes}
-              onChange={(event) => autosave.updateNotes(event.target.value)}
-              placeholder="Their story, their questions, what matters to them…"
-              value={autosave.notes}
-            />
-            <p className="t-meta-sm text-ink-4">Saves when you leave the box.</p>
-          </section>
-
-          {/* PEOPLE */}
-          <section className="flex flex-col gap-3">
-            <SectionHeading>People</SectionHeading>
-            <AssignmentPicker
-              assignedProfileIds={autosave.assignedProfileIds}
-              onChange={autosave.updateAssignedProfiles}
-            />
-          </section>
         </div>
 
         {/* ------------------------------------------------ footer */}
