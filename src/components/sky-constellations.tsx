@@ -174,8 +174,36 @@ export function SkyConstellations() {
         </svg>
       ))}
 
+      {/* Spirit orbs: hand-scribbled glow spirals, each turning at its
+          own pace — drawn once, spun by CSS. */}
+      {ORBS.map((orb, i) => (
+        <svg
+          key={i}
+          className={`c-orb ${orb.spin}`}
+          style={{
+            ...orb.style,
+            width: orb.size,
+            height: orb.size,
+          }}
+          viewBox="0 0 100 100"
+        >
+          <path d="M50 44c5-1 9 3 9 8 0 6-6 10-12 9-8-1-13-9-10-17 3-9 13-13 22-9 11 4 15 17 10 27-6 12-21 16-32 10-13-8-17-25-8-37" />
+          <circle cx="50" cy="49" r="1.6" />
+        </svg>
+      ))}
+
       <span className="c-wanderer" />
       <span className="c-wanderer c-wanderer-2" />
     </div>
   );
 }
+
+const ORBS: Array<{
+  style: CSSProperties;
+  size: number;
+  spin: "" | "c-orb-2" | "c-orb-3";
+}> = [
+  { style: { right: "9%", top: "28%" }, size: 120, spin: "" },
+  { style: { left: "5%", top: "56%" }, size: 84, spin: "c-orb-2" },
+  { style: { right: "27%", bottom: "6%" }, size: 64, spin: "c-orb-3" },
+];

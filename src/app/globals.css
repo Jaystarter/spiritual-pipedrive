@@ -210,35 +210,37 @@
 }
 
 [data-theme="dark"] {
-  /* --- Vespers: black velvet with tooth — five depths of night --------- */
-  /* The depth ladder: each layer a full violet-black step apart, so the
-     eye reads abyss → canvas → surface → raised without any borders:
-     0.05 → 0.10 → 0.155 → 0.205. Chroma rises with elevation — the
-     closer to the light, the more purple a surface holds. */
+  /* --- Vespers: the ink figure — indigo body, fuchsia energy ----------- */
+  /* Palette drawn from ink-wash art: the canvas is the figure's deep
+     indigo body (not black), surfaces rise through richer violet-indigo
+     steps, and the energy colors are an electric fuchsia accent with
+     cyan counterlight in the sky. Depth ladder: abyss 0.08 → canvas
+     0.145 → surface 0.20 → raised 0.25; chroma rises with elevation. */
   color-scheme: dark;
 
-  --sd-canvas: oklch(0.1 0.015 300);
-  --sd-canvas-deep: oklch(0.05 0.01 300);
-  --sd-surface: oklch(0.155 0.03 300);
-  --sd-surface-raised: oklch(0.205 0.04 302);
-  --sd-surface-sunken: oklch(0.065 0.012 300);
-  --sd-veil: oklch(0.03 0.015 300 / 0.68);
+  --sd-canvas: oklch(0.145 0.035 292);
+  --sd-canvas-deep: oklch(0.08 0.025 292);
+  --sd-surface: oklch(0.2 0.05 292);
+  --sd-surface-raised: oklch(0.25 0.055 294);
+  --sd-surface-sunken: oklch(0.105 0.03 292);
+  --sd-veil: oklch(0.05 0.03 292 / 0.68);
 
-  /* Velvet tooth: a whisper of grain over the purple gradient. */
+  /* Velvet tooth: a whisper of grain over the indigo gradient. */
   --sky-grain-soft: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3e%3cfilter id='n'%3e%3cfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3e%3cfeColorMatrix type='saturate' values='0'/%3e%3c/filter%3e%3crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3e%3c/svg%3e");
 
-  --sd-ink: oklch(0.95 0.012 300);
-  --sd-ink-2: oklch(0.82 0.025 300);
-  --sd-ink-3: oklch(0.67 0.04 300);
-  --sd-ink-4: oklch(0.5 0.045 300);
+  --sd-ink: oklch(0.96 0.012 292);
+  --sd-ink-2: oklch(0.84 0.03 292);
+  --sd-ink-3: oklch(0.68 0.05 292);
+  --sd-ink-4: oklch(0.52 0.055 292);
 
-  --sd-accent: oklch(0.7 0.19 298);
-  --sd-accent-hi: oklch(0.76 0.18 302);
-  --sd-accent-lo: oklch(0.63 0.2 294);
-  --sd-accent-ink: oklch(0.13 0.03 300);
-  /* Violet wire hairlines */
-  --sd-line: oklch(0.85 0.06 300 / 0.14);
-  --sd-line-strong: oklch(0.85 0.06 300 / 0.24);
+  /* The energy color: electric fuchsia, lit hot at the top. */
+  --sd-accent: oklch(0.7 0.23 338);
+  --sd-accent-hi: oklch(0.76 0.22 342);
+  --sd-accent-lo: oklch(0.63 0.24 332);
+  --sd-accent-ink: oklch(0.14 0.05 320);
+  /* Orchid wire hairlines */
+  --sd-line: oklch(0.88 0.07 310 / 0.16);
+  --sd-line-strong: oklch(0.88 0.07 310 / 0.26);
 
   /* Cores validated for chart marks (dark band, CVD-safe); inks brighter
      for text legibility on dark surfaces. */
@@ -258,17 +260,17 @@
   --sd-signal-wane: oklch(0.78 0.13 55);
   --sd-signal-urgent: oklch(0.72 0.16 25);
 
-  /* Depth is three lights: a hard contact shadow, a violet ambient
+  /* Depth is three lights: a hard contact shadow, an indigo ambient
      bloom, and (via edge-gilt) a lit top rim over a dark bottom seat. */
   --sd-shadow-1: 0 1px 2px oklch(0 0 0 / 0.45),
-    0 4px 12px -2px oklch(0.12 0.06 305 / 0.4);
+    0 4px 12px -2px oklch(0.1 0.06 300 / 0.45);
   --sd-shadow-2: 0 1px 2px oklch(0 0 0 / 0.5),
-    0 6px 16px -4px oklch(0.12 0.06 305 / 0.5),
-    0 18px 44px -10px oklch(0.1 0.08 310 / 0.55);
+    0 6px 16px -4px oklch(0.1 0.06 300 / 0.55),
+    0 18px 44px -10px oklch(0.08 0.07 305 / 0.6);
   --sd-shadow-3: 0 2px 4px oklch(0 0 0 / 0.5),
-    0 24px 72px -12px oklch(0.12 0.09 310 / 0.75);
+    0 24px 72px -12px oklch(0.1 0.08 310 / 0.8);
   --sd-shadow-well: inset 0 1px 3px oklch(0 0 0 / 0.5),
-    inset 0 -1px 0 oklch(0.8 0.06 300 / 0.06);
+    inset 0 -1px 0 oklch(0.85 0.07 310 / 0.07);
   --sd-edge-gilt: inset 0 1px 0
       color-mix(in oklch, var(--sd-accent) 38%, transparent),
     inset 0 -1px 0 oklch(0 0 0 / 0.45);
@@ -534,14 +536,15 @@
 }
 
 [data-theme="dark"] .sky-bg {
-  /* Vespers: black velvet under a purple sky — a gradient falling from
+  /* Vespers: the ink figure's sky — an indigo gradient falling from
      above, a deep vignette pressing in at the edges, and a whisper of
-     grain so the black has tooth instead of reading as a dead screen. */
+     grain so the dark has tooth instead of reading as a dead screen.
+     The energy drifts beneath: one magenta aurora, one cyan. */
   background-image:
     var(--sky-grain-soft),
     linear-gradient(
       to bottom,
-      oklch(0.24 0.09 300 / 0.55),
+      oklch(0.3 0.11 292 / 0.5),
       transparent 55vh
     ),
     radial-gradient(
@@ -557,16 +560,26 @@
 [data-theme="dark"] .sky-bg::before {
   background-image: radial-gradient(
     closest-side at 25% 20%,
-    oklch(0.42 0.16 300 / 0.34),
+    oklch(0.52 0.21 340 / 0.26),
     transparent 70%
   );
 }
 [data-theme="dark"] .sky-bg::after {
   background-image: radial-gradient(
     closest-side at 76% 74%,
-    oklch(0.38 0.15 320 / 0.28),
+    oklch(0.6 0.13 215 / 0.2),
     transparent 70%
   );
+}
+
+/* Vespers: print-misregistration fringe on the big serif voices — a
+   breath of magenta east and cyan west, ink layers a hair out of line. */
+[data-theme="dark"] .t-display-xl:not(.text-gilt),
+[data-theme="dark"] .t-display-lg:not(.text-gilt),
+[data-theme="dark"] .t-display-md:not(.text-gilt) {
+  text-shadow:
+    1px 0 0 oklch(0.65 0.24 340 / 0.3),
+    -1px 0 0 oklch(0.75 0.13 210 / 0.28);
 }
 
 [data-theme="star"] .sky-bg {
@@ -672,16 +685,19 @@
   --const-star: oklch(0.72 0.1 55 / 0.4);
   --const-line: oklch(0.66 0.11 50 / 0.2);
   --const-glow: oklch(0.8 0.12 55 / 0.22);
+  --orb-ink: oklch(0.5 0.04 60 / 0.12);
 }
 [data-theme="dark"] .sky-bg {
-  --const-star: oklch(0.88 0.05 300 / 0.85);
-  --const-line: oklch(0.75 0.12 300 / 0.3);
-  --const-glow: oklch(0.78 0.16 300 / 0.5);
+  --const-star: oklch(0.92 0.03 310 / 0.9);
+  --const-line: oklch(0.78 0.13 320 / 0.3);
+  --const-glow: oklch(0.75 0.2 338 / 0.45);
+  --orb-ink: oklch(0.96 0.015 310 / 0.5);
 }
 [data-theme="star"] .sky-bg {
   --const-star: oklch(0.97 0.01 260 / 0.95);
   --const-line: oklch(0.85 0.05 260 / 0.35);
   --const-glow: oklch(0.9 0.06 280 / 0.55);
+  --orb-ink: oklch(0.98 0.005 260 / 0.42);
 }
 
 .const-field {
@@ -727,6 +743,38 @@
 }
 .c-drift-c {
   animation: c-drift-c 66s var(--ease-in-out) infinite alternate;
+}
+
+/* Spirit orbs: hand-scribbled glow spirals, slowly turning in place.
+   White ink in the dark themes; faint pencil marginalia in Daybreak. */
+.c-orb {
+  position: absolute;
+  color: var(--orb-ink);
+  filter: drop-shadow(0 0 7px var(--const-glow));
+  animation: orb-spin 90s linear infinite;
+}
+.c-orb path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  animation: c-breathe 9s var(--ease-in-out) infinite alternate;
+}
+.c-orb circle {
+  fill: currentColor;
+}
+.c-orb-2 {
+  animation-duration: 130s;
+  animation-direction: reverse;
+}
+.c-orb-3 {
+  animation-duration: 70s;
+}
+
+@keyframes orb-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Wanderers: two slow travelers crossing the whole sky. */
@@ -894,6 +942,8 @@
   .c-drift-b,
   .c-drift-c,
   .c-wanderer,
+  .c-orb,
+  .c-orb path,
   .path-ping,
   .path-orbit,
   .path-comet {
