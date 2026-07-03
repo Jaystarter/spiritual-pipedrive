@@ -7,7 +7,7 @@ import {
   useTransition,
   type ChangeEvent,
 } from "react";
-import { Archive, Camera, Pencil, Phone, Trash2 } from "lucide-react";
+import { Archive, Camera, Pencil, Trash2 } from "lucide-react";
 
 import {
   addPersonNote,
@@ -69,7 +69,6 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
 
   const [isNameEditing, setIsNameEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(person?.name ?? "");
-  const [phoneDraft, setPhoneDraft] = useState(person?.phone ?? "");
   const [lifeStatus, setLifeStatusState] = useState<BoardPerson["life_status"]>(
     person?.life_status ?? null
   );
@@ -169,32 +168,6 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
       actions.onUpdated(result.data);
       setNameDraft(result.data.name);
       setIsNameEditing(false);
-    });
-  }
-
-  function commitPhone() {
-    const actorProfileId = canEdit();
-    const nextPhone = phoneDraft.trim();
-
-    if (!actorProfileId || !person || nextPhone === (person.phone ?? "")) {
-      return;
-    }
-
-    startSaveTransition(async () => {
-      const result = await updatePerson({
-        id: person.id,
-        phone: nextPhone,
-        actorProfileId,
-      });
-
-      if (!result.ok || !result.data) {
-        actions.onNotice(result.ok ? "The person could not be updated." : result.error);
-        return;
-      }
-
-      actions.onNotice(undefined);
-      actions.onUpdated(result.data);
-      setPhoneDraft(result.data.phone ?? "");
     });
   }
 
@@ -431,19 +404,6 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                 In pipeline {daysInPipeline(person.created_at)}d
                 {ownerProfile ? ` · Entered by ${ownerProfile.name}` : ""}
               </p>
-              <label className="mt-1 flex items-center gap-1.5">
-                <Phone className="size-3 shrink-0 text-ink-4" />
-                <input
-                  aria-label="Phone number"
-                  className="t-meta-sm w-44 border-none bg-transparent text-ink-3 outline-none placeholder:text-ink-4"
-                  inputMode="tel"
-                  onBlur={commitPhone}
-                  onChange={(event) => setPhoneDraft(event.target.value)}
-                  placeholder="Add a number"
-                  type="tel"
-                  value={phoneDraft}
-                />
-              </label>
             </div>
 
             {!journeyDone ? <UrgencyMeter className="mt-1.5" person={person} /> : null}
@@ -467,9 +427,8 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
 
           <Journal person={person} />
 
-          {/* NOTES */}
+          {/* Notes — unlabeled */}
           <section className="flex flex-col gap-3">
-            <SectionHeading>Notes</SectionHeading>
             <div className="flex flex-wrap items-center gap-3">
               <ToggleGroup
                 className="shrink-0"
