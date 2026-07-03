@@ -65,7 +65,7 @@ export function StageStepper({
           style={{ ["--tone" as string]: tone.coreVar }}
           type="button"
         >
-          <StageRibbon tone={current.tone} size="chip" className="h-3.5 w-1.5" />
+          <StageRibbon tone={current.tone} size="chip" className="size-3.5" />
           <span
             className={cn(
               "t-meta-sm whitespace-nowrap underline-offset-4 group-hover/stage:underline",
@@ -92,7 +92,7 @@ export function StageStepper({
               disabled={isCurrent}
               onSelect={() => actions.onMove(person, stage.id)}
             >
-              <StageRibbon tone={stage.tone} size="chip" className="h-4 w-1.5" />
+              <StageRibbon tone={stage.tone} size="chip" className="size-4" />
               <span className="t-body-sm min-w-0 flex-1 truncate">
                 {displayStageCopy(stage.label)}
               </span>

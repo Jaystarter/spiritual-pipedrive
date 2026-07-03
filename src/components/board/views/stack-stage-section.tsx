@@ -39,44 +39,36 @@ export function StackStageSection({
 
   return (
     <section id={`stack-stage-${stage.id}`} className="relative scroll-mt-20">
-      {/* The beacon: this stage's orbital system on the line. */}
+      {/* The milestone: a miniature seal on the line, kin to the logo's
+          diamond. The ping ripples outward as a diamond, cascading down
+          the path stage by stage. */}
       <span
         aria-hidden
         className="absolute -left-[26px] top-[17px] size-4"
         style={{ "--tone": tone.coreVar } as CSSProperties}
       >
-        {/* A canvas disc so the line passes behind the system. */}
-        <span className="absolute inset-0.5 rounded-full bg-canvas" />
-        {/* Radar ping, staggered so the pulse travels down the path. */}
+        {/* A canvas backing so the line passes behind the seal. */}
+        <span className="absolute inset-0.5 rotate-45 rounded-[3px] bg-canvas" />
+        {/* Diamond ripple, staggered so the pulse travels the path. */}
         <span
-          className="path-ping absolute inset-0 rounded-full"
+          className="path-ping absolute inset-0 rotate-45 rounded-[3px]"
           style={{ animationDelay: `${index * 0.5}s` }}
         />
-        {/* Orbit ring. */}
+        {/* The seal frame: takes the stage's light when open. */}
         <span
-          className="absolute inset-0 rounded-full border"
+          className="absolute inset-0 rotate-45 rounded-[3px] border transition-all duration-(--dur-base)"
           style={{
-            borderColor: "color-mix(in oklch, var(--tone) 45%, transparent)",
+            borderColor: `color-mix(in oklch, var(--tone) ${expanded ? 90 : 55}%, transparent)`,
+            boxShadow: expanded
+              ? "0 0 12px color-mix(in oklch, var(--tone) 55%, transparent), inset 0 0 6px color-mix(in oklch, var(--tone) 30%, transparent)"
+              : "0 0 6px color-mix(in oklch, var(--tone) 25%, transparent)",
           }}
         />
-        {/* The satellite riding the ring. */}
-        <span
-          className="path-orbit absolute inset-0"
-          style={{
-            animationDuration: `${9 + index * 1.6}s`,
-            animationDelay: `${index * -1.3}s`,
-          }}
-        >
-          <span
-            className="absolute left-1/2 top-0 size-1 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={{ background: "var(--path-sat, var(--tone))" }}
-          />
-        </span>
         {/* The core: brightens when the stage is open. */}
         <span
           className={cn(
             "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-(--dur-base)",
-            expanded ? "size-2" : "size-1.5"
+            expanded ? "size-1.5" : "size-1"
           )}
           style={{
             background: "var(--tone)",

@@ -457,7 +457,7 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
 
           {archived ? (
             <p className="t-body-sm mt-3 flex items-center gap-2 italic text-ink-3">
-              <StageRibbon tone={stage.tone} size="chip" className="h-3.5 w-1.5" />
+              <StageRibbon tone={stage.tone} size="chip" className="size-3.5" />
               Set aside{getArchiveReason(person.events) ? ` — ${getArchiveReason(person.events)}` : ""}.
               Tap the stage chip to bring them back.
             </p>

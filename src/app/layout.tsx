@@ -35,8 +35,9 @@ export const metadata: Metadata = {
 
 // Runs synchronously before hydration so the saved theme is applied before
 // first paint, preventing a flash of the wrong theme on reload. Handles the
-// light (no attribute), dark, and star modes.
-const themeBootstrapScript = `(function(){try{var t=localStorage.getItem('sd-theme');if(t==='dark'||t==='star'){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
+// light (no attribute), dark, and star modes. A ?theme= query param acts as
+// a non persisting override for previews and screenshots.
+const themeBootstrapScript = `(function(){try{var m=location.search.match(/[?&]theme=(light|dark|star)/);var t=m?m[1]:localStorage.getItem('sd-theme');if(t==='dark'||t==='star'){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -46,6 +47,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // The theme bootstrap script mutates data-theme before hydration.
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${cinzel.variable} h-full antialiased`}
     >
       <head>

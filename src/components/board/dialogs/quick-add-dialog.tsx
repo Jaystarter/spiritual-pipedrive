@@ -145,7 +145,7 @@ export function QuickAddDialog({
             >
               <span className="flex items-center gap-2.5">
                 {selectedStage ? (
-                  <StageRibbon tone={selectedStage.tone} size="chip" className="h-4 w-1.5" />
+                  <StageRibbon tone={selectedStage.tone} size="chip" className="size-4" />
                 ) : null}
                 <SelectValue placeholder="Starting stage" />
               </span>
@@ -156,7 +156,7 @@ export function QuickAddDialog({
                 .map((item) => (
                   <SelectItem key={item.id} className="gap-2" value={item.id}>
                     <span className="flex items-center gap-2.5">
-                      <StageRibbon tone={item.tone} size="chip" className="h-4 w-1.5" />
+                      <StageRibbon tone={item.tone} size="chip" className="size-4" />
                       <span className="t-body-sm">{displayStageCopy(item.label)}</span>
                     </span>
                   </SelectItem>

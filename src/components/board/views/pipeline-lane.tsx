@@ -47,7 +47,7 @@ export function PipelineLane({ stage, people }: PipelineLaneProps) {
         className="tone-wash-head flex items-start gap-2.5 px-3.5 pb-2 pt-3"
         style={toneVars(stage.tone)}
       >
-        <StageRibbon tone={stage.tone} size="full" className="-mt-3" />
+        <StageRibbon tone={stage.tone} size="full" className="-ml-1.5 -mt-1" />
         <div className="min-w-0 flex-1">
           <h2 className="t-display-sm truncate text-ink">
             {displayStageCopy(stage.label)}

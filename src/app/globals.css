@@ -239,9 +239,8 @@
   --sd-surface-sunken: oklch(0.12 0.005 286);
   --sd-veil: oklch(0 0 0 / 0.7);
 
-  /* Gold rides the satellites and the sparks. */
+  /* Gold rides the sparks. */
   --sd-spark: oklch(0.837 0.128 80);
-  --path-sat: oklch(0.837 0.128 80);
 
   /* Velvet tooth: a whisper of grain over the indigo gradient. */
   --sky-grain-soft: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3e%3cfilter id='n'%3e%3cfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3e%3cfeColorMatrix type='saturate' values='0'/%3e%3c/filter%3e%3crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3e%3c/svg%3e");
@@ -261,20 +260,21 @@
   --sd-line: oklch(0.323 0.009 286);
   --sd-line-strong: oklch(0.42 0.012 286);
 
-  /* Cores validated for chart marks (dark band, CVD-safe); inks brighter
-     for text legibility on dark surfaces. */
-  --tone-amber-core: oklch(0.66 0.13 75);
-  --tone-amber-ink: oklch(0.8 0.13 75);
-  --tone-sky-core: oklch(0.65 0.105 230);
-  --tone-sky-ink: oklch(0.78 0.105 230);
-  --tone-indigo-core: oklch(0.57 0.13 268);
-  --tone-indigo-ink: oklch(0.76 0.115 268);
-  --tone-violet-core: oklch(0.665 0.12 320);
-  --tone-violet-ink: oklch(0.8 0.12 320);
-  --tone-emerald-core: oklch(0.64 0.105 172);
-  --tone-emerald-ink: oklch(0.8 0.105 172);
-  --tone-green-core: oklch(0.66 0.135 150);
-  --tone-green-ink: oklch(0.8 0.135 150);
+  /* In the gold armor, the six hues retire: the journey runs a smoke to
+     liquid gold ramp instead. Identity is ordinal here (lane order and
+     names carry it), so the further along, the more gold the metal. */
+  --tone-amber-core: oklch(0.7 0.02 286);
+  --tone-amber-ink: oklch(0.78 0.02 286);
+  --tone-sky-core: oklch(0.74 0.05 85);
+  --tone-sky-ink: oklch(0.8 0.05 85);
+  --tone-indigo-core: oklch(0.75 0.08 82);
+  --tone-indigo-ink: oklch(0.81 0.08 82);
+  --tone-violet-core: oklch(0.77 0.11 80);
+  --tone-violet-ink: oklch(0.83 0.11 80);
+  --tone-emerald-core: oklch(0.79 0.13 78);
+  --tone-emerald-ink: oklch(0.85 0.12 78);
+  --tone-green-core: oklch(0.84 0.13 80);
+  --tone-green-ink: oklch(0.88 0.12 80);
 
   /* Urgency leans red so it never reads as the gold hand. */
   --sd-signal-wane: oklch(0.72 0.15 45);
@@ -564,8 +564,9 @@
       oklch(0.184 0.006 286 / 0.9),
       transparent 70%
     ),
-    radial-gradient(60% 22% at 20% 40%, oklch(0.5 0.01 280 / 0.13), transparent 70%),
-    radial-gradient(50% 18% at 78% 64%, oklch(0.55 0.06 80 / 0.1), transparent 70%),
+    radial-gradient(60% 22% at 20% 40%, oklch(0.55 0.008 280 / 0.22), transparent 70%),
+    radial-gradient(50% 18% at 78% 64%, oklch(0.55 0.06 80 / 0.16), transparent 70%),
+    radial-gradient(70% 26% at 45% 88%, oklch(0.55 0.008 280 / 0.14), transparent 70%),
     radial-gradient(
       120% 90% at 50% 48%,
       transparent 55%,
@@ -576,13 +577,14 @@
     auto,
     auto,
     auto,
+    auto,
     auto;
 }
 [data-theme="dark"] .sky-bg::before {
   /* Volumetric smoke drifting high. */
   background-image: radial-gradient(
     closest-side at 25% 20%,
-    oklch(0.6 0.008 280 / 0.16),
+    oklch(0.65 0.008 280 / 0.28),
     transparent 70%
   );
 }
@@ -590,7 +592,7 @@
   /* The gold ember breathing low. */
   background-image: radial-gradient(
     closest-side at 76% 74%,
-    oklch(0.68 0.12 80 / 0.14),
+    oklch(0.68 0.12 80 / 0.18),
     transparent 70%
   );
 }
@@ -1018,16 +1020,6 @@
   }
 }
 
-.path-orbit {
-  animation: path-orbit 9s linear infinite;
-}
-
-@keyframes path-orbit {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .sky-bg,
   .sky-bg::before,
@@ -1037,7 +1029,6 @@
   .c-orb,
   .c-orb path,
   .path-ping,
-  .path-orbit,
   .path-comet,
   .logo-word {
     animation: none !important;

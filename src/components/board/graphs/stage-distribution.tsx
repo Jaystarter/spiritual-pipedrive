@@ -31,7 +31,7 @@ export function StageDistribution({ rows }: { rows: StageCount[] }) {
         return (
           <div key={stage.id} className="flex items-center gap-3" title={`${displayStageCopy(stage.label)}: ${count} (${share}%)`}>
             <span className="flex w-36 shrink-0 items-center gap-2 sm:w-44">
-              <StageRibbon tone={stage.tone} size="chip" className="h-3.5 w-1.5" />
+              <StageRibbon tone={stage.tone} size="chip" className="size-3.5" />
               <span className="t-body-sm truncate text-ink-2">
                 {displayStageCopy(stage.label)}
               </span>
