@@ -223,43 +223,43 @@
 }
 
 [data-theme="dark"] {
-  /* --- Vespers: obsidian void, neon energy ----------------------------- */
-  /* Palette drawn from ink-wash art: an obsidian/void canvas (#0A0612),
-     translucent midnight-purple containers (#160F24) with muted-violet
-     wire (#2A1E43), crisp white ink, and twin neon energies — hot
-     magenta (#FF00A8) as the acting hand, neon cyan (#00F0FF) as the
-     counterlight on satellites, sparks, and dividers. */
+  /* --- Vespers: gold and obsidian -------------------------------------- */
+  /* Liquid gold armor on pitch black: a #000 canvas under charcoal
+     smoke (#121215), ultra dark translucent panels (#16161A) in
+     metallic gray wire (#333338), crisp white ink with warm gold
+     secondary (#C29438) and silver body (#9E9EAF), and a liquid gold
+     hand (#E5A93C) lit specular from #F5C060 down to #C29438. */
   color-scheme: dark;
 
-  --sd-canvas: oklch(0.136 0.028 300);
-  --sd-canvas-deep: oklch(0.09 0.02 300);
-  /* Translucent midnight purple: the sky's tendrils breathe through. */
-  --sd-surface: oklch(0.19 0.042 298 / 0.92);
-  --sd-surface-raised: oklch(0.24 0.05 298);
-  --sd-surface-sunken: oklch(0.11 0.025 298);
-  --sd-veil: oklch(0.05 0.03 292 / 0.68);
+  --sd-canvas: oklch(0 0 0);
+  --sd-canvas-deep: oklch(0 0 0);
+  /* Ultra dark translucent charcoal: the smoke breathes through. */
+  --sd-surface: oklch(0.202 0.008 286 / 0.92);
+  --sd-surface-raised: oklch(0.245 0.01 286);
+  --sd-surface-sunken: oklch(0.12 0.005 286);
+  --sd-veil: oklch(0 0 0 / 0.7);
 
-  /* The twin neons. */
-  --sd-cyan: oklch(0.87 0.148 203);
-  --sd-spark: oklch(0.87 0.148 203);
-  --path-sat: oklch(0.87 0.148 203);
+  /* Gold rides the satellites and the sparks. */
+  --sd-spark: oklch(0.837 0.128 80);
+  --path-sat: oklch(0.837 0.128 80);
 
   /* Velvet tooth: a whisper of grain over the indigo gradient. */
   --sky-grain-soft: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3e%3cfilter id='n'%3e%3cfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3e%3cfeColorMatrix type='saturate' values='0'/%3e%3c/filter%3e%3crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3e%3c/svg%3e");
 
   --sd-ink: oklch(1 0 0);
-  --sd-ink-2: oklch(0.87 0.02 295);
-  --sd-ink-3: oklch(0.71 0.04 295);
-  --sd-ink-4: oklch(0.55 0.05 295);
+  /* Secondary voice in warm muted gold, body copy in silver. */
+  --sd-ink-2: oklch(0.694 0.12 81);
+  --sd-ink-3: oklch(0.705 0.025 286);
+  --sd-ink-4: oklch(0.553 0.02 286);
 
-  /* The acting hand: hot magenta, lit hotter at the top. */
-  --sd-accent: oklch(0.66 0.275 350);
-  --sd-accent-hi: oklch(0.72 0.26 352);
-  --sd-accent-lo: oklch(0.6 0.28 347);
-  --sd-accent-ink: oklch(0.13 0.04 310);
-  /* Muted violet wire (#2A1E43) */
-  --sd-line: oklch(0.27 0.067 297);
-  --sd-line-strong: oklch(0.34 0.08 297);
+  /* The acting hand: liquid gold, lit specular at the top. */
+  --sd-accent: oklch(0.773 0.139 78);
+  --sd-accent-hi: oklch(0.837 0.128 80);
+  --sd-accent-lo: oklch(0.694 0.12 81);
+  --sd-accent-ink: oklch(0.16 0.02 80);
+  /* Sleek metallic gray wire (#333338) */
+  --sd-line: oklch(0.323 0.009 286);
+  --sd-line-strong: oklch(0.42 0.012 286);
 
   /* Cores validated for chart marks (dark band, CVD-safe); inks brighter
      for text legibility on dark surfaces. */
@@ -276,27 +276,26 @@
   --tone-green-core: oklch(0.66 0.135 150);
   --tone-green-ink: oklch(0.8 0.135 150);
 
-  /* Urgency leans orange so it never reads as the magenta hand. */
-  --sd-signal-wane: oklch(0.78 0.13 55);
-  --sd-signal-urgent: oklch(0.72 0.17 30);
+  /* Urgency leans red so it never reads as the gold hand. */
+  --sd-signal-wane: oklch(0.72 0.15 45);
+  --sd-signal-urgent: oklch(0.68 0.19 25);
 
-  /* Depth is cosmic glow, not harsh black: a whisper of contact shadow
-     for grounding, then translucent purple bloom with a cyan halo on
-     the higher layers; edge-gilt keeps the lit magenta rim over a dark
-     seat. */
-  --sd-shadow-1: 0 1px 2px oklch(0 0 0 / 0.35),
-    0 0 16px -2px oklch(0.5 0.18 305 / 0.28);
-  --sd-shadow-2: 0 1px 3px oklch(0 0 0 / 0.4),
-    0 0 24px -4px oklch(0.5 0.18 305 / 0.38),
-    0 0 48px -8px oklch(0.7 0.15 200 / 0.12);
-  --sd-shadow-3: 0 2px 6px oklch(0 0 0 / 0.4),
-    0 0 40px -6px oklch(0.5 0.2 310 / 0.5),
-    0 0 80px -12px oklch(0.7 0.15 200 / 0.16);
-  --sd-shadow-well: inset 0 1px 3px oklch(0 0 0 / 0.5),
-    inset 0 -1px 0 oklch(0.87 0.148 203 / 0.08);
+  /* Depth is golden reflection, not heavy black drop: a whisper of
+     contact shadow for grounding, then a tight gold ambient bloom;
+     edge-gilt keeps the lit gold rim over a dark seat. */
+  --sd-shadow-1: 0 1px 2px oklch(0 0 0 / 0.5),
+    0 0 16px -2px oklch(0.77 0.14 78 / 0.07);
+  --sd-shadow-2: 0 1px 3px oklch(0 0 0 / 0.55),
+    0 0 24px -4px oklch(0.77 0.14 78 / 0.1),
+    0 12px 32px -8px oklch(0 0 0 / 0.6);
+  --sd-shadow-3: 0 2px 6px oklch(0 0 0 / 0.55),
+    0 0 48px -8px oklch(0.77 0.14 78 / 0.14),
+    0 24px 64px -12px oklch(0 0 0 / 0.7);
+  --sd-shadow-well: inset 0 1px 3px oklch(0 0 0 / 0.55),
+    inset 0 -1px 0 oklch(0.837 0.128 80 / 0.08);
   --sd-edge-gilt: inset 0 1px 0
-      color-mix(in oklch, var(--sd-accent) 40%, transparent),
-    inset 0 -1px 0 oklch(0 0 0 / 0.45);
+      color-mix(in oklch, var(--sd-accent) 45%, transparent),
+    inset 0 -1px 0 oklch(0 0 0 / 0.5);
 }
 
 [data-theme="star"] {
@@ -555,23 +554,22 @@
 }
 
 [data-theme="dark"] .sky-bg {
-  /* Vespers: the ink figure's sky — an indigo gradient falling from
-     above, a deep vignette pressing in at the edges, and a whisper of
-     grain so the dark has tooth instead of reading as a dead screen.
-     The energy drifts beneath: one magenta aurora, one cyan. */
+  /* Gold and obsidian: pitch black under a charcoal smoke dome, two
+     soft smoke tendrils, one low gold ember, a whisper of grain for
+     tooth, and a deep vignette pressing in at the edges. */
   background-image:
     var(--sky-grain-soft),
-    linear-gradient(
-      to bottom,
-      oklch(0.3 0.11 292 / 0.5),
-      transparent 55vh
+    radial-gradient(
+      120% 80% at 50% 28%,
+      oklch(0.184 0.006 286 / 0.9),
+      transparent 70%
     ),
-    radial-gradient(60% 22% at 18% 38%, oklch(0.35 0.14 290 / 0.22), transparent 70%),
-    radial-gradient(50% 18% at 80% 62%, oklch(0.32 0.13 320 / 0.18), transparent 70%),
+    radial-gradient(60% 22% at 20% 40%, oklch(0.5 0.01 280 / 0.13), transparent 70%),
+    radial-gradient(50% 18% at 78% 64%, oklch(0.55 0.06 80 / 0.1), transparent 70%),
     radial-gradient(
       120% 90% at 50% 48%,
-      transparent 50%,
-      oklch(0 0 0 / 0.55)
+      transparent 55%,
+      oklch(0 0 0 / 0.7)
     );
   background-size:
     120px 120px,
@@ -581,39 +579,73 @@
     auto;
 }
 [data-theme="dark"] .sky-bg::before {
+  /* Volumetric smoke drifting high. */
   background-image: radial-gradient(
     closest-side at 25% 20%,
-    oklch(0.52 0.21 340 / 0.26),
+    oklch(0.6 0.008 280 / 0.16),
     transparent 70%
   );
 }
 [data-theme="dark"] .sky-bg::after {
+  /* The gold ember breathing low. */
   background-image: radial-gradient(
     closest-side at 76% 74%,
-    oklch(0.6 0.13 215 / 0.2),
+    oklch(0.68 0.12 80 / 0.14),
     transparent 70%
   );
 }
 
-/* Vespers: print-misregistration fringe on the big serif voices — a
-   breath of magenta east and cyan west, ink layers a hair out of line. */
+/* Vespers: foil-stamp fringe on the big serif voices, a breath of gold
+   east and silver west, like metal leaf pressed a hair out of line. */
 [data-theme="dark"] .t-display-xl:not(.text-gilt),
 [data-theme="dark"] .t-display-lg:not(.text-gilt),
 [data-theme="dark"] .t-display-md:not(.text-gilt) {
   text-shadow:
-    1px 0 0 oklch(0.65 0.24 340 / 0.3),
-    -1px 0 0 oklch(0.75 0.13 210 / 0.28);
+    1px 0 0 oklch(0.75 0.12 80 / 0.3),
+    -1px 0 0 oklch(0.8 0.012 280 / 0.25);
 }
 
-/* The wordmark: gilded serif with a living sheen — a band of light
-   crosses the letters every few seconds — and a spark for a hyphen.
-   Layers over .text-gilt, which supplies the clip and the fallback. */
+/* The lockup: a rotated seal bearing the S, then the name in spaced
+   engraved capitals wearing a living sheen. Accent-driven, so the seal
+   is carved graphite by day and liquid gold in the dark. */
 .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55em;
   font-family: var(--font-wordmark), var(--font-display), serif;
   font-style: normal;
   font-weight: 700;
-  font-size: 1.3rem;
-  letter-spacing: 0.05em;
+  font-size: 1.15rem;
+}
+.logo-seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9em;
+  height: 1.9em;
+  rotate: 45deg;
+  border-radius: 0.4em;
+  border: 1px solid color-mix(in oklch, var(--sd-accent) 65%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--sd-accent) 16%, transparent),
+    transparent 65%
+  );
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--sd-accent) 40%, transparent),
+    0 0 10px color-mix(in oklch, var(--sd-accent) 22%, transparent);
+}
+.logo-seal > span {
+  rotate: -45deg;
+  font-size: 1.05em;
+  line-height: 1;
+  color: var(--sd-accent);
+  -webkit-text-fill-color: var(--sd-accent);
+}
+/* The name: wide-tracked capitals, a band of light crossing them every
+   few seconds. Layers over .text-gilt for the clip and the fallback. */
+.logo-word {
+  letter-spacing: 0.18em;
   background-image: linear-gradient(
     105deg,
     var(--sd-accent-lo) 0%,
@@ -625,23 +657,6 @@
   background-size: 230% 100%;
   background-position: 130% 0;
   animation: wordmark-sheen 8s var(--ease-in-out) infinite;
-}
-/* The illuminated initial: the S stands a head taller, a clean
-   chiseled Roman capital leading the word. */
-.wordmark-initial {
-  font-size: 1.22em;
-  line-height: 1;
-}
-.wordmark-star {
-  display: inline-block;
-  font-style: normal;
-  font-size: 0.5em;
-  vertical-align: 0.32em;
-  padding-inline: 0.08em;
-  color: var(--sd-accent);
-  -webkit-text-fill-color: var(--sd-accent);
-  text-shadow: 0 0 8px color-mix(in oklch, var(--sd-accent) 60%, transparent);
-  animation: spark-pulse 3.2s var(--ease-in-out) infinite alternate;
 }
 [data-theme="dark"] .wordmark {
   filter: drop-shadow(
@@ -660,31 +675,21 @@
   }
 }
 
-@keyframes spark-pulse {
-  from {
-    opacity: 0.75;
-    transform: scale(0.94);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1.06);
-  }
-}
-
-/* Vespers: containers wear the ink-wash — smoky indigo marble flowing
-   from the corners. The final layer keeps the person's tone wash alive
-   on tone-set cards (transparent fallback elsewhere). */
+/* Vespers: panels wear the armor finish, a gold reflection falling in
+   from one corner and gray smoke rising from the other. The final
+   layer keeps the person's tone wash alive on tone-set cards
+   (transparent fallback elsewhere). */
 [data-theme="dark"] .card-lit,
 [data-theme="dark"] .card-lit-2 {
   background-image:
     radial-gradient(
       120% 90% at 85% -10%,
-      oklch(0.34 0.12 285 / 0.28),
+      oklch(0.55 0.08 80 / 0.13),
       transparent 60%
     ),
     radial-gradient(
       100% 80% at -10% 110%,
-      oklch(0.3 0.13 320 / 0.2),
+      oklch(0.6 0.008 280 / 0.09),
       transparent 55%
     ),
     linear-gradient(
@@ -694,17 +699,31 @@
     );
 }
 
-/* Rows parted by ink: a plain hairline by day; in the dark it runs
-   cyan → violet wire → magenta, a stroke with two live ends. */
+/* The golden ambient reflection on touched panels. */
+[data-theme="dark"] .card-lit:hover {
+  box-shadow:
+    var(--sd-edge-gilt),
+    var(--sd-shadow-1),
+    0 0 12px rgb(229 169 60 / 0.08);
+}
+[data-theme="dark"] .card-lit-2:hover {
+  box-shadow:
+    var(--sd-edge-gilt),
+    var(--sd-shadow-2),
+    0 0 12px rgb(229 169 60 / 0.08);
+}
+
+/* Rows parted by ink: a plain hairline by day; in the dark it is a
+   metallic web line, dark gray warming to a gold hint at the center. */
 .divide-energy > * + * {
   border-top: 1px solid var(--sd-line);
 }
 [data-theme="dark"] .divide-energy > * + * {
   border-image: linear-gradient(
       90deg,
-      oklch(0.87 0.148 203 / 0.3),
-      oklch(0.27 0.067 297 / 0.9) 22% 78%,
-      oklch(0.66 0.275 350 / 0.35)
+      oklch(0.323 0.009 286),
+      oklch(0.65 0.1 80 / 0.55) 50%,
+      oklch(0.323 0.009 286)
     )
     1;
 }
@@ -815,10 +834,10 @@
   --orb-ink: oklch(0.45 0.01 250 / 0.14);
 }
 [data-theme="dark"] .sky-bg {
-  --const-star: oklch(0.92 0.03 310 / 0.9);
-  --const-line: oklch(0.78 0.13 320 / 0.3);
-  --const-glow: oklch(0.75 0.2 338 / 0.45);
-  --orb-ink: oklch(0.96 0.015 310 / 0.5);
+  --const-star: oklch(0.95 0.02 90 / 0.9);
+  --const-line: oklch(0.7 0.06 82 / 0.3);
+  --const-glow: oklch(0.8 0.12 82 / 0.45);
+  --orb-ink: oklch(0.9 0.01 280 / 0.4);
 }
 [data-theme="star"] .sky-bg {
   --const-star: oklch(0.97 0.01 260 / 0.95);
@@ -1020,8 +1039,7 @@
   .path-ping,
   .path-orbit,
   .path-comet,
-  .wordmark,
-  .wordmark-star {
+  .logo-word {
     animation: none !important;
   }
   [data-theme="star"] .sky-bg::before {

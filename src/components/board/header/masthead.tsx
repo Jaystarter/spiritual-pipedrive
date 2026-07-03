@@ -115,12 +115,11 @@ export function Masthead({
     <header className="sticky top-0 z-(--z-appbar) border-b bg-canvas/85 backdrop-blur-md [border-bottom-color:color-mix(in_oklch,var(--sd-accent)_18%,var(--sd-line))]">
       <div className="relative mx-auto flex h-14 w-full max-w-[1840px] items-center gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 items-baseline gap-3">
-          <span className="text-gilt wordmark leading-none max-sm:absolute max-sm:left-1/2 max-sm:-translate-x-1/2">
-            <span className="wordmark-initial">S</span>
-            <span aria-hidden className="wordmark-star">
-              ✦
+          <span className="wordmark leading-none max-sm:absolute max-sm:left-1/2 max-sm:-translate-x-1/2">
+            <span className="logo-seal">
+              <span>S</span>
             </span>
-            Drive
+            <span className="logo-word text-gilt">Drive</span>
           </span>
           <span aria-hidden className="hidden h-4 w-px self-center bg-line-strong md:block" />
           <span className="t-meta hidden whitespace-nowrap text-ink-3 md:inline">
