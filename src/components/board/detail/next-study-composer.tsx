@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { useBoardActions, useBoardData } from "../board-context";
 import { celebrateFrom } from "../lib/celebrate";
 import { getStreak } from "../lib/engagement";
-import { formatDate, getDateValue, shiftDateValue } from "../lib/format";
+import { getDateValue, shiftDateValue } from "../lib/format";
 import { getToneStyle } from "../lib/stage-theme";
 import {
   CM_TITLES,
@@ -92,8 +92,6 @@ export function NextStudyComposer({
       .filter((number) => number > TOTAL_STUDIES)
       .map((number) => number - TOTAL_STUDIES)
   );
-  const baptized = stage.id === "brothers" || stage.id === "baptized";
-
   function logStudy() {
     if (!configured) {
       actions.onNotice("Connect Supabase before logging studies.");
@@ -167,12 +165,6 @@ export function NextStudyComposer({
           />
         ) : null}
       </div>
-
-      {baptized ? (
-        <p className="t-body-sm text-tone-green-ink">
-          Baptized {person.baptized_at ? formatDate(person.baptized_at) : ""}
-        </p>
-      ) : null}
 
       {/* The hero IS the picker: tap the title to choose another study. */}
       <Popover open={pickerOpen} onOpenChange={setPickerOpen}>

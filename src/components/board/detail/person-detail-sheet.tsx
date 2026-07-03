@@ -46,7 +46,7 @@ import {
   getAssignedProfiles,
   getStageById,
 } from "../lib/derive";
-import { daysInPipeline } from "../lib/format";
+import { daysInPipeline, formatDate } from "../lib/format";
 import { toneVars } from "../lib/stage-theme";
 import { FramedAvatar } from "../primitives/framed-avatar";
 import { SectionHeading } from "../primitives/section-heading";
@@ -420,6 +420,11 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                     <Pencil className="size-3.5 shrink-0 text-ink-4 opacity-0 transition-opacity group-hover/name:opacity-100" />
                   </button>
                   <StageStepper person={person} stages={visibleStages} />
+                  {person.stage === "brothers" || person.stage === "baptized" ? (
+                    <span className="t-body-sm whitespace-nowrap text-tone-green-ink">
+                      Baptized {person.baptized_at ? formatDate(person.baptized_at) : ""}
+                    </span>
+                  ) : null}
                 </div>
               )}
               <p className="t-meta-sm mt-1.5 text-ink-4">
