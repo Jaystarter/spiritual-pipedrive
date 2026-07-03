@@ -120,12 +120,26 @@ export function StackStageSection({
         >
           {people.length}
         </span>
-        <ChevronDown
+        {/* The disclosure: a ringed compass point that takes the stage's
+            light when open. */}
+        <span
           className={cn(
-            "size-4 shrink-0 text-ink-4 transition-transform duration-(--dur-base)",
+            "flex size-6 shrink-0 items-center justify-center rounded-full border border-line text-ink-4 transition-all duration-(--dur-base)",
+            "group-hover/milestone:border-line-strong group-hover/milestone:text-ink-2",
             expanded && "rotate-180"
           )}
-        />
+          style={
+            expanded
+              ? {
+                  borderColor: `color-mix(in oklch, ${tone.coreVar} 55%, transparent)`,
+                  color: tone.coreVar,
+                  boxShadow: `0 0 10px color-mix(in oklch, ${tone.coreVar} 35%, transparent)`,
+                }
+              : undefined
+          }
+        >
+          <ChevronDown className="size-3.5" />
+        </span>
       </button>
 
       <AnimatePresence initial={false}>

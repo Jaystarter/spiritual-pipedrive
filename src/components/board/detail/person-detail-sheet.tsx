@@ -50,7 +50,6 @@ import {
   getArchiveReason,
   getStageById,
 } from "../lib/derive";
-import { formatDate } from "../lib/format";
 import { toneVars } from "../lib/stage-theme";
 import { FramedAvatar } from "../primitives/framed-avatar";
 import { SectionHeading } from "../primitives/section-heading";
@@ -384,7 +383,9 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                     }}
                     type="button"
                   >
-                    <span className="t-display-md truncate text-ink">{person.name}</span>
+                    <span className="t-display-md truncate leading-none text-ink">
+                      {person.name}
+                    </span>
                     <Pencil className="size-3.5 shrink-0 text-ink-4 opacity-0 transition-opacity group-hover/name:opacity-100" />
                   </button>
                   <Popover
@@ -398,7 +399,7 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                       <button
                         aria-label={`Notes and people for ${person.name}`}
                         className={cn(
-                          "shrink-0 rounded-(--sd-r-sm) p-1 transition-colors hover:bg-surface-sunken",
+                          "flex size-7 shrink-0 items-center justify-center self-center rounded-(--sd-r-sm) transition-colors hover:bg-surface-sunken",
                           autosave.notes.trim() ? "text-brand" : "text-ink-4 hover:text-ink-2"
                         )}
                         type="button"
@@ -445,16 +446,9 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                   </Popover>
                 </div>
               )}
-              {/* The registrar line: the stage, and the day it began. */}
+              {/* The registrar line: just the stage. */}
               <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                 <StageStepper person={person} stages={visibleStages} />
-                <span aria-hidden className="t-meta-sm text-ink-4">·</span>
-                <span
-                  className="t-meta-sm whitespace-nowrap text-ink-4"
-                  title="First contact"
-                >
-                  {formatDate(person.created_at)}
-                </span>
               </div>
             </div>
 

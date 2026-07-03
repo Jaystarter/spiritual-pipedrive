@@ -271,7 +271,7 @@ export function LedgerStrip({
         onClick={onOpenGraphs}
         variant="ghost"
       >
-        The Almanac
+        Data
         <ArrowUpRight className="size-3.5" />
       </Button>
     </section>

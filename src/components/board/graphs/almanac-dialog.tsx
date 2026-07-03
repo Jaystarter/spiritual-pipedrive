@@ -168,7 +168,7 @@ export function AlmanacDialog({
         <header className="gilt-wash-head flex flex-wrap items-end justify-between gap-3 border-b border-line px-6 pb-4 pt-6">
           <div>
             <DialogTitle className="t-display-lg text-gilt italic">
-              The Almanac
+              Data
             </DialogTitle>
             <p className="t-meta mt-1.5 text-ink-3">
               {monthFilter === "all" ? "All recorded months" : formatMonthLabel(monthFilter)}

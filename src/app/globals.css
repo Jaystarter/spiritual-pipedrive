@@ -602,6 +602,66 @@
     -1px 0 0 oklch(0.75 0.13 210 / 0.28);
 }
 
+/* The wordmark: gilded serif with a living sheen — a band of light
+   crosses the letters every few seconds — and a spark for a hyphen.
+   Layers over .text-gilt, which supplies the clip and the fallback. */
+.wordmark {
+  font-family: var(--font-wordmark), var(--font-display), serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: 0.05em;
+  background-image: linear-gradient(
+    105deg,
+    var(--sd-accent-lo) 0%,
+    var(--sd-accent) 34%,
+    color-mix(in oklch, var(--sd-accent-hi) 55%, white) 50%,
+    var(--sd-accent) 66%,
+    var(--sd-accent-lo) 100%
+  );
+  background-size: 230% 100%;
+  background-position: 130% 0;
+  animation: wordmark-sheen 8s var(--ease-in-out) infinite;
+}
+.wordmark-star {
+  display: inline-block;
+  font-style: normal;
+  font-size: 0.5em;
+  vertical-align: 0.32em;
+  padding-inline: 0.08em;
+  color: var(--sd-accent);
+  -webkit-text-fill-color: var(--sd-accent);
+  text-shadow: 0 0 8px color-mix(in oklch, var(--sd-accent) 60%, transparent);
+  animation: spark-pulse 3.2s var(--ease-in-out) infinite alternate;
+}
+[data-theme="dark"] .wordmark {
+  filter: drop-shadow(
+    0 0 10px color-mix(in oklch, var(--sd-accent) 40%, transparent)
+  );
+}
+
+@keyframes wordmark-sheen {
+  0%,
+  58% {
+    background-position: 130% 0;
+  }
+  88%,
+  100% {
+    background-position: -30% 0;
+  }
+}
+
+@keyframes spark-pulse {
+  from {
+    opacity: 0.75;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
 /* Vespers: containers wear the ink-wash — smoky indigo marble flowing
    from the corners. The final layer keeps the person's tone wash alive
    on tone-set cards (transparent fallback elsewhere). */
@@ -780,29 +840,6 @@
   animation-duration: 9s;
 }
 
-/* Star-figures: faint lines between named stars, adrift. */
-.c-const {
-  position: absolute;
-  color: var(--const-line);
-}
-.c-const line {
-  stroke: currentColor;
-  animation: c-breathe 12s var(--ease-in-out) infinite alternate;
-}
-.c-const circle {
-  fill: var(--const-star);
-  filter: drop-shadow(0 0 2px var(--const-glow));
-}
-.c-drift-a {
-  animation: c-drift-a 84s var(--ease-in-out) infinite alternate;
-}
-.c-drift-b {
-  animation: c-drift-b 108s var(--ease-in-out) infinite alternate;
-}
-.c-drift-c {
-  animation: c-drift-c 66s var(--ease-in-out) infinite alternate;
-}
-
 /* Spirit orbs: hand-scribbled glow spirals, slowly turning in place.
    White ink in the dark themes; faint pencil marginalia in Daybreak. */
 .c-orb {
@@ -870,33 +907,6 @@
   }
   to {
     opacity: 1;
-  }
-}
-
-@keyframes c-drift-a {
-  from {
-    transform: translate(0, 0) rotate(0deg);
-  }
-  to {
-    transform: translate(16px, 10px) rotate(1.4deg);
-  }
-}
-
-@keyframes c-drift-b {
-  from {
-    transform: translate(0, 0) rotate(0deg);
-  }
-  to {
-    transform: translate(-14px, 14px) rotate(-1.2deg);
-  }
-}
-
-@keyframes c-drift-c {
-  from {
-    transform: translate(0, 0) rotate(0deg);
-  }
-  to {
-    transform: translate(12px, -12px) rotate(0.9deg);
   }
 }
 
@@ -995,16 +1005,14 @@
   .sky-bg::before,
   .sky-bg::after,
   .c-star,
-  .c-const line,
-  .c-drift-a,
-  .c-drift-b,
-  .c-drift-c,
   .c-wanderer,
   .c-orb,
   .c-orb path,
   .path-ping,
   .path-orbit,
-  .path-comet {
+  .path-comet,
+  .wordmark,
+  .wordmark-star {
     animation: none !important;
   }
   [data-theme="star"] .sky-bg::before {

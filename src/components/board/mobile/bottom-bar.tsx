@@ -91,7 +91,7 @@ export function BottomBar({
           </button>
           <button className={itemClass} onClick={onOpenGraphs} type="button">
             <BarChart3 className="size-5" />
-            <span className="t-meta-sm">Almanac</span>
+            <span className="t-meta-sm">Data</span>
           </button>
           <button
             aria-label="Add person"

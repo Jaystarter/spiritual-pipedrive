@@ -113,10 +113,14 @@ export function Masthead({
 
   return (
     <header className="sticky top-0 z-(--z-appbar) border-b bg-canvas/85 backdrop-blur-md [border-bottom-color:color-mix(in_oklch,var(--sd-accent)_18%,var(--sd-line))]">
-      <div className="mx-auto flex h-14 w-full max-w-[1840px] items-center gap-3 px-4 sm:px-6">
+      <div className="relative mx-auto flex h-14 w-full max-w-[1840px] items-center gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 items-baseline gap-3">
-          <span className="t-display-md text-gilt italic leading-none">
-            S-Drive
+          <span className="text-gilt wordmark leading-none max-sm:absolute max-sm:left-1/2 max-sm:-translate-x-1/2">
+            S
+            <span aria-hidden className="wordmark-star">
+              ✦
+            </span>
+            Drive
           </span>
           <span aria-hidden className="hidden h-4 w-px self-center bg-line-strong md:block" />
           <span className="t-meta hidden whitespace-nowrap text-ink-3 md:inline">
@@ -218,7 +222,7 @@ export function Masthead({
             <DropdownMenuTrigger asChild>
               <Button
                 aria-label="Board settings"
-                className="text-ink-2"
+                className="hidden text-ink-2 sm:inline-flex"
                 size="icon-sm"
                 variant="ghost"
               >
@@ -254,7 +258,7 @@ export function Masthead({
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2.5" onSelect={onOpenGraphs}>
                 <BarChart3 className="size-4 text-ink-3" />
-                <span className="t-body-sm">The Almanac</span>
+                <span className="t-body-sm">Data</span>
               </DropdownMenuItem>
               <DropdownMenuItem className="gap-2.5" onSelect={onOpenStages}>
                 <SlidersHorizontal className="size-4 text-ink-3" />
@@ -263,14 +267,14 @@ export function Masthead({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* The single accent action */}
+          {/* The single accent action — phones use the bottom bar's FAB */}
           <Button
-            className="btn-illuminated ml-1 h-9 gap-1.5 rounded-(--sd-r-md) px-3.5"
+            className="btn-illuminated ml-1 hidden h-9 gap-1.5 rounded-(--sd-r-md) px-3.5 sm:inline-flex"
             disabled={!configured}
             onClick={onAddContact}
           >
             <Plus className="size-4" />
-            <span className="t-label hidden sm:inline">Add person</span>
+            <span className="t-label">Add person</span>
           </Button>
         </div>
       </div>
