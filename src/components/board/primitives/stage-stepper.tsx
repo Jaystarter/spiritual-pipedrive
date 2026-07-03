@@ -51,20 +51,24 @@ export function StageStepper({
         <button
           aria-label={`Stage: ${displayStageCopy(current.label)}. Tap to move.`}
           className={cn(
-            "flex items-center gap-1.5 rounded-full border border-transparent py-1 pl-2 pr-2.5 transition-colors",
-            tone.wash,
-            tone.ink,
-            "hover:brightness-[1.03]",
+            "group/stage flex items-center gap-1.5 py-1 transition-opacity disabled:opacity-50",
             className
           )}
           disabled={isPending || !configured}
+          style={{ ["--tone" as string]: tone.coreVar }}
           type="button"
         >
           <StageRibbon tone={current.tone} size="chip" className="h-3.5 w-1.5" />
-          <span className="t-meta-sm whitespace-nowrap">
+          <span
+            className={cn(
+              "t-meta-sm whitespace-nowrap underline-offset-4 group-hover/stage:underline",
+              "decoration-[color-mix(in_oklch,var(--tone)_50%,transparent)]",
+              tone.ink
+            )}
+          >
             {displayStageCopy(current.shortLabel)}
           </span>
-          <ChevronDown className="size-3 opacity-70" />
+          <ChevronDown className="size-3 text-ink-4 transition-colors group-hover/stage:text-ink-2" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
