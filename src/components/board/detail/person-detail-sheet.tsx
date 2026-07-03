@@ -46,7 +46,7 @@ import {
   getAssignedProfiles,
   getStageById,
 } from "../lib/derive";
-import { daysInPipeline, formatDate } from "../lib/format";
+import { daysInPipeline } from "../lib/format";
 import { toneVars } from "../lib/stage-theme";
 import { FramedAvatar } from "../primitives/framed-avatar";
 import { SectionHeading } from "../primitives/section-heading";
@@ -378,32 +378,36 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                   value={nameDraft}
                 />
               ) : (
-                <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-                  <button
-                    className="group/name flex min-w-0 items-center gap-2 text-left"
-                    onClick={() => {
-                      if (canEdit()) {
-                        setNameDraft(person.name);
-                        setIsNameEditing(true);
-                      }
-                    }}
-                    type="button"
-                  >
-                    <span className="t-display-md truncate text-ink">{person.name}</span>
-                    <Pencil className="size-3.5 shrink-0 text-ink-4 opacity-0 transition-opacity group-hover/name:opacity-100" />
-                  </button>
-                  <StageStepper person={person} stages={visibleStages} />
-                  {person.stage === "brothers" || person.stage === "baptized" ? (
-                    <span className="t-body-sm whitespace-nowrap text-tone-green-ink">
-                      Baptized {person.baptized_at ? formatDate(person.baptized_at) : ""}
-                    </span>
-                  ) : null}
-                </div>
+                <button
+                  className="group/name flex min-w-0 max-w-full items-center gap-2 text-left"
+                  onClick={() => {
+                    if (canEdit()) {
+                      setNameDraft(person.name);
+                      setIsNameEditing(true);
+                    }
+                  }}
+                  type="button"
+                >
+                  <span className="t-display-md truncate text-ink">{person.name}</span>
+                  <Pencil className="size-3.5 shrink-0 text-ink-4 opacity-0 transition-opacity group-hover/name:opacity-100" />
+                </button>
               )}
-              <p className="t-meta-sm mt-1.5 text-ink-4">
-                In pipeline {daysInPipeline(person.created_at)}d
-                {ownerProfile ? ` · Entered by ${ownerProfile.name}` : ""}
-              </p>
+              {/* The registrar line: everything about them, one baseline. */}
+              <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <StageStepper person={person} stages={visibleStages} />
+                <span aria-hidden className="t-meta-sm text-ink-4">·</span>
+                <span className="t-meta-sm whitespace-nowrap text-ink-4">
+                  {daysInPipeline(person.created_at)}d in pipeline
+                </span>
+                {ownerProfile ? (
+                  <>
+                    <span aria-hidden className="t-meta-sm text-ink-4">·</span>
+                    <span className="t-meta-sm truncate text-ink-4">
+                      By {ownerProfile.name}
+                    </span>
+                  </>
+                ) : null}
+              </div>
             </div>
 
             {!journeyDone ? <UrgencyMeter className="mt-1.5" person={person} /> : null}

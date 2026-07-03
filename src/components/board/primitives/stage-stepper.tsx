@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 
 import { useBoardActions, useBoardData } from "../board-context";
 import { displayStageCopy } from "../lib/derive";
+import { formatDate } from "../lib/format";
 import { getToneStyle } from "../lib/stage-theme";
 import { StageRibbon } from "./stage-ribbon";
 
@@ -44,6 +45,12 @@ export function StageStepper({
   }
 
   const tone = getToneStyle(current.tone);
+  // For the baptized, the stage IS the story — the date rides in the label.
+  const isBaptized = current.id === "brothers" || current.id === "baptized";
+  const label =
+    isBaptized && person.baptized_at
+      ? `${displayStageCopy(current.shortLabel)} · ${formatDate(person.baptized_at)}`
+      : displayStageCopy(current.shortLabel);
 
   return (
     <DropdownMenu>
@@ -66,7 +73,7 @@ export function StageStepper({
               tone.ink
             )}
           >
-            {displayStageCopy(current.shortLabel)}
+            {label}
           </span>
           <ChevronDown className="size-3 text-ink-4 transition-colors group-hover/stage:text-ink-2" />
         </button>
