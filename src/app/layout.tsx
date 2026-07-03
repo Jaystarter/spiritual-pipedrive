@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
-import {
-  Cinzel_Decorative,
-  Geist,
-  Geist_Mono,
-  Instrument_Serif,
-} from "next/font/google";
+import { Cinzel, Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
 import { SkyConstellations } from "@/components/sky-constellations";
 
-const cinzelDecorative = Cinzel_Decorative({
+const cinzel = Cinzel({
   variable: "--font-wordmark",
   weight: ["700"],
   subsets: ["latin"],
@@ -51,7 +46,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${cinzelDecorative.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${cinzel.variable} h-full antialiased`}
     >
       <head>
         <script

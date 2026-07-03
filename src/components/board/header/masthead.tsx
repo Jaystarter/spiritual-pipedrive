@@ -116,7 +116,7 @@ export function Masthead({
       <div className="relative mx-auto flex h-14 w-full max-w-[1840px] items-center gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 items-baseline gap-3">
           <span className="text-gilt wordmark leading-none max-sm:absolute max-sm:left-1/2 max-sm:-translate-x-1/2">
-            S
+            <span className="wordmark-initial">S</span>
             <span aria-hidden className="wordmark-star">
               ✦
             </span>
