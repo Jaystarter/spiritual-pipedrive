@@ -7,8 +7,8 @@ import {
   Columns3,
   Layers3,
   MoonStar,
-  Plus,
   SlidersHorizontal,
+  Sparkle,
   Sparkles,
   Sun,
   UsersRound,
@@ -99,8 +99,9 @@ export function BottomBar({
             onClick={onAddContact}
             type="button"
           >
-            <span className="btn-illuminated -mt-4 flex size-12 items-center justify-center rounded-full">
-              <Plus className="size-5" />
+            {/* The seal FAB: a rotated diamond bearing the spark. */}
+            <span className="btn-illuminated -mt-4 flex size-11 rotate-45 items-center justify-center rounded-(--sd-r-lg)">
+              <Sparkle className="size-5 -rotate-45" fill="currentColor" />
             </span>
           </button>
           <button

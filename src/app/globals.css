@@ -103,31 +103,31 @@
 }
 
 :root {
-  /* --- The Relief: white panels sculpted on a cool gray plate ---------- */
-  /* Bas-relief light mode: matte plate canvas (#F4F6F8), pure white
-     chiseled panels, deep matte charcoal ink (#1F2937), slim silver
-     wire (#D1D5DB). Actions are carved graphite; the stage tones stay
-     the one meaningful use of color. */
-  --sd-canvas: oklch(0.972 0.003 248);
-  --sd-canvas-deep: oklch(0.94 0.005 248);
+  /* --- Armor White: white armor, crimson lines -------------------------- */
+  /* White suit light mode: a luminous haze canvas, pure white beveled
+     panels seamed with silver lavender wire, near black ink, and
+     glossy crimson as the acting hand. Depth stays sculpted: crisp
+     borders, tight soft shadows, a bright top bevel. */
+  --sd-canvas: oklch(0.975 0.004 280);
+  --sd-canvas-deep: oklch(0.94 0.006 280);
   --sd-surface: oklch(1 0 0);
   --sd-surface-raised: oklch(1 0 0);
-  --sd-surface-sunken: oklch(0.928 0.006 264);
-  --sd-veil: oklch(0.3 0.02 255 / 0.35);
+  --sd-surface-sunken: oklch(0.93 0.008 280);
+  --sd-veil: oklch(0.4 0.03 290 / 0.32);
 
-  --sd-ink: oklch(0.278 0.03 257);
-  --sd-ink-2: oklch(0.446 0.026 257);
-  --sd-ink-3: oklch(0.551 0.023 264);
-  --sd-ink-4: oklch(0.714 0.019 261);
+  --sd-ink: oklch(0.26 0.015 270);
+  --sd-ink-2: oklch(0.44 0.02 275);
+  --sd-ink-3: oklch(0.56 0.02 280);
+  --sd-ink-4: oklch(0.71 0.015 280);
 
-  /* Carved graphite: charcoal lit from above, near black at the base. */
-  --sd-accent: oklch(0.278 0.03 257);
-  --sd-accent-hi: oklch(0.373 0.031 260);
-  --sd-accent-lo: oklch(0.21 0.032 265);
+  /* Glossy crimson: the suit's red, lit at the top edge. */
+  --sd-accent: oklch(0.52 0.22 18);
+  --sd-accent-hi: oklch(0.58 0.21 20);
+  --sd-accent-lo: oklch(0.44 0.21 14);
   --sd-accent-ink: oklch(1 0 0);
-  /* The web panel gaps: precise slim silver. */
-  --sd-line: oklch(0.872 0.009 258);
-  --sd-line-strong: oklch(0.714 0.019 261);
+  /* The armor panel seams: slim silver lavender. */
+  --sd-line: oklch(0.87 0.012 280);
+  --sd-line-strong: oklch(0.74 0.018 280);
 
   /* Stage tones (validated: lightness band, chroma, CVD, contrast) */
   --tone-amber-core: oklch(0.72 0.145 70);
@@ -143,10 +143,11 @@
   --tone-green-core: oklch(0.66 0.15 150);
   --tone-green-ink: oklch(0.46 0.13 150);
 
-  /* Urgency signals */
+  /* Urgency signals; urgent leans vermilion so it reads apart from the
+     crimson hand. */
   --sd-signal-calm: var(--sd-ink-3);
-  --sd-signal-wane: oklch(0.58 0.155 33);
-  --sd-signal-urgent: oklch(0.55 0.19 25);
+  --sd-signal-wane: oklch(0.6 0.14 55);
+  --sd-signal-urgent: oklch(0.55 0.19 35);
   --sd-signal-joy: var(--tone-green-core);
 
   /* Radius scale */
@@ -158,16 +159,20 @@
   --sd-r-pill: 999px;
   --radius: 0.875rem;
 
-  /* Elevation, sculpted: tight soft neutral shadows so panels read as
-     physically raised off the plate, never a heavy dark drop. */
-  --sd-shadow-1: 0 2px 4px rgb(0 0 0 / 0.04), 0 1px 2px rgb(0 0 0 / 0.06);
-  --sd-shadow-2: 0 2px 4px rgb(0 0 0 / 0.05), 0 4px 10px rgb(0 0 0 / 0.06),
-    0 12px 24px rgb(0 0 0 / 0.05);
-  --sd-shadow-3: 0 4px 8px rgb(0 0 0 / 0.06), 0 24px 48px rgb(0 0 0 / 0.12);
+  /* Elevation, sculpted: tight soft shadows in a cool slate violet, so
+     panels read as armor plates catching a bright sky, never a heavy
+     dark drop. */
+  --sd-shadow-1: 0 2px 4px oklch(0.3 0.04 290 / 0.05),
+    0 1px 2px oklch(0.3 0.04 290 / 0.07);
+  --sd-shadow-2: 0 2px 4px oklch(0.3 0.04 290 / 0.06),
+    0 4px 10px oklch(0.3 0.04 290 / 0.07),
+    0 12px 24px oklch(0.3 0.04 290 / 0.06);
+  --sd-shadow-3: 0 4px 8px oklch(0.3 0.04 290 / 0.07),
+    0 24px 48px oklch(0.3 0.04 290 / 0.14);
   /* The press: a physical push down into the plate. */
-  --sd-shadow-well: inset 0 1px 3px rgb(0 0 0 / 0.08);
+  --sd-shadow-well: inset 0 1px 3px oklch(0.3 0.04 290 / 0.09);
   /* The chisel: a bright top bevel on raised panels. */
-  --sd-edge-gilt: inset 0 1px 0 oklch(1 0 0 / 0.8);
+  --sd-edge-gilt: inset 0 1px 0 oklch(1 0 0 / 0.85);
 
   /* Z-index scale */
   --z-card: 10;
@@ -537,9 +542,10 @@
   background-repeat: no-repeat;
 }
 .sky-bg::before {
+  /* An iridescent lavender drift, like light skating over the armor. */
   background-image: radial-gradient(
     closest-side at 28% 22%,
-    oklch(0.85 0.008 250 / 0.3),
+    oklch(0.88 0.025 300 / 0.28),
     transparent 70%
   );
   animation: aurora-a 46s var(--ease-in-out) infinite;
@@ -547,7 +553,7 @@
 .sky-bg::after {
   background-image: radial-gradient(
     closest-side at 74% 72%,
-    oklch(1 0 0 / 0.4),
+    oklch(1 0 0 / 0.45),
     transparent 70%
   );
   animation: aurora-b 62s var(--ease-in-out) infinite;
@@ -830,10 +836,10 @@
    and Night Watch let them shine. */
 
 .sky-bg {
-  --const-star: oklch(0.6 0.01 250 / 0.35);
-  --const-line: oklch(0.6 0.01 250 / 0.2);
-  --const-glow: oklch(0.7 0.01 250 / 0.25);
-  --orb-ink: oklch(0.45 0.01 250 / 0.14);
+  --const-star: oklch(0.6 0.02 290 / 0.35);
+  --const-line: oklch(0.6 0.02 290 / 0.2);
+  --const-glow: oklch(0.7 0.03 300 / 0.3);
+  --orb-ink: oklch(0.45 0.02 290 / 0.14);
 }
 [data-theme="dark"] .sky-bg {
   --const-star: oklch(0.95 0.02 90 / 0.9);
@@ -894,6 +900,10 @@
 }
 .c-orb-3 {
   animation-duration: 70s;
+}
+/* The obsidian sky keeps only smoke and gold dust: no scribble orbs. */
+[data-theme="dark"] .c-orb {
+  display: none;
 }
 
 @keyframes orb-spin {
