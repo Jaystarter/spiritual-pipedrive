@@ -104,11 +104,11 @@
 
 :root {
   /* --- Daybreak: a morning ledger open on a desk ---------------------- */
-  --sd-canvas: oklch(0.963 0.012 83);
-  --sd-canvas-deep: oklch(0.94 0.016 80);
-  --sd-surface: oklch(0.992 0.004 90);
+  --sd-canvas: oklch(0.975 0.009 80);
+  --sd-canvas-deep: oklch(0.945 0.014 75);
+  --sd-surface: oklch(0.994 0.003 85);
   --sd-surface-raised: oklch(1 0 0);
-  --sd-surface-sunken: oklch(0.942 0.013 83);
+  --sd-surface-sunken: oklch(0.948 0.011 78);
   --sd-veil: oklch(0.25 0.02 270 / 0.32);
 
   --sd-ink: oklch(0.24 0.02 270);
@@ -116,9 +116,9 @@
   --sd-ink-3: oklch(0.6 0.015 270);
   --sd-ink-4: oklch(0.72 0.01 270);
 
-  --sd-accent: oklch(0.52 0.145 58);
-  --sd-accent-hi: oklch(0.57 0.14 65);
-  --sd-accent-lo: oklch(0.47 0.145 48);
+  --sd-accent: oklch(0.53 0.17 45);
+  --sd-accent-hi: oklch(0.58 0.165 50);
+  --sd-accent-lo: oklch(0.47 0.17 40);
   --sd-accent-ink: oklch(0.99 0.005 90);
   --sd-line: oklch(0.24 0.02 270 / 0.12);
   --sd-line-strong: oklch(0.24 0.02 270 / 0.22);
@@ -139,7 +139,7 @@
 
   /* Urgency signals */
   --sd-signal-calm: var(--sd-ink-3);
-  --sd-signal-wane: oklch(0.6 0.145 45);
+  --sd-signal-wane: oklch(0.58 0.155 33);
   --sd-signal-urgent: oklch(0.55 0.19 25);
   --sd-signal-joy: var(--tone-green-core);
 
@@ -210,28 +210,28 @@
 }
 
 [data-theme="dark"] {
-  /* --- Vespers: the same ledger read by lamplight --------------------- */
+  /* --- Vespers: black velvet and violet light -------------------------- */
   color-scheme: dark;
 
-  --sd-canvas: oklch(0.18 0.016 265);
-  --sd-canvas-deep: oklch(0.18 0.016 265);
-  --sd-surface: oklch(0.22 0.018 265);
-  --sd-surface-raised: oklch(0.262 0.02 265);
-  --sd-surface-sunken: oklch(0.155 0.015 265);
-  --sd-veil: oklch(0.1 0.02 265 / 0.55);
+  --sd-canvas: oklch(0.14 0.028 300);
+  --sd-canvas-deep: oklch(0.11 0.022 302);
+  --sd-surface: oklch(0.18 0.035 300);
+  --sd-surface-raised: oklch(0.22 0.045 300);
+  --sd-surface-sunken: oklch(0.12 0.028 300);
+  --sd-veil: oklch(0.08 0.03 300 / 0.6);
 
-  --sd-ink: oklch(0.945 0.01 85);
-  --sd-ink-2: oklch(0.8 0.012 85);
-  --sd-ink-3: oklch(0.66 0.012 85);
-  --sd-ink-4: oklch(0.5 0.01 85);
+  --sd-ink: oklch(0.95 0.012 300);
+  --sd-ink-2: oklch(0.82 0.025 300);
+  --sd-ink-3: oklch(0.67 0.04 300);
+  --sd-ink-4: oklch(0.5 0.045 300);
 
-  --sd-accent: oklch(0.82 0.11 85);
-  --sd-accent-hi: oklch(0.86 0.115 92);
-  --sd-accent-lo: oklch(0.76 0.115 78);
-  --sd-accent-ink: oklch(0.2 0.02 265);
-  /* Brass wire hairlines */
-  --sd-line: oklch(0.9 0.04 85 / 0.1);
-  --sd-line-strong: oklch(0.9 0.04 85 / 0.18);
+  --sd-accent: oklch(0.7 0.19 298);
+  --sd-accent-hi: oklch(0.76 0.18 302);
+  --sd-accent-lo: oklch(0.63 0.2 294);
+  --sd-accent-ink: oklch(0.13 0.03 300);
+  /* Violet wire hairlines */
+  --sd-line: oklch(0.85 0.06 300 / 0.12);
+  --sd-line-strong: oklch(0.85 0.06 300 / 0.2);
 
   /* Cores validated for chart marks (dark band, CVD-safe); inks brighter
      for text legibility on dark surfaces. */
@@ -256,7 +256,7 @@
   --sd-shadow-3: 0 16px 56px oklch(0 0 0 / 0.55);
   --sd-shadow-well: inset 0 1px 2px oklch(0 0 0 / 0.3);
   --sd-edge-gilt: inset 0 1px 0
-    color-mix(in oklch, var(--sd-accent) 24%, transparent);
+    color-mix(in oklch, var(--sd-accent) 32%, transparent);
 }
 
 [data-theme="star"] {
@@ -470,53 +470,86 @@
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* Daybreak: laid paper — faint horizontal lines, film grain, a warm
-     lamp falling from the top of the page, and a dusk vignette at its
-     foot. */
+  overflow: hidden;
+  /* Daybreak: white paper under an orange lamp — laid lines, film grain,
+     warm glow from the top. The living light drifts via the aurora blobs
+     (::before/::after) beneath. */
   background-image:
     radial-gradient(
       120% 55% at 50% -10%,
-      oklch(1 0.016 95 / 0.75),
-      transparent 60%
-    ),
-    radial-gradient(
-      90% 50% at 50% 110%,
-      oklch(0.86 0.035 75 / 0.18),
+      oklch(0.85 0.11 55 / 0.22),
       transparent 60%
     ),
     repeating-linear-gradient(
       to bottom,
       transparent 0 27px,
-      oklch(0.24 0.02 270 / 0.035) 27px 28px
+      oklch(0.24 0.02 270 / 0.03) 27px 28px
     ),
     var(--sky-grain);
   background-size:
-    auto,
     auto,
     auto,
     140px 140px;
   opacity: 1;
 }
 
+/* The aurora: two soft glow blobs drifting on a long, slow loop. */
+.sky-bg::before,
+.sky-bg::after {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  background-repeat: no-repeat;
+}
+.sky-bg::before {
+  background-image: radial-gradient(
+    closest-side at 28% 22%,
+    oklch(0.8 0.14 50 / 0.2),
+    transparent 70%
+  );
+  animation: aurora-a 46s var(--ease-in-out) infinite;
+}
+.sky-bg::after {
+  background-image: radial-gradient(
+    closest-side at 74% 72%,
+    oklch(0.88 0.09 70 / 0.16),
+    transparent 70%
+  );
+  animation: aurora-b 62s var(--ease-in-out) infinite;
+}
+
 [data-theme="dark"] .sky-bg {
-  /* Vespers: candlelight above, a barely-there vignette breathing below. */
+  /* Vespers: black velvet, purple gradient falling from above, grain. */
   background-image:
-    radial-gradient(
-      90% 40% at 50% -5%,
-      oklch(0.55 0.07 85 / 0.1),
-      transparent 60%
+    linear-gradient(
+      to bottom,
+      oklch(0.2 0.06 300 / 0.55),
+      transparent 45vh
     ),
     radial-gradient(
-      120% 90% at 50% 42%,
-      transparent 52%,
-      oklch(0 0 0 / 0.34)
+      120% 90% at 50% 45%,
+      transparent 50%,
+      oklch(0 0 0 / 0.45)
     ),
     var(--sky-grain);
   background-size:
     auto,
     auto,
     140px 140px;
-  animation: vespers-breathe 30s var(--ease-in-out) infinite alternate;
+}
+[data-theme="dark"] .sky-bg::before {
+  background-image: radial-gradient(
+    closest-side at 25% 20%,
+    oklch(0.42 0.16 300 / 0.3),
+    transparent 70%
+  );
+}
+[data-theme="dark"] .sky-bg::after {
+  background-image: radial-gradient(
+    closest-side at 76% 74%,
+    oklch(0.38 0.15 320 / 0.24),
+    transparent 70%
+  );
 }
 
 [data-theme="star"] .sky-bg {
@@ -536,7 +569,8 @@
   mask-image: linear-gradient(to bottom, transparent 0, black 120px);
 }
 
-/* Twinkle: a second, offset star layer fading in counterpoint. */
+/* Twinkle: a second, offset star layer fading in counterpoint
+   (overrides the base aurora blob). */
 [data-theme="star"] .sky-bg::before {
   content: "";
   position: absolute;
@@ -547,10 +581,11 @@
   animation: star-twinkle 5.5s var(--ease-in-out) infinite alternate;
 }
 
-/* One shooting star on the long watch (~90s cycle). */
+/* One shooting star on the long watch (~90s cycle; overrides aurora). */
 [data-theme="star"] .sky-bg::after {
   content: "";
   position: absolute;
+  inset: auto;
   top: 12%;
   left: 0;
   width: 90px;
@@ -562,12 +597,23 @@
   animation: shooting-star 90s linear infinite;
 }
 
-@keyframes vespers-breathe {
-  from {
-    opacity: 0.88;
+@keyframes aurora-a {
+  0%,
+  100% {
+    transform: translate(-6%, -4%) scale(1);
   }
-  to {
-    opacity: 1;
+  50% {
+    transform: translate(6%, 6%) scale(1.18);
+  }
+}
+
+@keyframes aurora-b {
+  0%,
+  100% {
+    transform: translate(5%, 4%) scale(1.12);
+  }
+  50% {
+    transform: translate(-6%, -5%) scale(0.94);
   }
 }
 
