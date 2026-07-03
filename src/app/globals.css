@@ -210,15 +210,22 @@
 }
 
 [data-theme="dark"] {
-  /* --- Vespers: black velvet and violet light -------------------------- */
+  /* --- Vespers: black velvet with tooth — five depths of night --------- */
+  /* The depth ladder: each layer a full violet-black step apart, so the
+     eye reads abyss → canvas → surface → raised without any borders:
+     0.05 → 0.10 → 0.155 → 0.205. Chroma rises with elevation — the
+     closer to the light, the more purple a surface holds. */
   color-scheme: dark;
 
-  --sd-canvas: oklch(0.09 0.012 300);
-  --sd-canvas-deep: oklch(0.05 0.008 300);
-  --sd-surface: oklch(0.14 0.025 300);
-  --sd-surface-raised: oklch(0.175 0.035 300);
-  --sd-surface-sunken: oklch(0.06 0.01 300);
-  --sd-veil: oklch(0.03 0.015 300 / 0.65);
+  --sd-canvas: oklch(0.1 0.015 300);
+  --sd-canvas-deep: oklch(0.05 0.01 300);
+  --sd-surface: oklch(0.155 0.03 300);
+  --sd-surface-raised: oklch(0.205 0.04 302);
+  --sd-surface-sunken: oklch(0.065 0.012 300);
+  --sd-veil: oklch(0.03 0.015 300 / 0.68);
+
+  /* Velvet tooth: a whisper of grain over the purple gradient. */
+  --sky-grain-soft: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3e%3cfilter id='n'%3e%3cfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3e%3cfeColorMatrix type='saturate' values='0'/%3e%3c/filter%3e%3crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3e%3c/svg%3e");
 
   --sd-ink: oklch(0.95 0.012 300);
   --sd-ink-2: oklch(0.82 0.025 300);
@@ -230,8 +237,8 @@
   --sd-accent-lo: oklch(0.63 0.2 294);
   --sd-accent-ink: oklch(0.13 0.03 300);
   /* Violet wire hairlines */
-  --sd-line: oklch(0.85 0.06 300 / 0.12);
-  --sd-line-strong: oklch(0.85 0.06 300 / 0.2);
+  --sd-line: oklch(0.85 0.06 300 / 0.14);
+  --sd-line-strong: oklch(0.85 0.06 300 / 0.24);
 
   /* Cores validated for chart marks (dark band, CVD-safe); inks brighter
      for text legibility on dark surfaces. */
@@ -251,12 +258,20 @@
   --sd-signal-wane: oklch(0.78 0.13 55);
   --sd-signal-urgent: oklch(0.72 0.16 25);
 
-  --sd-shadow-1: 0 1px 2px oklch(0 0 0 / 0.3);
-  --sd-shadow-2: 0 2px 6px oklch(0 0 0 / 0.35), 0 10px 28px oklch(0 0 0 / 0.4);
-  --sd-shadow-3: 0 16px 56px oklch(0 0 0 / 0.55);
-  --sd-shadow-well: inset 0 1px 2px oklch(0 0 0 / 0.3);
+  /* Depth is three lights: a hard contact shadow, a violet ambient
+     bloom, and (via edge-gilt) a lit top rim over a dark bottom seat. */
+  --sd-shadow-1: 0 1px 2px oklch(0 0 0 / 0.45),
+    0 4px 12px -2px oklch(0.12 0.06 305 / 0.4);
+  --sd-shadow-2: 0 1px 2px oklch(0 0 0 / 0.5),
+    0 6px 16px -4px oklch(0.12 0.06 305 / 0.5),
+    0 18px 44px -10px oklch(0.1 0.08 310 / 0.55);
+  --sd-shadow-3: 0 2px 4px oklch(0 0 0 / 0.5),
+    0 24px 72px -12px oklch(0.12 0.09 310 / 0.75);
+  --sd-shadow-well: inset 0 1px 3px oklch(0 0 0 / 0.5),
+    inset 0 -1px 0 oklch(0.8 0.06 300 / 0.06);
   --sd-edge-gilt: inset 0 1px 0
-    color-mix(in oklch, var(--sd-accent) 32%, transparent);
+      color-mix(in oklch, var(--sd-accent) 38%, transparent),
+    inset 0 -1px 0 oklch(0 0 0 / 0.45);
 }
 
 [data-theme="star"] {
@@ -519,32 +534,37 @@
 }
 
 [data-theme="dark"] .sky-bg {
-  /* Vespers: pure matte black, a purple gradient falling from above —
-     no grain, the surface stays flat velvet. */
+  /* Vespers: black velvet under a purple sky — a gradient falling from
+     above, a deep vignette pressing in at the edges, and a whisper of
+     grain so the black has tooth instead of reading as a dead screen. */
   background-image:
+    var(--sky-grain-soft),
     linear-gradient(
       to bottom,
-      oklch(0.22 0.08 300 / 0.5),
-      transparent 50vh
+      oklch(0.24 0.09 300 / 0.55),
+      transparent 55vh
     ),
     radial-gradient(
       120% 90% at 50% 48%,
       transparent 50%,
-      oklch(0 0 0 / 0.5)
+      oklch(0 0 0 / 0.55)
     );
-  background-size: auto, auto;
+  background-size:
+    120px 120px,
+    auto,
+    auto;
 }
 [data-theme="dark"] .sky-bg::before {
   background-image: radial-gradient(
     closest-side at 25% 20%,
-    oklch(0.42 0.16 300 / 0.3),
+    oklch(0.42 0.16 300 / 0.34),
     transparent 70%
   );
 }
 [data-theme="dark"] .sky-bg::after {
   background-image: radial-gradient(
     closest-side at 76% 74%,
-    oklch(0.38 0.15 320 / 0.24),
+    oklch(0.38 0.15 320 / 0.28),
     transparent 70%
   );
 }
