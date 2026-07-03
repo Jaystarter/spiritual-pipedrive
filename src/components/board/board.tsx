@@ -24,6 +24,7 @@ import { QuickAddDialog } from "./dialogs/quick-add-dialog";
 import { EditStagesDialog } from "./dialogs/edit-stages-dialog";
 import { AlmanacDialog } from "./graphs/almanac-dialog";
 import { BottomBar } from "./mobile/bottom-bar";
+import { CelebrationLayer } from "./primitives/celebration-layer";
 
 export function BibleStudyBoard(props: BoardProps) {
   const { configured } = props;
@@ -228,6 +229,7 @@ export function BibleStudyBoard(props: BoardProps) {
           onClose={() => setEditStagesOpen(false)}
           onSaved={setStages}
         />
+        <CelebrationLayer />
         <Toaster />
       </main>
     </BoardProvider>

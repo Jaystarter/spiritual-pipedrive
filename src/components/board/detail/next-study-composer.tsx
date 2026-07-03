@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { BookOpenText, Check, ChevronDown } from "lucide-react";
+import { toast } from "sonner";
 
 import { addPersonStudy, type BoardPerson } from "@/app/actions";
 import {
@@ -21,6 +22,8 @@ import type { Stage } from "@/lib/stages";
 import { cn } from "@/lib/utils";
 
 import { useBoardActions, useBoardData } from "../board-context";
+import { celebrateFrom } from "../lib/celebrate";
+import { getStreak } from "../lib/engagement";
 import { formatDate, getDateValue, shiftDateValue } from "../lib/format";
 import { getToneStyle } from "../lib/stage-theme";
 import {
@@ -56,7 +59,7 @@ export function NextStudyComposer({
   person: BoardPerson;
   stage: Stage;
 }) {
-  const { configured, activeProfile } = useBoardData();
+  const { configured, activeProfile, people } = useBoardData();
   const actions = useBoardActions();
   const tone = getToneStyle(stage.tone);
   const [isPending, startTransition] = useTransition();
@@ -65,6 +68,7 @@ export function NextStudyComposer({
   const [chosenNumber, setChosenNumber] = useState<number | null>(null);
   const [studyDate, setStudyDate] = useState(() => getDateValue(null));
   const pendingRef = useRef(false);
+  const logButtonRef = useRef<HTMLButtonElement>(null);
 
   const completedNumbers = new Set(person.studies.map((study) => study.study_number));
   const nextNumber = chosenNumber ?? getNextStudyNumber(person.studies);
@@ -106,6 +110,8 @@ export function NextStudyComposer({
     }
 
     pendingRef.current = true;
+    // Was the lamp lit before this log? If not, this entry extends the streak.
+    const streakBefore = getStreak(people, activeProfile.id);
     startTransition(async () => {
       const result = await addPersonStudy({
         id: person.id,
@@ -126,6 +132,24 @@ export function NextStudyComposer({
       actions.onStudyLogged(person.id, result.data.study, result.data.event);
       setChosenNumber(null);
       setStudyDate(getDateValue(null));
+
+      // The joy: a burst from the button, and a word when the lamp lights.
+      celebrateFrom(logButtonRef.current, {
+        colors: [
+          "var(--sd-accent-hi)",
+          "var(--sd-accent)",
+          `var(--tone-${stage.tone}-core)`,
+        ],
+      });
+
+      if (!streakBefore.litToday) {
+        const nextStreak = streakBefore.count + 1;
+        toast.success(
+          nextStreak > 1
+            ? `Day ${nextStreak} — the lamp stays lit 🔥`
+            : "The lamp is lit — day 1 of a new streak"
+        );
+      }
     });
   }
 
@@ -257,6 +281,7 @@ export function NextStudyComposer({
         )}
       >
         <button
+          ref={logButtonRef}
           className="t-label flex flex-1 items-center justify-center gap-1.5 px-3"
           disabled={isPending || !configured}
           onClick={logStudy}

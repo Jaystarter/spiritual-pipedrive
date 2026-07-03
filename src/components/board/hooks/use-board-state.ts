@@ -33,6 +33,7 @@ import {
 import { getVisibleStages, normalizeStages, type StageId } from "@/lib/stages";
 
 import type { BoardProps } from "../types";
+import { celebrate } from "../lib/celebrate";
 import {
   filterPeopleForProfile,
   getAssignmentNotificationItems,
@@ -162,6 +163,14 @@ export function useBoardState({
       }
 
       setCelebratePersonId(personId);
+      celebrate({
+        intensity: "grand",
+        colors: [
+          "var(--sd-accent-hi)",
+          "var(--sd-accent)",
+          "var(--tone-green-core)",
+        ],
+      });
       celebrateTimeoutRef.current = window.setTimeout(() => {
         setCelebratePersonId(null);
         celebrateTimeoutRef.current = null;
