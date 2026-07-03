@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { BookOpenText, Check, ChevronDown } from "lucide-react";
+import { BookOpenText, CalendarClock, Check, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 import { addPersonStudy, type BoardPerson } from "@/app/actions";
@@ -261,6 +261,38 @@ export function NextStudyComposer({
               </CommandGroup>
             </CommandList>
           </Command>
+          {/* Pick the date without leaving the catalog. */}
+          <div className="flex items-center gap-1.5 border-t border-line p-2">
+            <CalendarClock className="size-3.5 shrink-0 text-ink-4" />
+            {[
+              ["Today", today],
+              ["Yesterday", yesterday],
+            ].map(([optionLabel, optionValue]) => (
+              <button
+                key={optionLabel}
+                className={cn(
+                  "t-label rounded-(--sd-r-sm) border border-line px-2 py-1 transition-colors hover:border-line-strong",
+                  studyDate === optionValue && "border-brand text-brand"
+                )}
+                onClick={() => setStudyDate(optionValue)}
+                type="button"
+              >
+                {optionLabel}
+              </button>
+            ))}
+            <input
+              aria-label="Study date"
+              className="t-body-sm min-w-0 flex-1 rounded-(--sd-r-sm) border border-line bg-surface px-2 py-1 text-ink shadow-(--sd-shadow-well)"
+              max={today}
+              onChange={(event) => {
+                if (event.target.value) {
+                  setStudyDate(event.target.value);
+                }
+              }}
+              type="date"
+              value={studyDate}
+            />
+          </div>
         </PopoverContent>
       </Popover>
 
