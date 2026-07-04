@@ -283,7 +283,7 @@ export function NextStudyComposer({
                   );
                 })}
               </CommandGroup>
-              <CommandGroup heading={`Counter-missionary · FI 1–${CM_TITLES.length}`}>
+              <CommandGroup heading={`Countermeasures · FI 1–${CM_TITLES.length}`}>
                 {CM_TITLES.map((catalogTitle, index) => {
                   const number = TOTAL_STUDIES + index + 1;
                   const done = completedNumbers.has(number);
