@@ -984,18 +984,151 @@ html:not([data-theme]) .btn-illuminated:active {
     );
 }
 
-/* The golden ambient reflection on touched panels. */
+/* --- The Vigil (dark only): Vespers in motion -------------------------- */
+/* The obsidian keeps watch: an ember glint patrols each plate's gilt
+   edge, a gold-to-hologram night seam wakes under the cursor, the
+   liquid gold hand carries a specular sweep, and plates lift and bloom
+   when touched. Shares the Gilding Hour keyframes; only the colors
+   belong to the night. */
+
+[data-theme="dark"] .card-lit,
+[data-theme="dark"] .card-lit-2 {
+  position: relative;
+  transition:
+    box-shadow var(--dur-slow) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+[data-theme="dark"] .card-lit:hover,
+[data-theme="dark"] .card-lit-2:hover {
+  transform: translateY(-2px);
+}
+/* The golden ambient reflection on touched panels, deepened. */
 [data-theme="dark"] .card-lit:hover {
   box-shadow:
     var(--sd-edge-gilt),
-    var(--sd-shadow-1),
-    0 0 12px rgb(229 169 60 / 0.08);
+    var(--sd-shadow-2),
+    0 0 28px -4px rgb(229 169 60 / 0.16);
 }
 [data-theme="dark"] .card-lit-2:hover {
   box-shadow:
     var(--sd-edge-gilt),
-    var(--sd-shadow-2),
-    0 0 12px rgb(229 169 60 / 0.08);
+    var(--sd-shadow-3),
+    0 0 34px -4px rgb(229 169 60 / 0.18);
+}
+
+/* The ember patrol: a molten glint walks the top bevel. */
+[data-theme="dark"] .card-lit::after,
+[data-theme="dark"] .card-lit-2::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    oklch(0.84 0.13 80 / 0.75),
+    transparent
+  );
+  background-size: 45% 1.5px;
+  background-repeat: no-repeat;
+  background-position: -60% 0;
+  animation: gilt-glint 14s var(--ease-in-out) infinite;
+}
+
+/* The night seam: gold to hologram blue, waking under the cursor. */
+[data-theme="dark"] .card-lit::before,
+[data-theme="dark"] .card-lit-2::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--holo-angle),
+    oklch(0.77 0.14 78 / 0.5),
+    oklch(0.6 0.1 255 / 0.35),
+    oklch(0.9 0.06 85 / 0.6),
+    oklch(0.77 0.14 78 / 0.5)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.22;
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+[data-theme="dark"] .card-lit:hover::before,
+[data-theme="dark"] .card-lit-2:hover::before {
+  opacity: 0.65;
+  animation: holo-spin 6s linear infinite;
+}
+
+/* The specular sweep and press physics on the liquid gold hand. */
+[data-theme="dark"] .btn-illuminated {
+  position: relative;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    filter var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+[data-theme="dark"] .btn-illuminated:hover {
+  transform: translateY(-1px);
+}
+[data-theme="dark"] .btn-illuminated:active {
+  transform: scale(0.97);
+}
+[data-theme="dark"] .btn-illuminated::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: linear-gradient(
+    105deg,
+    transparent 42%,
+    oklch(1 0 0 / 0.45) 50%,
+    transparent 58%
+  );
+  background-size: 240% 100%;
+  background-repeat: no-repeat;
+  background-position: 140% 0;
+  animation: btn-sheen 9s var(--ease-in-out) infinite;
+}
+
+/* Headers keep the vigil breath. */
+[data-theme="dark"] .gilt-wash-head {
+  animation: gilt-breathe 11s var(--ease-in-out) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="dark"] .card-lit::after,
+  [data-theme="dark"] .card-lit-2::after,
+  [data-theme="dark"] .btn-illuminated::after {
+    animation: none;
+    opacity: 0;
+  }
+  [data-theme="dark"] .gilt-wash-head,
+  [data-theme="dark"] .card-lit:hover::before,
+  [data-theme="dark"] .card-lit-2:hover::before {
+    animation: none;
+  }
+  [data-theme="dark"] .card-lit,
+  [data-theme="dark"] .card-lit-2,
+  [data-theme="dark"] .btn-illuminated {
+    transition: none;
+  }
+  [data-theme="dark"] .card-lit:hover,
+  [data-theme="dark"] .card-lit-2:hover,
+  [data-theme="dark"] .btn-illuminated:hover,
+  [data-theme="dark"] .btn-illuminated:active {
+    transform: none;
+  }
 }
 
 /* Rows parted by ink: a plain hairline by day; in the dark it is a
