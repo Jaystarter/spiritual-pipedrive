@@ -1191,6 +1191,150 @@ html:not([data-theme]) .btn-illuminated:active {
   animation: shooting-star 90s linear infinite;
 }
 
+/* --- The Night Watch stirs (star only) --------------------------------- */
+/* The manuscript wakes: starlight glints along each panel's top edge,
+   a gold-to-indigo constellation seam brightens and turns under the
+   cursor, the gold hand carries a specular sweep with lift and press,
+   and headers keep the watch breath. Shared keyframes, starlit colors. */
+
+[data-theme="star"] .card-lit,
+[data-theme="star"] .card-lit-2 {
+  position: relative;
+  transition:
+    box-shadow var(--dur-slow) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
+}
+[data-theme="star"] .card-lit:hover,
+[data-theme="star"] .card-lit-2:hover {
+  transform: translateY(-2px);
+}
+[data-theme="star"] .card-lit:hover {
+  box-shadow:
+    var(--sd-edge-gilt),
+    var(--sd-shadow-2),
+    0 0 28px -4px color-mix(in oklch, var(--sd-accent) 26%, transparent);
+}
+[data-theme="star"] .card-lit-2:hover {
+  box-shadow:
+    var(--sd-edge-gilt),
+    var(--sd-shadow-3),
+    0 0 34px -4px color-mix(in oklch, var(--sd-accent) 30%, transparent);
+}
+
+/* Starlight walking the top bevel. */
+[data-theme="star"] .card-lit::after,
+[data-theme="star"] .card-lit-2::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    oklch(0.97 0.04 95 / 0.85),
+    transparent
+  );
+  background-size: 45% 1.5px;
+  background-repeat: no-repeat;
+  background-position: -60% 0;
+  animation: gilt-glint 14s var(--ease-in-out) infinite;
+}
+
+/* The constellation seam: gold to indigo starlight. */
+[data-theme="star"] .card-lit::before,
+[data-theme="star"] .card-lit-2::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--holo-angle),
+    oklch(0.87 0.165 95 / 0.5),
+    oklch(0.75 0.08 268 / 0.4),
+    oklch(0.98 0.01 260 / 0.7),
+    oklch(0.87 0.165 95 / 0.5)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.25;
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+[data-theme="star"] .card-lit:hover::before,
+[data-theme="star"] .card-lit-2:hover::before {
+  opacity: 0.7;
+  animation: holo-spin 6s linear infinite;
+}
+
+/* The gold hand under the stars. */
+[data-theme="star"] .btn-illuminated {
+  position: relative;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    filter var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+[data-theme="star"] .btn-illuminated:hover {
+  transform: translateY(-1px);
+}
+[data-theme="star"] .btn-illuminated:active {
+  transform: scale(0.97);
+}
+[data-theme="star"] .btn-illuminated::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: linear-gradient(
+    105deg,
+    transparent 42%,
+    oklch(1 0 0 / 0.4) 50%,
+    transparent 58%
+  );
+  background-size: 240% 100%;
+  background-repeat: no-repeat;
+  background-position: 140% 0;
+  animation: btn-sheen 9s var(--ease-in-out) infinite;
+}
+
+[data-theme="star"] .gilt-wash-head {
+  animation: gilt-breathe 11s var(--ease-in-out) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="star"] .card-lit::after,
+  [data-theme="star"] .card-lit-2::after,
+  [data-theme="star"] .btn-illuminated::after {
+    animation: none;
+    opacity: 0;
+  }
+  [data-theme="star"] .gilt-wash-head,
+  [data-theme="star"] .card-lit:hover::before,
+  [data-theme="star"] .card-lit-2:hover::before {
+    animation: none;
+  }
+  [data-theme="star"] .card-lit,
+  [data-theme="star"] .card-lit-2,
+  [data-theme="star"] .btn-illuminated {
+    transition: none;
+  }
+  [data-theme="star"] .card-lit:hover,
+  [data-theme="star"] .card-lit-2:hover,
+  [data-theme="star"] .btn-illuminated:hover,
+  [data-theme="star"] .btn-illuminated:active {
+    transform: none;
+  }
+}
+
 @keyframes aurora-a {
   0%,
   100% {
