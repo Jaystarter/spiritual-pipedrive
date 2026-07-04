@@ -3,7 +3,11 @@ import type {
   BoardProfile,
   PersonEvent,
 } from "@/app/actions";
-import { FOLLOW_UP_QUIET_DAYS, getLatestActivity } from "@/lib/follow-ups";
+import {
+  FOLLOW_UP_QUIET_DAYS,
+  getActivityCandidates,
+  getLatestActivity,
+} from "@/lib/follow-ups";
 import type { Stage, StageId, StageToneName } from "@/lib/stages";
 
 import type { AssignmentNotificationItem, FollowUpItem } from "../types";
@@ -41,18 +45,42 @@ export function getLatestActivitySnapshot(person: BoardPerson) {
 }
 
 /**
+ * The ranking clock: a person's latest activity that has actually
+ * happened. Future-dated entries (e.g. a study scheduled for next
+ * week) don't count until their date arrives — only the ranking
+ * ignores them; the quiet clock in lib/follow-ups keeps its own rules.
+ */
+function getLatestPastActivityTime(person: BoardPerson, now: number) {
+  let latest = 0;
+
+  for (const candidate of getActivityCandidates(person)) {
+    const time = Date.parse(candidate.value);
+
+    if (!Number.isNaN(time) && time <= now && time > latest) {
+      latest = time;
+    }
+  }
+
+  return latest;
+}
+
+/**
  * Living lanes: the most recently active contact floats to the top —
  * a study logged today, a fresh note or contact, a new arrival. Display
  * order only; sort_order (and the dnd/server math built on it) is the
  * tie-break, never the driver.
  */
 export function sortPeopleByActivity(people: BoardPerson[]) {
+  const now = Date.now();
+  const activityByPerson = new Map(
+    people.map((person) => [person.id, getLatestPastActivityTime(person, now)])
+  );
+
   return [...people].sort((a, b) => {
     const activityDifference =
-      Date.parse(getLatestActivitySnapshot(b).value) -
-      Date.parse(getLatestActivitySnapshot(a).value);
+      (activityByPerson.get(b.id) ?? 0) - (activityByPerson.get(a.id) ?? 0);
 
-    if (activityDifference !== 0 && !Number.isNaN(activityDifference)) {
+    if (activityDifference !== 0) {
       return activityDifference;
     }
 
