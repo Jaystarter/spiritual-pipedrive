@@ -4,6 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
+## Skills
+
+Always follow the engineering standards and design language defined in these skills:
+
+- `.claude/skills/ai-engineering-system/SKILL.md` — production engineering standards: architecture, frontend, backend, API design, databases, security, testing, DevOps, performance, accessibility, and code quality.
+- `.claude/skills/matrix-master-developer/SKILL.md` — design and visual language for this project: Elegant Futuristic Matrix theme, motion design, 3D, game mechanics, spiritual armor system, Warsaw territory map, and iOS widget design.
+
 ## Commands
 
 - `npm run dev` — dev server (Next.js 16, Turbopack)
