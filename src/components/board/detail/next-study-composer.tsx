@@ -29,6 +29,7 @@ import {
   CM_TITLES,
   STUDY_TITLES,
   TOTAL_STUDIES,
+  VIDEO_TITLES,
   getNextStudyNumber,
   getStudyCatalogTitle,
   getStudyTitle,
@@ -36,8 +37,18 @@ import {
 import { formatPillDate } from "../primitives/date-trigger";
 import { TickBar } from "../primitives/tick-bar";
 
-/** CM ("FI:") studies are stored as numbers 51–68 above the 50 Bible set. */
+/**
+ * CM ("FI:") studies are stored as numbers 51–68 above the 50 Bible set;
+ * videos sit above those as 69–72.
+ */
 function catalogTitleFor(studyNumber: number) {
+  if (studyNumber > TOTAL_STUDIES + CM_TITLES.length) {
+    return (
+      VIDEO_TITLES[studyNumber - TOTAL_STUDIES - CM_TITLES.length - 1] ??
+      `Study ${studyNumber}`
+    );
+  }
+
   if (studyNumber > TOTAL_STUDIES) {
     return CM_TITLES[studyNumber - TOTAL_STUDIES - 1] ?? `Study ${studyNumber}`;
   }
@@ -84,8 +95,16 @@ export function NextStudyComposer({
   );
   const cmCompleted = new Set(
     [...completedNumbers]
-      .filter((number) => number > TOTAL_STUDIES)
+      .filter(
+        (number) =>
+          number > TOTAL_STUDIES && number <= TOTAL_STUDIES + CM_TITLES.length
+      )
       .map((number) => number - TOTAL_STUDIES)
+  );
+  const videoCompleted = new Set(
+    [...completedNumbers]
+      .filter((number) => number > TOTAL_STUDIES + CM_TITLES.length)
+      .map((number) => number - TOTAL_STUDIES - CM_TITLES.length)
   );
   function logStudy() {
     if (!configured) {
@@ -152,13 +171,25 @@ export function NextStudyComposer({
       {/* The progress rule leads. */}
       <div className="flex flex-col gap-1.5">
         <TickBar total={TOTAL_STUDIES} completed={bibleCompleted} tone={stage.tone} />
-        {cmCompleted.size > 0 ? (
-          <TickBar
-            className="max-w-[36%]"
-            total={CM_TITLES.length}
-            completed={cmCompleted}
-            tone="violet"
-          />
+        {cmCompleted.size > 0 || videoCompleted.size > 0 ? (
+          <div className="flex items-stretch gap-2">
+            {cmCompleted.size > 0 ? (
+              <TickBar
+                className="w-[36%]"
+                total={CM_TITLES.length}
+                completed={cmCompleted}
+                tone="violet"
+              />
+            ) : null}
+            {videoCompleted.size > 0 ? (
+              <TickBar
+                className="w-[9%]"
+                total={VIDEO_TITLES.length}
+                completed={videoCompleted}
+                tone="sky"
+              />
+            ) : null}
+          </div>
         ) : null}
       </div>
 
@@ -262,6 +293,37 @@ export function NextStudyComposer({
                       key={number}
                       className="gap-2"
                       value={`fi ${index + 1} ${catalogTitle}`}
+                      onSelect={() => {
+                        setChosenNumber(number);
+                        setPickerOpen(false);
+                      }}
+                    >
+                      <span className="t-meta-sm w-6 shrink-0 text-ink-4">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span
+                        className={cn(
+                          "t-body-sm min-w-0 flex-1 truncate",
+                          done && "text-ink-4"
+                        )}
+                      >
+                        {catalogTitle}
+                      </span>
+                      {done ? <Check className="size-3.5 text-tone-green-ink" /> : null}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+              <CommandGroup heading={`Video · 1–${VIDEO_TITLES.length}`}>
+                {VIDEO_TITLES.map((catalogTitle, index) => {
+                  const number = TOTAL_STUDIES + CM_TITLES.length + index + 1;
+                  const done = completedNumbers.has(number);
+
+                  return (
+                    <CommandItem
+                      key={number}
+                      className="gap-2"
+                      value={`video ${index + 1} ${catalogTitle}`}
                       onSelect={() => {
                         setChosenNumber(number);
                         setPickerOpen(false);

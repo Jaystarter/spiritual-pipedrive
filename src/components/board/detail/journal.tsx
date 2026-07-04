@@ -69,6 +69,7 @@ import {
   CM_TITLES,
   STUDY_TITLES,
   TOTAL_STUDIES,
+  VIDEO_TITLES,
   getStudyTitle,
   sortStudiesByLoggedNewest,
 } from "../lib/studies";
@@ -500,6 +501,40 @@ function StudyEntry({ person, study }: { person: BoardPerson; study: PersonStudy
                       className="gap-2"
                       disabled={isPending || (done && !isCurrent)}
                       value={`fi ${index + 1} ${catalogTitle}`}
+                      onSelect={() => changeStudy(number, catalogTitle)}
+                    >
+                      <span className="t-meta-sm w-6 shrink-0 text-ink-4">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span
+                        className={cn(
+                          "t-body-sm min-w-0 flex-1 truncate",
+                          done && !isCurrent && "text-ink-4"
+                        )}
+                      >
+                        {catalogTitle}
+                      </span>
+                      {isCurrent ? (
+                        <Check className="size-3.5 text-brand" />
+                      ) : done ? (
+                        <Check className="size-3.5 text-tone-green-ink" />
+                      ) : null}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+              <CommandGroup heading={`Video · 1–${VIDEO_TITLES.length}`}>
+                {VIDEO_TITLES.map((catalogTitle, index) => {
+                  const number = TOTAL_STUDIES + CM_TITLES.length + index + 1;
+                  const done = completedNumbers.has(number);
+                  const isCurrent = number === study.study_number;
+
+                  return (
+                    <CommandItem
+                      key={number}
+                      className="gap-2"
+                      disabled={isPending || (done && !isCurrent)}
+                      value={`video ${index + 1} ${catalogTitle}`}
                       onSelect={() => changeStudy(number, catalogTitle)}
                     >
                       <span className="t-meta-sm w-6 shrink-0 text-ink-4">

@@ -76,6 +76,14 @@ export const CM_TITLES = [
   "FI: (Gal 4:10) The Sabbath and the Feast Were Abolished",
 ] as const;
 
+/** Videos sit above the CM block: numbers 69–72 in the study record. */
+export const VIDEO_TITLES = [
+  "Video: Sabbath",
+  "Video: Passover Video 1",
+  "Video: Passover Video 2",
+  "Video: Passover Video 3",
+] as const;
+
 export function sortStudies(studies: PersonStudy[]) {
   return [...studies].sort((a, b) => a.study_number - b.study_number);
 }

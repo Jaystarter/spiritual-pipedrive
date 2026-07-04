@@ -151,7 +151,9 @@ type AddPersonStudyResult = {
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const MAX_PERSON_STUDIES = 68;
+// 50 Bible studies + 18 CM (FI) + 4 videos — keep in step with the
+// person_studies study_number check constraint and lib/studies.ts.
+const MAX_PERSON_STUDIES = 72;
 
 function cleanOptional(value?: string) {
   const cleaned = value?.trim();
