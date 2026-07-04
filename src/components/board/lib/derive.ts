@@ -40,20 +40,28 @@ export function getLatestActivitySnapshot(person: BoardPerson) {
   return getLatestActivity(person, (study) => `Study: ${getStudyTitle(study)}`);
 }
 
+/**
+ * Living lanes: the most recently active contact floats to the top —
+ * a study logged today, a fresh note or contact, a new arrival. Display
+ * order only; sort_order (and the dnd/server math built on it) is the
+ * tie-break, never the driver.
+ */
+export function sortPeopleByActivity(people: BoardPerson[]) {
+  return [...people].sort((a, b) => {
+    const activityDifference =
+      Date.parse(getLatestActivitySnapshot(b).value) -
+      Date.parse(getLatestActivitySnapshot(a).value);
+
+    if (activityDifference !== 0 && !Number.isNaN(activityDifference)) {
+      return activityDifference;
+    }
+
+    return a.sort_order - b.sort_order;
+  });
+}
+
 export function getTopActivePreviewPeople(people: BoardPerson[]) {
-  return [...people]
-    .sort((a, b) => {
-      const activityDifference =
-        Date.parse(getLatestActivitySnapshot(b).value) -
-        Date.parse(getLatestActivitySnapshot(a).value);
-
-      if (activityDifference !== 0 && !Number.isNaN(activityDifference)) {
-        return activityDifference;
-      }
-
-      return a.sort_order - b.sort_order;
-    })
-    .slice(0, 7);
+  return sortPeopleByActivity(people).slice(0, 7);
 }
 
 export function getAssignedProfiles(person: BoardPerson, profiles: BoardProfile[]) {

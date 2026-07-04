@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import type { BoardPerson } from "@/app/actions";
 import type { Stage } from "@/lib/stages";
 
-import { sortPeople } from "../lib/move-preview";
+import { sortPeopleByActivity } from "../lib/derive";
 import { PipelineLane } from "./pipeline-lane";
 
 type PipelineBoardProps = {
@@ -59,7 +59,7 @@ export function PipelineBoard({ people, stages }: PipelineBoardProps) {
           >
             <PipelineLane
               stage={stage}
-              people={sortPeople(
+              people={sortPeopleByActivity(
                 people.filter((person) => person.stage === stage.id)
               )}
             />

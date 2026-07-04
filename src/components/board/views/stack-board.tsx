@@ -6,7 +6,7 @@ import type { BoardPerson } from "@/app/actions";
 import type { Stage, StageId } from "@/lib/stages";
 
 import type { StackExpandedState } from "../types";
-import { sortPeople } from "../lib/move-preview";
+import { sortPeopleByActivity } from "../lib/derive";
 import {
   MOBILE_STACK_MEDIA_QUERY,
   useMediaQuery,
@@ -72,7 +72,7 @@ export function StackBoard({ people, stages }: StackBoardProps) {
           key={stage.id}
           stage={stage}
           index={index}
-          people={sortPeople(people.filter((person) => person.stage === stage.id))}
+          people={sortPeopleByActivity(people.filter((person) => person.stage === stage.id))}
           expanded={Boolean(expanded[stage.id])}
           onToggle={() => toggleStage(stage.id)}
         />
