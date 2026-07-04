@@ -56,6 +56,7 @@ import { SectionHeading } from "../primitives/section-heading";
 import { StageRibbon } from "../primitives/stage-ribbon";
 import { StageStepper } from "../primitives/stage-stepper";
 import { UrgencyMeter } from "../primitives/urgency-meter";
+import { ArchiveReason } from "./archive-reason";
 import { AssignmentPicker } from "./assignment-picker";
 import { Journal } from "./journal";
 import { NextStudyComposer } from "./next-study-composer";
@@ -466,6 +467,9 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
 
         {/* ------------------------------------------------ body */}
         <div className="flex flex-1 flex-col gap-7 overflow-y-auto px-5 py-5">
+          {/* Why they're set aside leads the archived page. */}
+          {archived ? <ArchiveReason person={person} /> : null}
+
           {/* Care & studies — chromeless and unlabeled: the progress rule leads. */}
           <section className="flex flex-col gap-3" style={toneVars(stage.tone)}>
             <NextStudyComposer person={person} stage={stage} />

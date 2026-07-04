@@ -19,6 +19,7 @@ import { getToneStyle, toneVars } from "../lib/stage-theme";
 import { getLatestCompletedStudy } from "../lib/studies";
 import { AvatarStack } from "../primitives/avatar-stack";
 import { PersonFramedAvatar } from "../primitives/framed-avatar";
+import { MarqueeText } from "../primitives/marquee-text";
 import { StageRibbon } from "../primitives/stage-ribbon";
 import { UrgencyMeter } from "../primitives/urgency-meter";
 
@@ -28,9 +29,9 @@ export function RegistrarLine({ person, stage }: { person: BoardPerson; stage: S
     const reason = getArchiveReason(person.events);
 
     return (
-      <span className="t-body-sm truncate italic text-ink-3">
+      <MarqueeText className="t-body-sm italic text-ink-3">
         {reason ?? "Set aside"}
-      </span>
+      </MarqueeText>
     );
   }
 

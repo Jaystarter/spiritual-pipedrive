@@ -430,6 +430,17 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+  /* Overflowing single lines glide right-to-left and back so the whole
+     phrase can be read in place. Distance/duration are set inline by
+     the MarqueeText primitive. */
+  .marquee-scroll {
+    animation: sd-marquee var(--marquee-duration, 8s) linear infinite alternate;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-scroll {
+      animation: none;
+    }
+  }
 
   /* Brand actions, lit from above. Gold is light, not paint. */
   .btn-illuminated {
@@ -670,6 +681,17 @@
   filter: drop-shadow(
     0 0 10px color-mix(in oklch, var(--sd-accent) 40%, transparent)
   );
+}
+
+@keyframes sd-marquee {
+  0%,
+  12% {
+    transform: translateX(0);
+  }
+  88%,
+  100% {
+    transform: translateX(calc(-1 * var(--marquee-distance, 0px)));
+  }
 }
 
 @keyframes wordmark-sheen {
