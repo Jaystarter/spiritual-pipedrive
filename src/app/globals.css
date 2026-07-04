@@ -826,28 +826,28 @@ html:not([data-theme]) .btn-illuminated:active {
 }
 
 [data-theme="dark"] .sky-bg {
-  /* Gold and obsidian: pitch black under a charcoal smoke dome, two
-     soft smoke tendrils, one low gold ember, a whisper of grain for
-     tooth, and a deep vignette pressing in at the edges. */
+  /* Obsidian relief: state-of-the-art minimal. One architectural north
+     light falling from above, the gold filigree etched into the black
+     at a whisper, fine grain for tooth, a quiet ember seat low in the
+     field, and a deep vignette pressing in — depth from texture and a
+     single light, not smoke. */
   background-image:
     var(--sky-grain-soft),
+    var(--sky-web),
     radial-gradient(
-      120% 80% at 50% 28%,
-      oklch(0.184 0.006 286 / 0.9),
-      transparent 70%
+      90% 60% at 50% -18%,
+      oklch(0.24 0.008 280 / 0.55),
+      transparent 62%
     ),
-    radial-gradient(60% 22% at 20% 40%, oklch(0.55 0.008 280 / 0.22), transparent 70%),
-    radial-gradient(50% 18% at 78% 64%, oklch(0.55 0.06 80 / 0.16), transparent 70%),
-    radial-gradient(70% 26% at 45% 88%, oklch(0.55 0.008 280 / 0.14), transparent 70%),
+    radial-gradient(45% 16% at 76% 78%, oklch(0.5 0.07 80 / 0.1), transparent 70%),
     radial-gradient(
-      120% 90% at 50% 48%,
-      transparent 55%,
-      oklch(0 0 0 / 0.7)
+      120% 90% at 50% 45%,
+      transparent 52%,
+      oklch(0 0 0 / 0.78)
     );
   background-size:
     120px 120px,
-    auto,
-    auto,
+    640px 640px,
     auto,
     auto,
     auto;
