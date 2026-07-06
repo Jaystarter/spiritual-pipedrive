@@ -16,13 +16,14 @@
 /*                                                                       */
 /* Themes: Daybreak (light) · Vespers (dark) · Night Watch (star).       */
 /*                                                                       */
-/* The discipline: GOLD is the app's hand (actions, edges, light) ·     */
-/* TONE is the person's place (identity, ambient wash) · SIGNAL is      */
-/* urgency only. No region mixes two roles at the same weight. Gold is  */
+/* The discipline: the ACCENT is the app's hand (actions, edges,       */
+/* light — crimson in Daybreak, gold in Vespers/Night Watch) · TONE is */
+/* the person's place (identity, ambient wash) · SIGNAL is urgency     */
+/* only. No region mixes two roles at the same weight. The accent is   */
 /* light, not paint: brand fills are lit from above (.btn-illuminated), */
-/* raised paper carries a gilt top edge (--sd-edge-gilt), shadows are   */
-/* warm ink. Tone arrives via the --tone custom property (set inline    */
-/* with toneVars() from lib/stage-theme.ts) and the .tone-* utilities.  */
+/* raised paper carries a lit top edge (--sd-edge-gilt), shadows are   */
+/* inked. Tone arrives via the --tone custom property (set inline      */
+/* with toneVars() from lib/stage-theme.ts) and the .tone-* utilities. */
 /* ===================================================================== */
 
 @theme inline {
@@ -103,33 +104,33 @@
 }
 
 :root {
-  /* --- Armor Aurum: porcelain armor, liquid gold filigree --------------- */
-  /* The white-and-gold suit against a smoky sky: a cool haze canvas,
-     warm porcelain beveled panels seamed with gilded wire, glossy
-     near-black ink, and liquid gold as the acting hand. Depth stays
-     sculpted: crisp seams, tight warm shadows with a faint gold bloom,
-     a pale-gold top bevel on every raised plate. */
-  --sd-canvas: oklch(0.955 0.007 255);
-  --sd-canvas-deep: oklch(0.91 0.01 255);
-  --sd-surface: oklch(0.995 0.003 95);
-  --sd-surface-raised: oklch(0.998 0.002 95);
-  --sd-surface-sunken: oklch(0.94 0.012 88);
-  --sd-veil: oklch(0.38 0.025 265 / 0.35);
+  /* --- Crimson Blueprint: red cyber-tech on icy drafting paper ---------- */
+  /* A blue-white blueprint canvas etched with grid and circuit traces,
+     white layered panels seamed in steel hairlines, navy-inked depth,
+     and molten crimson as the acting hand. Depth stays sculpted: crisp
+     seams, tight navy shadows with a faint red bloom, a crisp white
+     top bevel over a steel under-seam on every raised plate. */
+  --sd-canvas: oklch(0.978 0.007 262);
+  --sd-canvas-deep: oklch(0.933 0.01 262);
+  --sd-surface: oklch(0.997 0.002 255);
+  --sd-surface-raised: oklch(1 0 0);
+  --sd-surface-sunken: oklch(0.945 0.012 259);
+  --sd-veil: oklch(0.3 0.045 262 / 0.4);
 
-  /* Glossy near-black (the eye rims), warming through taupe. */
-  --sd-ink: oklch(0.25 0.012 80);
-  --sd-ink-2: oklch(0.44 0.022 82);
-  --sd-ink-3: oklch(0.55 0.02 84);
-  --sd-ink-4: oklch(0.7 0.018 86);
+  /* Navy ink: technical near-black, cooling through drafting gray. */
+  --sd-ink: oklch(0.2 0.018 278);
+  --sd-ink-2: oklch(0.35 0.022 272);
+  --sd-ink-3: oklch(0.55 0.024 262);
+  --sd-ink-4: oklch(0.69 0.02 260);
 
-  /* Liquid gold: the filigree, lit specular at the top edge. */
-  --sd-accent: oklch(0.66 0.135 80);
-  --sd-accent-hi: oklch(0.74 0.13 82);
-  --sd-accent-lo: oklch(0.58 0.13 78);
-  --sd-accent-ink: oklch(0.23 0.03 80);
-  /* The armor panel seams: slim gilded wire. */
-  --sd-line: oklch(0.885 0.025 88);
-  --sd-line-strong: oklch(0.75 0.05 84);
+  /* Molten crimson: the hand, lit specular at the top edge. */
+  --sd-accent: oklch(0.53 0.21 28);
+  --sd-accent-hi: oklch(0.57 0.22 28);
+  --sd-accent-lo: oklch(0.41 0.16 28);
+  --sd-accent-ink: oklch(1 0 0);
+  /* The panel seams: slim steel hairlines. */
+  --sd-line: oklch(0.885 0.012 257);
+  --sd-line-strong: oklch(0.72 0.05 250);
 
   /* Stage tones (validated: lightness band, chroma, CVD, contrast) */
   --tone-amber-core: oklch(0.72 0.145 70);
@@ -145,11 +146,11 @@
   --tone-green-core: oklch(0.66 0.15 150);
   --tone-green-ink: oklch(0.46 0.13 150);
 
-  /* Urgency signals; both lean red-of-amber so they never read as the
-     gold hand. */
+  /* Urgency signals; both lean orange-of-red (hand 28 → urgent 40 →
+     wane 55) so they never read as the crimson hand. */
   --sd-signal-calm: var(--sd-ink-3);
-  --sd-signal-wane: oklch(0.58 0.15 45);
-  --sd-signal-urgent: oklch(0.54 0.19 28);
+  --sd-signal-wane: oklch(0.58 0.145 55);
+  --sd-signal-urgent: oklch(0.54 0.19 40);
   --sd-signal-joy: var(--tone-green-core);
 
   /* Radius scale */
@@ -161,25 +162,24 @@
   --sd-r-pill: 999px;
   --radius: 0.875rem;
 
-  /* Elevation, sculpted in relief: tight warm umber shadows under the
-     plates plus a faint liquid-gold ambient bloom, so raised panels
-     read as gold-ridged armor catching the light, never a heavy
-     dark drop. */
-  --sd-shadow-1: 0 2px 4px oklch(0.32 0.035 75 / 0.06),
-    0 1px 2px oklch(0.32 0.035 75 / 0.08);
-  --sd-shadow-2: 0 2px 4px oklch(0.32 0.035 75 / 0.06),
-    0 4px 10px oklch(0.32 0.035 75 / 0.07),
-    0 0 22px -4px oklch(0.66 0.135 80 / 0.1),
-    0 12px 24px oklch(0.32 0.035 75 / 0.07);
-  --sd-shadow-3: 0 4px 8px oklch(0.32 0.035 75 / 0.08),
-    0 0 44px -8px oklch(0.66 0.135 80 / 0.12),
-    0 24px 48px oklch(0.32 0.035 75 / 0.16);
+  /* Elevation, sculpted in relief: tight navy panel shadows plus a
+     faint crimson ambient bloom, so raised panels read as beveled
+     tech plates over the drafting table, never a heavy dark drop. */
+  --sd-shadow-1: 0 2px 4px oklch(0.32 0.05 260 / 0.06),
+    0 1px 2px oklch(0.32 0.05 260 / 0.08);
+  --sd-shadow-2: 0 2px 4px oklch(0.32 0.05 260 / 0.06),
+    0 4px 10px oklch(0.32 0.05 260 / 0.07),
+    0 0 22px -4px oklch(0.53 0.21 28 / 0.07),
+    0 12px 24px oklch(0.32 0.05 260 / 0.07);
+  --sd-shadow-3: 0 4px 8px oklch(0.32 0.05 260 / 0.08),
+    0 0 44px -8px oklch(0.53 0.21 28 / 0.09),
+    0 24px 48px oklch(0.32 0.05 260 / 0.16);
   /* The press: a physical push down into the plate. */
-  --sd-shadow-well: inset 0 1px 3px oklch(0.32 0.035 75 / 0.12);
-  /* The chisel: a pale-gold top bevel and a whisper of antique seam
-     under every raised panel — the ridge line of the filigree. */
-  --sd-edge-gilt: inset 0 1px 0 oklch(0.96 0.035 95 / 0.95),
-    inset 0 -1px 0 oklch(0.75 0.05 84 / 0.12);
+  --sd-shadow-well: inset 0 1px 3px oklch(0.32 0.05 260 / 0.12);
+  /* The chisel: a crisp white top bevel and a whisper of steel seam
+     under every raised panel — the machined edge of the plate. */
+  --sd-edge-gilt: inset 0 1px 0 oklch(1 0 0 / 0.95),
+    inset 0 -1px 0 oklch(0.72 0.05 250 / 0.14);
 
   /* Z-index scale */
   --z-card: 10;
@@ -201,8 +201,12 @@
 
   /* Background layer knobs (see .sky-bg below) */
   --sky-grain: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3e%3cfilter id='n'%3e%3cfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3e%3cfeColorMatrix type='saturate' values='0'/%3e%3c/filter%3e%3crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3e%3c/svg%3e");
-  /* Faint gold web strands etched into the plate — the suit's filigree. */
+  /* Faint gold web strands etched into the plate — Vespers' filigree
+     (consumed by the dark sky; light uses --sky-blueprint below). */
   --sky-web: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640'%3e%3cg stroke='%23A16207' stroke-opacity='0.07' fill='none'%3e%3cpath d='M0 80 Q160 96 320 64 T640 96'/%3e%3cpath d='M0 168 Q160 184 320 152 T640 184'/%3e%3cpath d='M88 0 Q104 160 72 320 T104 640'/%3e%3cpath d='M472 0 Q488 160 456 320 T488 640'/%3e%3cpath d='M0 472 Q160 488 320 456 T640 488'/%3e%3c/g%3e%3c/svg%3e");
+  /* Drafting-table etching: fine grid, angular circuit traces, red
+     nodes, cyan pips — light theme only. */
+  --sky-blueprint: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640'%3e%3cdefs%3e%3cpattern id='g' width='32' height='32' patternUnits='userSpaceOnUse'%3e%3cpath d='M32 0H0V32' fill='none' stroke='%23C8D1DE' stroke-opacity='0.12'/%3e%3c/pattern%3e%3c/defs%3e%3crect width='640' height='640' fill='url(%23g)'/%3e%3cg fill='none' stroke='%23547EA1' stroke-opacity='0.14'%3e%3cpath d='M64 96h128v96h64'/%3e%3cpath d='M416 64v128h96'/%3e%3cpath d='M160 448h96v-64h128'/%3e%3cpath d='M512 352v96h-64'/%3e%3cpath d='M96 256v96h64'/%3e%3c/g%3e%3cg fill='%23C91515' fill-opacity='0.35'%3e%3ccircle cx='64' cy='96' r='1.5'/%3e%3ccircle cx='256' cy='192' r='1.5'/%3e%3ccircle cx='512' cy='192' r='1.5'/%3e%3ccircle cx='384' cy='384' r='1.5'/%3e%3ccircle cx='448' cy='448' r='1.5'/%3e%3ccircle cx='160' cy='352' r='1.5'/%3e%3c/g%3e%3cg fill='%2381ABC7' fill-opacity='0.3'%3e%3ccircle cx='320' cy='128' r='1.2'/%3e%3ccircle cx='128' cy='512' r='1.2'/%3e%3ccircle cx='544' cy='288' r='1.2'/%3e%3ccircle cx='288' cy='576' r='1.2'/%3e%3c/g%3e%3c/svg%3e");
   --sky-stars-sm: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3e%3cg fill='white'%3e%3ccircle cx='24' cy='36' r='1'/%3e%3ccircle cx='92' cy='14' r='1.3' opacity='0.8'/%3e%3ccircle cx='160' cy='58' r='0.9' opacity='0.7'/%3e%3ccircle cx='231' cy='30' r='1.1'/%3e%3ccircle cx='58' cy='118' r='1' opacity='0.75'/%3e%3ccircle cx='143' cy='141' r='1.4'/%3e%3ccircle cx='210' cy='112' r='0.8' opacity='0.65'/%3e%3ccircle cx='262' cy='168' r='1.1' opacity='0.85'/%3e%3ccircle cx='33' cy='197' r='1.2'/%3e%3ccircle cx='112' cy='222' r='0.9' opacity='0.7'/%3e%3ccircle cx='187' cy='202' r='1'/%3e%3ccircle cx='247' cy='249' r='1.3' opacity='0.8'/%3e%3ccircle cx='75' cy='266' r='1' opacity='0.75'/%3e%3c/g%3e%3c/svg%3e");
   --sky-stars-lg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='460' height='460'%3e%3cg%3e%3ccircle cx='60' cy='80' r='1.6' fill='%23ffe9a8'/%3e%3ccircle cx='215' cy='45' r='1.2' fill='white' opacity='0.9'/%3e%3ccircle cx='356' cy='120' r='1.8' fill='%23ffe9a8' opacity='0.9'/%3e%3ccircle cx='130' cy='230' r='1.3' fill='white' opacity='0.8'/%3e%3ccircle cx='300' cy='280' r='1.5' fill='%23ffe9a8'/%3e%3ccircle cx='420' cy='360' r='1.2' fill='white' opacity='0.85'/%3e%3ccircle cx='80' cy='390' r='1.7' fill='white'/%3e%3ccircle cx='240' cy='420' r='1.2' fill='%23ffe9a8' opacity='0.8'/%3e%3c/g%3e%3c/svg%3e");
   --sky-constellations: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='720' height='720'%3e%3cg stroke='white' stroke-opacity='0.14' stroke-width='0.7' fill='none'%3e%3cpath d='M80 120 L150 90 L210 150'/%3e%3cpath d='M420 260 L500 230 L560 300 L500 340'/%3e%3cpath d='M180 520 L260 480 L300 560'/%3e%3c/g%3e%3cg fill='white' fill-opacity='0.5'%3e%3ccircle cx='80' cy='120' r='1.2'/%3e%3ccircle cx='150' cy='90' r='1.4'/%3e%3ccircle cx='210' cy='150' r='1.1'/%3e%3ccircle cx='420' cy='260' r='1.2'/%3e%3ccircle cx='500' cy='230' r='1.5'/%3e%3ccircle cx='560' cy='300' r='1.1'/%3e%3ccircle cx='500' cy='340' r='1.2'/%3e%3ccircle cx='180' cy='520' r='1.3'/%3e%3ccircle cx='260' cy='480' r='1.5'/%3e%3ccircle cx='300' cy='560' r='1.1'/%3e%3c/g%3e%3c/svg%3e");
@@ -533,21 +537,21 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  /* The Relief: a matte plate under a cool skylight, with faint web
-     strands etched in and a whisper of grain for tooth. The living
-     light drifts via the aurora blobs (::before/::after) beneath. */
+  /* The drafting table: icy paper under a cool skylight, the blueprint
+     grid and circuit traces etched in, a whisper of grain for tooth.
+     The living light drifts via the aurora blobs (::before/::after). */
   background-image:
     radial-gradient(
       120% 55% at 50% -10%,
-      oklch(0.9 0.005 250 / 0.35),
+      oklch(0.93 0.012 250 / 0.4),
       transparent 60%
     ),
     radial-gradient(
       50% 20% at 76% 82%,
-      oklch(0.86 0.06 88 / 0.16),
+      oklch(0.72 0.06 238 / 0.14),
       transparent 70%
     ),
-    var(--sky-web),
+    var(--sky-blueprint),
     var(--sky-grain);
   background-size:
     auto,
@@ -566,10 +570,10 @@
   background-repeat: no-repeat;
 }
 .sky-bg::before {
-  /* A warm gold drift, like light skating over the filigree. */
+  /* A steel-blue drift, like light skating over the drafting film. */
   background-image: radial-gradient(
     closest-side at 28% 22%,
-    oklch(0.89 0.055 92 / 0.25),
+    oklch(0.77 0.055 242 / 0.25),
     transparent 70%
   );
   animation: aurora-a 46s var(--ease-in-out) infinite;
@@ -583,21 +587,22 @@
   animation: aurora-b 62s var(--ease-in-out) infinite;
 }
 
-/* --- The Gilding Hour (light only): the armor lives -------------------- */
-/* Motion belongs to the LIGHT, not the objects. A second filigree plane
-   rides the gold drift so the webs parallax over the etched ones; every
-   raised plate catches a passing sunbeam along its top bevel on a long
-   period; the gold hand carries a specular sweep; plates bloom warm
-   under the cursor. Vespers and Night Watch keep their own weather. */
+/* --- The Gilding Hour (light only): the blueprint lives ---------------- */
+/* Motion belongs to the LIGHT, not the objects. A second blueprint
+   plane rides the steel drift so the traces parallax over the etched
+   ones; every raised plate catches a passing spark along its top bevel
+   on a long period; the crimson hand carries a specular sweep; plates
+   bloom red under the cursor. Vespers and Night Watch keep their own
+   weather. */
 
 html:not([data-theme]) .sky-bg::before {
   background-image:
     radial-gradient(
       closest-side at 28% 22%,
-      oklch(0.89 0.055 92 / 0.25),
+      oklch(0.77 0.055 242 / 0.25),
       transparent 70%
     ),
-    var(--sky-web);
+    var(--sky-blueprint);
   background-size:
     auto,
     640px 640px;
@@ -612,17 +617,17 @@ html:not([data-theme]) .card-lit-2 {
 html:not([data-theme]) .card-lit:hover {
   box-shadow:
     var(--sd-edge-gilt),
-    0 0 30px -6px oklch(0.66 0.135 80 / 0.22),
+    0 0 30px -6px oklch(0.53 0.21 28 / 0.13),
     var(--sd-shadow-2);
 }
 html:not([data-theme]) .card-lit-2:hover {
   box-shadow:
     var(--sd-edge-gilt),
-    0 0 36px -6px oklch(0.66 0.135 80 / 0.26),
+    0 0 36px -6px oklch(0.53 0.21 28 / 0.16),
     var(--sd-shadow-3);
 }
-/* The passing sunbeam: a slim glint travels the top bevel, one light
-   crossing every plate on the board together. */
+/* The passing spark: a slim red-white glint travels the top bevel, one
+   pulse crossing every plate on the board together. */
 html:not([data-theme]) .card-lit::after,
 html:not([data-theme]) .card-lit-2::after {
   content: "";
@@ -633,7 +638,7 @@ html:not([data-theme]) .card-lit-2::after {
   background-image: linear-gradient(
     90deg,
     transparent,
-    oklch(0.93 0.08 92 / 0.9),
+    oklch(0.88 0.07 28 / 0.9),
     transparent
   );
   background-size: 45% 1.5px;
@@ -737,8 +742,8 @@ html:not([data-theme]) [data-slot="dropdown-menu-content"] {
   backdrop-filter: blur(24px) saturate(1.5);
 }
 
-/* The iridescent seam: gold to hologram blue to white light, a quiet
-   ring at rest that wakes and revolves under the cursor. */
+/* The circuit seam: crimson to steel-blue to ice-white, a quiet ring
+   at rest that wakes and revolves under the cursor. */
 html:not([data-theme]) .card-lit::before,
 html:not([data-theme]) .card-lit-2::before {
   content: "";
@@ -748,10 +753,10 @@ html:not([data-theme]) .card-lit-2::before {
   padding: 1px;
   background: conic-gradient(
     from var(--holo-angle),
-    oklch(0.78 0.12 80 / 0.7),
-    oklch(0.8 0.07 250 / 0.5),
-    oklch(0.99 0.01 90 / 0.9),
-    oklch(0.78 0.12 80 / 0.7)
+    oklch(0.62 0.16 28 / 0.7),
+    oklch(0.72 0.07 245 / 0.55),
+    oklch(0.99 0.005 250 / 0.9),
+    oklch(0.62 0.16 28 / 0.7)
   );
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
@@ -771,11 +776,11 @@ html:not([data-theme]) .card-lit-2:hover::before {
   animation: holo-spin 6s linear infinite;
 }
 
-/* The second drift carries hologram blue instead of plain white. */
+/* The second drift carries ice-white over the steel one. */
 html:not([data-theme]) .sky-bg::after {
   background-image: radial-gradient(
     closest-side at 74% 72%,
-    oklch(0.82 0.06 245 / 0.4),
+    oklch(0.95 0.015 245 / 0.42),
     transparent 70%
   );
 }
@@ -1390,10 +1395,10 @@ html:not([data-theme]) .btn-illuminated:active {
    and Night Watch let them shine. */
 
 .sky-bg {
-  --const-star: oklch(0.6 0.02 290 / 0.35);
-  --const-line: oklch(0.6 0.02 290 / 0.2);
-  --const-glow: oklch(0.7 0.03 300 / 0.3);
-  --orb-ink: oklch(0.45 0.02 290 / 0.14);
+  --const-star: oklch(0.58 0.06 245 / 0.35);
+  --const-line: oklch(0.58 0.06 245 / 0.2);
+  --const-glow: oklch(0.72 0.06 238 / 0.3);
+  --orb-ink: oklch(0.42 0.08 246 / 0.14);
 }
 [data-theme="dark"] .sky-bg {
   --const-star: oklch(0.95 0.02 90 / 0.9);
