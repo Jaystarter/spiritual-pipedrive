@@ -1,47 +1,31 @@
-# S-Drive multi-region production build — execution ledger
+# Region upgrade for the existing S-Drive — execution ledger
 
-Goal: this repo is the larger-scale production version of S-Drive. First open asks
-"which region are you from" (pick an option or type a new one), then "who are you"
-(the existing profile picker, scoped to that region). Every contact belongs to a
-region, so many locations can preach and log contacts without stepping on each
-other, and ownership of each contact stays clear.
+Direction change: instead of shipping a separate production app, the existing
+S-Drive gets upgraded in place on the `region-locations` branch. Locations are
+fixed — Virginia Beach, Brooklyn, Bronx, Poland. Poland is home base and the
+hub: its board sees every location's contacts plus its own exclusive ones.
+Anyone picking a non-Poland location gets a guided tutorial into their first
+contact. Existing production data lands in Poland.
 
-## Replication
-- [x] Copy spiritual-pipedrive (full working-tree state) into a fresh git repo at ~/Projects/s-drive
-- [x] npm install
+## Porting
+- [x] Branch `region-locations` in a worktree; main's uncommitted working tree untouched
+- [x] Snapshot the in-flight acknowledge work onto the branch (it's how the app runs today)
+- [x] Port the three region commits from the s-drive lab repo (onboarding gate, review fixes, grants + dev-env fixes)
 
-## Data layer
-- [x] Migration: `regions` table + nullable `region_id` on `profiles` and `people` (teacher names now unique per region, not globally)
-- [x] Hand-update `src/lib/supabase/database.types.ts` (maintained by hand per project rules)
+## Locations & hub
+- [x] Migration: seed the four locations; `regions.is_hub` with Poland as hub; legacy backfill now sweeps pre-region people/profiles into Poland (replaces "Original Board")
+- [x] `listPeople`: a hub region loads all people and all workers; others stay strictly scoped
+- [x] Hub board shows each contact's origin region in the card's registrar line
+- [x] `database.types.ts` updated by hand (is_hub)
 
-## Region identity (client)
-- [x] `src/lib/region-client.ts` — cookie-backed store (`sd-region`) with the same useSyncExternalStore contract as the localStorage modules, so the server can scope queries
-- [x] Read the cookie in `src/app/page.tsx` and pass the region to `listPeople`
-
-## Server actions
-- [x] `listPeople(regionId)` scopes people and profiles to the region; returns `regions` on BoardState; with no region it returns only the region list for the gate
-- [x] `createRegion(name)` — duplicate names join the existing region instead of erroring
-- [x] `createProfile` stamps `region_id`; `createPerson` derives the region from the actor's profile server-side
-
-## Onboarding flow
-- [x] Full-screen region gate before the board (pick a region or found a new one); the existing required profile picker becomes step two automatically
-- [x] Choosing a region sets the cookie and hard-reloads so board state re-initializes from scoped data
-- [x] "Switch region…" in the masthead profile dropdown (clears the cookie; a foreign profile id self-heals because it can't resolve against the scoped list)
+## First-contact tutorial (non-hub locations)
+- [x] `first-contact-tour.tsx`: welcome → guided quick-add → "you're done" explainer; skippable at every step; auto-advances when the first contact lands; never shown to workers who already have contacts; completion per profile in localStorage
 
 ## Verification
-- [x] `npx tsc --noEmit` (clean), `npm run lint` (clean), `npm run build` (passes), `scripts/check-legacy-classes.sh` (clean)
-- [x] Browser walkthrough with a temporary stub (no Supabase project exists yet): gate → pick Cambridge → forced "who are you" with scoped workers → board with region in the folio line; switch region → back to gate; empty region → "Add a worker" flow; mobile viewport checked. Stub removed afterward.
-- [x] Live end-to-end against a real database — local `supabase start` stack (Docker), full migration chain applied from scratch via `db reset`, then in-browser: created Cambridge, added worker Jayden, added contact Daniel Kim; DB rows confirmed region-stamped. Stale-region-cookie fallback to the gate also verified.
-- [x] Live run caught two real deploy bugs, both fixed: (1) new Supabase projects apply least-privilege defaults, so service_role had no data access — added a grants migration; (2) the legacy seeded 'Team' profile conjured a phantom "Original Board" region on fresh databases — the regions migration now prunes it when provably untouched
-- [ ] Repeat the same walkthrough once against the real production Supabase project after it exists
+- [ ] `npx tsc --noEmit`, `npm run lint`, `npm run build`, grep gate
+- [ ] Live walkthrough on the local Supabase stack (db reset with the new chain): four locations on the gate, Brooklyn first-contact tutorial end-to-end, Poland hub sees Brooklyn's contact with origin label plus its own exclusives, legacy backfill lands in Poland
+- [ ] Codex second-opinion review of the new commits
 
-## Codex review round (independent second opinion)
-- [x] Fix: cron follow-up digest silently died once listPeople required a region — it now loads all regions explicitly (`listPeople(null, { allRegions: true })`)
-- [x] Fix: migration now sweeps any pre-region rows into an "Original Board" region instead of orphaning them (no-op on a fresh database)
-- [x] Fix: new profiles stamp the region of the board on screen (prop from the board root), not the live cookie, so a region switch in another tab can't mislabel them
-- [ ] Follow-up hardening (accepted, deferred): mutations don't verify the actor and target person share a region. The app has no auth at all (client-supplied actor ids, service-role client), so this is part of the larger trust-model question that real scale will eventually force — worth a dedicated pass, not a bolt-on
-
-## Deferred (needs Jayden)
-- [ ] Create GitHub repo + Vercel project + production Supabase project (external/publishing actions)
-- [ ] After the Supabase project exists: `supabase link` + `supabase db push` (all migrations, including regions), set `SUPABASE_URL`/`SUPABASE_SECRET_KEY`, generate fresh VAPID keys and `CRON_SECRET` (see `.env.example`) — do not reuse the old app's secrets or database
-- [ ] Then rerun the live onboarding walkthrough against the real database
+## Ship (needs Jayden)
+- [ ] Push branch, open draft PR (needs the Asana ticket link per PR rules)
+- [ ] Production deploy order: run migrations against the production Supabase first (`supabase db push`), then merge/deploy — the code needs the `regions` table to exist

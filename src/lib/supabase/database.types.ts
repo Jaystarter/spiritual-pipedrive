@@ -247,16 +247,19 @@ export type Database = {
         Row: {
           id: string;
           name: string;
+          is_hub: boolean;
           created_at: string;
         };
         Insert: {
           id?: string;
           name: string;
+          is_hub?: boolean;
           created_at?: string;
         };
         Update: {
           id?: string;
           name?: string;
+          is_hub?: boolean;
           created_at?: string;
         };
         Relationships: [];

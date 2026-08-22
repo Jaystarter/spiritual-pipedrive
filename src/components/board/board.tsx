@@ -6,6 +6,7 @@ import { closestCorners, DndContext, DragOverlay } from "@dnd-kit/core";
 import { ProfileSheet } from "@/components/profiles/profile-sheet";
 import { LoginReminder } from "@/components/notifications/login-reminder";
 import { AttentionDrawer } from "@/components/notifications/attention-drawer";
+import { FirstContactTour } from "@/components/onboarding/first-contact-tour";
 import { RegionGate } from "@/components/onboarding/region-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { setBoardView } from "@/lib/board-view-client";
@@ -104,6 +105,8 @@ export function BibleStudyBoard(props: BoardProps) {
         profiles,
         activeProfile,
         activeProfileId,
+        regions,
+        activeRegion,
         stages,
         visibleStages,
         visibleStageIds,
@@ -246,6 +249,7 @@ export function BibleStudyBoard(props: BoardProps) {
           onSaved={setStages}
         />
         <CelebrationLayer />
+        <FirstContactTour />
         <Toaster />
       </main>
     </BoardProvider>

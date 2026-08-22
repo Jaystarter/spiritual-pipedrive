@@ -795,10 +795,12 @@ export async function listPeople(
   }
 
   // A stale cookie (deleted region) falls back to the onboarding gate.
-  const activeRegionId =
-    !allRegions && regionId && regions.some((region) => region.id === regionId)
-      ? regionId
-      : null;
+  const activeRegion =
+    (!allRegions &&
+      regionId &&
+      regions.find((region) => region.id === regionId)) ||
+    null;
+  const activeRegionId = activeRegion?.id ?? null;
 
   if (!allRegions && !activeRegionId) {
     // No region chosen yet — the welcome gate only needs the region list.
@@ -807,13 +809,17 @@ export async function listPeople(
 
   await promoteLegacyBaptizedPeople(stages);
 
+  // The hub region (Poland) oversees every location: its board loads all
+  // people and all workers, while other regions stay strictly their own.
+  const scopedRegionId = activeRegion?.is_hub ? null : activeRegionId;
+
   let peopleQuery = supabase
     .from("people")
     .select("*")
     .is("archived_at", null);
 
-  if (activeRegionId) {
-    peopleQuery = peopleQuery.eq("region_id", activeRegionId);
+  if (scopedRegionId) {
+    peopleQuery = peopleQuery.eq("region_id", scopedRegionId);
   }
 
   const { data, error } = await peopleQuery
@@ -840,7 +846,7 @@ export async function listPeople(
       people: hydratedPeople,
       profiles: await listProfilesWithStats(
         hydratedPeople,
-        activeRegionId ?? undefined
+        scopedRegionId ?? undefined
       ),
       regions,
       stages,

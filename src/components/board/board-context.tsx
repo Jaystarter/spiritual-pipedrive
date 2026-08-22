@@ -17,6 +17,7 @@ import {
 import type {
   BoardPerson,
   BoardProfile,
+  BoardRegion,
   PersonEvent,
   PersonStudy,
 } from "@/app/actions";
@@ -28,6 +29,8 @@ export type BoardData = {
   profiles: BoardProfile[];
   activeProfile: BoardProfile | null;
   activeProfileId: string;
+  regions: BoardRegion[];
+  activeRegion: BoardRegion | null;
   stages: Stage[];
   visibleStages: Stage[];
   visibleStageIds: Set<StageId>;

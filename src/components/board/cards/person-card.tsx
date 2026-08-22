@@ -24,7 +24,18 @@ import { SwipeToAcknowledge } from "../primitives/swipe-to-acknowledge";
 import { UrgencyMeter } from "../primitives/urgency-meter";
 
 /** The registrar line: one composed mono string, never competing chips. */
-export function RegistrarLine({ person, stage }: { person: BoardPerson; stage: Stage }) {
+export function RegistrarLine({
+  person,
+  stage,
+  regionLabel,
+}: {
+  person: BoardPerson;
+  stage: Stage;
+  /** Origin region, shown only on the hub board where locations mix. */
+  regionLabel?: string | null;
+}) {
+  const regionSuffix = regionLabel ? ` · ${regionLabel}` : "";
+
   if (stage.id === "archive") {
     const reason = getArchiveReason(person.events);
 
@@ -39,6 +50,7 @@ export function RegistrarLine({ person, stage }: { person: BoardPerson; stage: S
     return (
       <span className="t-meta-sm truncate text-tone-green-ink">
         Baptized {person.baptized_at ? formatDate(person.baptized_at) : ""}
+        {regionSuffix}
       </span>
     );
   }
@@ -46,7 +58,11 @@ export function RegistrarLine({ person, stage }: { person: BoardPerson; stage: S
   const latestStudy = getLatestCompletedStudy(person.studies);
 
   if (!latestStudy) {
-    return <span className="t-meta-sm truncate text-signal-wane">No study yet</span>;
+    return (
+      <span className="t-meta-sm truncate text-signal-wane">
+        No study yet{regionSuffix}
+      </span>
+    );
   }
 
   return (
@@ -55,6 +71,7 @@ export function RegistrarLine({ person, stage }: { person: BoardPerson; stage: S
       title={`Study ${String(latestStudy.study_number).padStart(2, "0")}`}
     >
       {formatDate(latestStudy.studied_at ?? latestStudy.created_at)}
+      {regionSuffix}
     </span>
   );
 }
@@ -104,11 +121,23 @@ export const PersonCard = memo(function PersonCard({
   sortableDisabled = false,
   swipeable = false,
 }: PersonCardProps) {
-  const { profiles, configured, isPending, celebratePersonId } = useBoardData();
+  const {
+    profiles,
+    regions,
+    activeRegion,
+    configured,
+    isPending,
+    celebratePersonId,
+  } = useBoardData();
   const actions = useBoardActions();
   const tone = getToneStyle(stage.tone);
   const assignedProfiles = getAssignedProfiles(person, profiles);
   const journeyDone = stage.id === "brothers" || stage.id === "archive";
+  // On the hub board every location's people mix, so name where each is from.
+  const originRegion =
+    activeRegion?.is_hub && person.region_id && person.region_id !== activeRegion.id
+      ? regions.find((region) => region.id === person.region_id) ?? null
+      : null;
 
   const {
     attributes,
@@ -150,7 +179,11 @@ export const PersonCard = memo(function PersonCard({
           <span className="t-display-sm truncate text-ink">{person.name}</span>
           <LifeStatusGlyph status={person.life_status} />
         </span>
-        <RegistrarLine person={person} stage={stage} />
+        <RegistrarLine
+          person={person}
+          stage={stage}
+          regionLabel={originRegion?.name}
+        />
       </div>
 
       <div className="flex shrink-0 flex-col items-end gap-1.5">
