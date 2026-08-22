@@ -221,6 +221,15 @@ export function BibleStudyBoard(props: BoardProps) {
           profiles={profiles}
           activeProfileId={activeProfileId}
           regionId={activeRegion?.id ?? null}
+          regionNameById={
+            activeRegion?.is_hub
+              ? Object.fromEntries(
+                  regions
+                    .filter((region) => region.id !== activeRegion.id)
+                    .map((region) => [region.id, region.name])
+                )
+              : null
+          }
           onClose={() => setProfileSheetOpen(false)}
           onProfilesChange={setProfiles}
           onSelectProfile={handleSelectProfile}

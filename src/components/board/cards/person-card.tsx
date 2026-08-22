@@ -42,6 +42,7 @@ export function RegistrarLine({
     return (
       <span className="t-body-sm truncate italic text-ink-3">
         {reason ?? "Set aside"}
+        {regionSuffix}
       </span>
     );
   }

@@ -22,9 +22,9 @@ contact. Existing production data lands in Poland.
 - [x] `first-contact-tour.tsx`: welcome → guided quick-add → "you're done" explainer; skippable at every step; auto-advances when the first contact lands; never shown to workers who already have contacts; completion per profile in localStorage
 
 ## Verification
-- [ ] `npx tsc --noEmit`, `npm run lint`, `npm run build`, grep gate
-- [ ] Live walkthrough on the local Supabase stack (db reset with the new chain): four locations on the gate, Brooklyn first-contact tutorial end-to-end, Poland hub sees Brooklyn's contact with origin label plus its own exclusives, legacy backfill lands in Poland
-- [ ] Codex second-opinion review of the new commits
+- [x] `npx tsc --noEmit`, `npm run lint`, `npm run build`, grep gate — all clean
+- [x] Live walkthrough on the local Supabase stack (db reset with the new chain): four locations on the gate; Brooklyn first-contact tutorial end-to-end (welcome → guided quick-add → auto-advance when Tanya landed); Poland hub shows Brooklyn's contact with origin label plus its own exclusive; Brooklyn cannot see Poland's contact and re-forces the worker picker; legacy-backfill SQL verified to land pre-region rows in Poland
+- [x] Codex second-opinion review; fixed the two findings that held up (archive cards were missing the origin label; the hub worker register now names each worker's region so same-named workers from different locations are distinguishable). Rejected as not applicable: "edited migration already shipped" (it never shipped anywhere), "Original Board rows stranded" (no database ever ran that version). Accepted-but-deferred: open hub access and extensible locations are the app's existing no-auth trust model (Jayden to decide on locking region creation); the global 300-event hydration cap predates regions (same volume as the old single board) and is a scale item
 
 ## Ship (needs Jayden)
 - [ ] Push branch, open draft PR (needs the Asana ticket link per PR rules)

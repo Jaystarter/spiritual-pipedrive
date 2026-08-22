@@ -60,6 +60,11 @@ type ProfileSheetProps = {
   activeProfileId: string;
   /** Region whose board is on screen — stamped onto newly created profiles. */
   regionId: string | null;
+  /**
+   * On the hub board every location's workers mix, so rows name each
+   * worker's region. Null everywhere else.
+   */
+  regionNameById: Record<string, string> | null;
   onClose: () => void;
   onProfilesChange: (profiles: BoardProfile[]) => void;
   onSelectProfile: (profileId: string) => void;
@@ -75,6 +80,7 @@ export function ProfileSheet({
   profiles,
   activeProfileId,
   regionId,
+  regionNameById,
   onClose,
   onProfilesChange,
   onSelectProfile,
@@ -325,6 +331,9 @@ export function ProfileSheet({
                     <span className="t-meta-sm mt-0.5 block text-ink-4">
                       {profile.active_contacts} contact
                       {profile.active_contacts === 1 ? "" : "s"}
+                      {regionNameById?.[profile.region_id ?? ""]
+                        ? ` · ${regionNameById[profile.region_id ?? ""]}`
+                        : ""}
                       {profile.baptized_this_month > 0
                         ? ` · ${profile.baptized_this_month} baptized this month`
                         : ""}
