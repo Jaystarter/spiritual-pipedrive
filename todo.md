@@ -33,6 +33,12 @@ other, and ownership of each contact stays clear.
 - [x] Browser walkthrough with a temporary stub (no Supabase project exists yet): gate → pick Cambridge → forced "who are you" with scoped workers → board with region in the folio line; switch region → back to gate; empty region → "Add a worker" flow; mobile viewport checked. Stub removed afterward.
 - [ ] Live end-to-end against a real database — blocked until a Supabase project exists for this app (see below)
 
+## Codex review round (independent second opinion)
+- [x] Fix: cron follow-up digest silently died once listPeople required a region — it now loads all regions explicitly (`listPeople(null, { allRegions: true })`)
+- [x] Fix: migration now sweeps any pre-region rows into an "Original Board" region instead of orphaning them (no-op on a fresh database)
+- [x] Fix: new profiles stamp the region of the board on screen (prop from the board root), not the live cookie, so a region switch in another tab can't mislabel them
+- [ ] Follow-up hardening (accepted, deferred): mutations don't verify the actor and target person share a region. The app has no auth at all (client-supplied actor ids, service-role client), so this is part of the larger trust-model question that real scale will eventually force — worth a dedicated pass, not a bolt-on
+
 ## Deferred (needs Jayden)
 - [ ] Create GitHub repo + Vercel project + production Supabase project (external/publishing actions)
 - [ ] After the Supabase project exists: `supabase link` + `supabase db push` (all migrations, including regions), set `SUPABASE_URL`/`SUPABASE_SECRET_KEY`, generate fresh VAPID keys and `CRON_SECRET` (see `.env.example`) — do not reuse the old app's secrets or database

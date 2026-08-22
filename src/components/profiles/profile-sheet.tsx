@@ -51,7 +51,6 @@ import {
 } from "@/components/profiles/avatar-framing-adjuster";
 import { fileToAvatarDataUrl } from "@/components/board/lib/avatar";
 import { ProfileFramedAvatar } from "@/components/board/primitives/framed-avatar";
-import { getActiveRegionId } from "@/lib/region-client";
 import { cn } from "@/lib/utils";
 
 type ProfileSheetProps = {
@@ -59,6 +58,8 @@ type ProfileSheetProps = {
   required?: boolean;
   profiles: BoardProfile[];
   activeProfileId: string;
+  /** Region whose board is on screen — stamped onto newly created profiles. */
+  regionId: string | null;
   onClose: () => void;
   onProfilesChange: (profiles: BoardProfile[]) => void;
   onSelectProfile: (profileId: string) => void;
@@ -73,6 +74,7 @@ export function ProfileSheet({
   required,
   profiles,
   activeProfileId,
+  regionId,
   onClose,
   onProfilesChange,
   onSelectProfile,
@@ -108,8 +110,10 @@ export function ProfileSheet({
     }
 
     startTransition(async () => {
-      // New teachers belong to the region this device is working in.
-      const result = await createProfile(name, getActiveRegionId() || undefined);
+      // New teachers belong to the region whose board is on screen — passed
+      // down from the board root rather than re-read from the cookie, so a
+      // region switch in another tab can't stamp the wrong region.
+      const result = await createProfile(name, regionId ?? undefined);
 
       if (!result.ok || !result.data) {
         setError(result.ok ? "The profile could not be created." : result.error);

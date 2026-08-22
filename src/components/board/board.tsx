@@ -217,6 +217,7 @@ export function BibleStudyBoard(props: BoardProps) {
           required={requireProfile}
           profiles={profiles}
           activeProfileId={activeProfileId}
+          regionId={activeRegion?.id ?? null}
           onClose={() => setProfileSheetOpen(false)}
           onProfilesChange={setProfiles}
           onSelectProfile={handleSelectProfile}

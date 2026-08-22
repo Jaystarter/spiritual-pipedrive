@@ -26,3 +26,27 @@ drop index if exists public.profiles_name_lower_idx;
 
 create unique index if not exists profiles_region_name_lower_idx
   on public.profiles (region_id, lower(name));
+
+-- If this migration lands on a database that already has people or profiles
+-- (a pre-region deployment), gather the orphans into an "Original Board"
+-- region so nothing becomes unreachable. On a fresh database this is a no-op.
+do $$
+declare
+  legacy_region uuid;
+begin
+  if exists (select 1 from public.people where region_id is null)
+     or exists (select 1 from public.profiles where region_id is null) then
+    select id into legacy_region
+      from public.regions
+      where lower(name) = lower('Original Board');
+
+    if legacy_region is null then
+      insert into public.regions (name)
+        values ('Original Board')
+        returning id into legacy_region;
+    end if;
+
+    update public.people set region_id = legacy_region where region_id is null;
+    update public.profiles set region_id = legacy_region where region_id is null;
+  end if;
+end $$;

@@ -745,8 +745,10 @@ async function listRegions(): Promise<BoardRegion[]> {
 }
 
 export async function listPeople(
-  regionId?: string | null
+  regionId?: string | null,
+  options?: { allRegions?: boolean }
 ): Promise<BoardState> {
+  const allRegions = options?.allRegions === true;
   const stages = await listStages();
 
   if (!isSupabaseConfigured()) {
@@ -794,22 +796,27 @@ export async function listPeople(
 
   // A stale cookie (deleted region) falls back to the onboarding gate.
   const activeRegionId =
-    regionId && regions.some((region) => region.id === regionId)
+    !allRegions && regionId && regions.some((region) => region.id === regionId)
       ? regionId
       : null;
 
-  if (!activeRegionId) {
+  if (!allRegions && !activeRegionId) {
     // No region chosen yet — the welcome gate only needs the region list.
     return { people: [], profiles: [], regions, stages, configured: true };
   }
 
   await promoteLegacyBaptizedPeople(stages);
 
-  const { data, error } = await supabase
+  let peopleQuery = supabase
     .from("people")
     .select("*")
-    .is("archived_at", null)
-    .eq("region_id", activeRegionId)
+    .is("archived_at", null);
+
+  if (activeRegionId) {
+    peopleQuery = peopleQuery.eq("region_id", activeRegionId);
+  }
+
+  const { data, error } = await peopleQuery
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -831,7 +838,10 @@ export async function listPeople(
   try {
     return {
       people: hydratedPeople,
-      profiles: await listProfilesWithStats(hydratedPeople, activeRegionId),
+      profiles: await listProfilesWithStats(
+        hydratedPeople,
+        activeRegionId ?? undefined
+      ),
       regions,
       stages,
       configured: true,
