@@ -6,8 +6,10 @@ import { closestCorners, DndContext, DragOverlay } from "@dnd-kit/core";
 import { ProfileSheet } from "@/components/profiles/profile-sheet";
 import { LoginReminder } from "@/components/notifications/login-reminder";
 import { AttentionDrawer } from "@/components/notifications/attention-drawer";
+import { RegionGate } from "@/components/onboarding/region-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { setBoardView } from "@/lib/board-view-client";
+import { clearActiveRegionId } from "@/lib/region-client";
 
 import type { BoardProps } from "./types";
 import { useBoardState } from "./hooks/use-board-state";
@@ -42,6 +44,8 @@ export function BibleStudyBoard(props: BoardProps) {
     visibleStageIds,
     activeProfile,
     activeProfileId,
+    regions,
+    activeRegion,
     boardView,
     isPending,
     notice,
@@ -83,6 +87,13 @@ export function BibleStudyBoard(props: BoardProps) {
 
   if (!mounted) {
     return <main className="relative min-h-screen overflow-hidden bg-canvas text-ink" />;
+  }
+
+  // Onboarding step one: no region chosen yet, so the welcome gate owns the
+  // screen. Once a region is picked the page reloads with scoped data and the
+  // required profile picker becomes step two.
+  if (configured && !activeRegion) {
+    return <RegionGate regions={regions} />;
   }
 
   return (
@@ -130,6 +141,8 @@ export function BibleStudyBoard(props: BoardProps) {
           }
           boardView={boardView}
           profileFilter={profileFilter}
+          activeRegionName={activeRegion?.name ?? null}
+          onSwitchRegion={clearActiveRegionId}
           onProfileFilterChange={setProfileFilter}
           onBoardViewChange={setBoardView}
           onSelectProfile={handleSelectProfile}

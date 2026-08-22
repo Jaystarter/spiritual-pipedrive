@@ -1,9 +1,15 @@
-import type { BoardPerson, BoardProfile, PersonEvent } from "@/app/actions";
+import type {
+  BoardPerson,
+  BoardProfile,
+  BoardRegion,
+  PersonEvent,
+} from "@/app/actions";
 import type { Stage, StageId } from "@/lib/stages";
 
 export type BoardProps = {
   initialPeople: BoardPerson[];
   initialProfiles: BoardProfile[];
+  initialRegions: BoardRegion[];
   initialStages: Stage[];
   configured: boolean;
   error?: string;

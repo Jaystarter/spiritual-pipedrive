@@ -33,6 +33,7 @@ type StageInsert = Database["public"]["Tables"]["stages"]["Insert"];
 
 export type PersonEvent = Database["public"]["Tables"]["person_events"]["Row"];
 export type PersonStudy = Database["public"]["Tables"]["person_studies"]["Row"];
+export type BoardRegion = Database["public"]["Tables"]["regions"]["Row"];
 export type BoardProfile = Database["public"]["Tables"]["profiles"]["Row"] & {
   active_contacts: number;
   baptized_this_month: number;
@@ -46,6 +47,7 @@ export type PersonLifeStatus = NonNullable<PersonRow["life_status"]>;
 export type BoardState = {
   people: BoardPerson[];
   profiles: BoardProfile[];
+  regions: BoardRegion[];
   stages: Stage[];
   configured: boolean;
   error?: string;
@@ -669,17 +671,23 @@ async function hydratePeople(people: PersonRow[]) {
   }));
 }
 
-async function listProfilesWithStats(people?: PersonRow[]) {
+async function listProfilesWithStats(people?: PersonRow[], regionId?: string) {
   const supabase = createSupabaseAdmin();
 
   if (!supabase) {
     return [] as BoardProfile[];
   }
 
-  const { data, error } = await supabase
+  let profilesQuery = supabase
     .from("profiles")
     .select("*")
     .order("name", { ascending: true });
+
+  if (regionId) {
+    profilesQuery = profilesQuery.eq("region_id", regionId);
+  }
+
+  const { data, error } = await profilesQuery;
 
   if (error) {
     throw new Error(error.message);
@@ -717,13 +725,35 @@ async function listProfilesWithStats(people?: PersonRow[]) {
     });
 }
 
-export async function listPeople(): Promise<BoardState> {
+async function listRegions(): Promise<BoardRegion[]> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("regions")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
+export async function listPeople(
+  regionId?: string | null
+): Promise<BoardState> {
   const stages = await listStages();
 
   if (!isSupabaseConfigured()) {
     return {
       people: [],
       profiles: [],
+      regions: [],
       stages,
       configured: false,
       error:
@@ -737,10 +767,40 @@ export async function listPeople(): Promise<BoardState> {
     return {
       people: [],
       profiles: [],
+      regions: [],
       stages,
       configured: false,
       error: "Supabase credentials are missing.",
     };
+  }
+
+  let regions: BoardRegion[];
+
+  try {
+    regions = await listRegions();
+  } catch (regionError) {
+    return {
+      people: [],
+      profiles: [],
+      regions: [],
+      stages,
+      configured: true,
+      error:
+        regionError instanceof Error
+          ? regionError.message
+          : "Regions could not be loaded.",
+    };
+  }
+
+  // A stale cookie (deleted region) falls back to the onboarding gate.
+  const activeRegionId =
+    regionId && regions.some((region) => region.id === regionId)
+      ? regionId
+      : null;
+
+  if (!activeRegionId) {
+    // No region chosen yet — the welcome gate only needs the region list.
+    return { people: [], profiles: [], regions, stages, configured: true };
   }
 
   await promoteLegacyBaptizedPeople(stages);
@@ -749,6 +809,7 @@ export async function listPeople(): Promise<BoardState> {
     .from("people")
     .select("*")
     .is("archived_at", null)
+    .eq("region_id", activeRegionId)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -756,6 +817,7 @@ export async function listPeople(): Promise<BoardState> {
     return {
       people: [],
       profiles: [],
+      regions,
       stages,
       configured: true,
       error: error.message,
@@ -769,7 +831,8 @@ export async function listPeople(): Promise<BoardState> {
   try {
     return {
       people: hydratedPeople,
-      profiles: await listProfilesWithStats(hydratedPeople),
+      profiles: await listProfilesWithStats(hydratedPeople, activeRegionId),
+      regions,
       stages,
       configured: true,
     };
@@ -777,6 +840,7 @@ export async function listPeople(): Promise<BoardState> {
     return {
       people: hydratedPeople,
       profiles: [],
+      regions,
       stages,
       configured: true,
       error:
@@ -787,8 +851,54 @@ export async function listPeople(): Promise<BoardState> {
   }
 }
 
-export async function createProfile(
+export async function createRegion(
   name: string
+): Promise<ActionResult<BoardRegion>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const cleanName = name.trim().replace(/\s+/g, " ").slice(0, 40);
+
+  if (!cleanName) {
+    return { ok: false, error: "Name your region first." };
+  }
+
+  const { data, error } = await supabase
+    .from("regions")
+    .insert({ name: cleanName })
+    .select("*")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      // Someone else already registered this region — joining it is what the
+      // person wanted anyway, so hand back the existing row.
+      const { data: existing } = await supabase
+        .from("regions")
+        .select("*")
+        .ilike("name", cleanName)
+        .maybeSingle();
+
+      if (existing) {
+        return { ok: true, data: existing };
+      }
+
+      return { ok: false, error: "That region already exists." };
+    }
+
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { ok: true, data };
+}
+
+export async function createProfile(
+  name: string,
+  regionId?: string
 ): Promise<ActionResult<BoardProfile>> {
   const supabase = createSupabaseAdmin();
 
@@ -802,9 +912,15 @@ export async function createProfile(
     return { ok: false, error: "Name is required." };
   }
 
+  const cleanRegionId = regionId?.trim() ?? "";
+
+  if (cleanRegionId && !uuidPattern.test(cleanRegionId)) {
+    return { ok: false, error: "Choose a valid region." };
+  }
+
   const { data, error } = await supabase
     .from("profiles")
-    .insert({ name: cleanName })
+    .insert({ name: cleanName, region_id: cleanRegionId || null })
     .select("*")
     .single();
 
@@ -1215,6 +1331,13 @@ export async function createPerson(
   const sortOrder = await getNextSortOrder(targetStage);
   const baptizedAt =
     isBaptizedLane(targetStage) ? new Date().toISOString() : null;
+  // The contact lives in the region of whoever entered it — derived
+  // server-side from the actor's profile, never trusted from the client.
+  const { data: actorProfileRow } = await supabase
+    .from("profiles")
+    .select("region_id")
+    .eq("id", actor.actorProfileId)
+    .maybeSingle();
   const insert: PersonInsert = {
     name,
     stage: targetStage,
@@ -1223,6 +1346,7 @@ export async function createPerson(
     notes: cleanOptional(input.notes),
     assigned_profile_ids: normalizedProfiles.ids,
     created_by_profile_id: actor.actorProfileId,
+    region_id: actorProfileRow?.region_id ?? null,
     sort_order: sortOrder,
     baptized_at: baptizedAt,
     next_follow_up_at: cleanDate(input.nextFollowUpAt),

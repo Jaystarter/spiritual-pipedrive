@@ -51,6 +51,7 @@ import {
 } from "@/components/profiles/avatar-framing-adjuster";
 import { fileToAvatarDataUrl } from "@/components/board/lib/avatar";
 import { ProfileFramedAvatar } from "@/components/board/primitives/framed-avatar";
+import { getActiveRegionId } from "@/lib/region-client";
 import { cn } from "@/lib/utils";
 
 type ProfileSheetProps = {
@@ -107,7 +108,8 @@ export function ProfileSheet({
     }
 
     startTransition(async () => {
-      const result = await createProfile(name);
+      // New teachers belong to the region this device is working in.
+      const result = await createProfile(name, getActiveRegionId() || undefined);
 
       if (!result.ok || !result.data) {
         setError(result.ok ? "The profile could not be created." : result.error);
