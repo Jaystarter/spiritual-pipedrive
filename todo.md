@@ -31,7 +31,9 @@ other, and ownership of each contact stays clear.
 ## Verification
 - [x] `npx tsc --noEmit` (clean), `npm run lint` (clean), `npm run build` (passes), `scripts/check-legacy-classes.sh` (clean)
 - [x] Browser walkthrough with a temporary stub (no Supabase project exists yet): gate → pick Cambridge → forced "who are you" with scoped workers → board with region in the folio line; switch region → back to gate; empty region → "Add a worker" flow; mobile viewport checked. Stub removed afterward.
-- [ ] Live end-to-end against a real database — blocked until a Supabase project exists for this app (see below)
+- [x] Live end-to-end against a real database — local `supabase start` stack (Docker), full migration chain applied from scratch via `db reset`, then in-browser: created Cambridge, added worker Jayden, added contact Daniel Kim; DB rows confirmed region-stamped. Stale-region-cookie fallback to the gate also verified.
+- [x] Live run caught two real deploy bugs, both fixed: (1) new Supabase projects apply least-privilege defaults, so service_role had no data access — added a grants migration; (2) the legacy seeded 'Team' profile conjured a phantom "Original Board" region on fresh databases — the regions migration now prunes it when provably untouched
+- [ ] Repeat the same walkthrough once against the real production Supabase project after it exists
 
 ## Codex review round (independent second opinion)
 - [x] Fix: cron follow-up digest silently died once listPeople required a region — it now loads all regions explicitly (`listPeople(null, { allRegions: true })`)

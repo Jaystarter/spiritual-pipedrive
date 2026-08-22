@@ -27,6 +27,32 @@ drop index if exists public.profiles_name_lower_idx;
 create unique index if not exists profiles_region_name_lower_idx
   on public.profiles (region_id, lower(name));
 
+-- The 20260517 migration seeds a default 'Team' profile. On a fresh database
+-- it would be the only orphan and would conjure a phantom "Original Board"
+-- region below, so drop it when it is provably untouched: default avatar, no
+-- contacts, no events, no studies, no push subscriptions. A Team profile that
+-- was ever actually used survives and is swept with everything else.
+delete from public.profiles p
+  where p.region_id is null
+    and lower(p.name) = 'team'
+    and p.avatar_url is null
+    and not exists (
+      select 1 from public.people pe
+        where p.id = any(pe.assigned_profile_ids)
+          or pe.created_by_profile_id = p.id
+    )
+    and not exists (
+      select 1 from public.person_events ev
+        where ev.actor_profile_id = p.id
+          or ev.notification_profile_id = p.id
+    )
+    and not exists (
+      select 1 from public.person_studies st where st.actor_profile_id = p.id
+    )
+    and not exists (
+      select 1 from public.push_subscriptions ps where ps.profile_id = p.id
+    );
+
 -- If this migration lands on a database that already has people or profiles
 -- (a pre-region deployment), gather the orphans into an "Original Board"
 -- region so nothing becomes unreachable. On a fresh database this is a no-op.
