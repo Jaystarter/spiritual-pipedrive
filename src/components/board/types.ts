@@ -16,7 +16,10 @@ export type MovePreview = {
 
 export type FollowUpItem = {
   person: BoardPerson;
+  /** Days since real activity. Keeps climbing even while acknowledged. */
   daysQuiet: number;
+  /** Quiet past the threshold and not acknowledged, so still waiting on you. */
+  isOverdue: boolean;
   latestActivity: {
     label: string;
     value: string;

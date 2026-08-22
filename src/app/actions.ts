@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { ACKNOWLEDGE_DAYS } from "@/lib/follow-ups";
 import {
   DEFAULT_STAGES,
   cleanStageDescription,
@@ -137,6 +138,22 @@ type AddContactReactionInput = {
   actorProfileId: string;
 };
 
+type AcknowledgePersonInput = {
+  id: string;
+  /**
+   * Date-only (YYYY-MM-DD) to stay quiet until. Omit for the default window,
+   * pass "" to clear the acknowledgement.
+   */
+  until?: string;
+  actorProfileId: string;
+};
+
+export type AcknowledgeResult = {
+  /** Null when an acknowledgement is being cleared, which logs nothing. */
+  event: PersonEvent | null;
+  nextFollowUpAt: string | null;
+};
+
 type AddPersonStudyResult = {
   study: PersonStudy;
   event: PersonEvent;
@@ -168,6 +185,25 @@ function cleanDate(value?: string) {
   }
 
   return date.toISOString();
+}
+
+/** "on Tue 22 Jul" for the acknowledgement journal line. */
+function formatFollowUpDay(value: string | null) {
+  if (!value) {
+    return "later";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "later";
+  }
+
+  return `on ${new Intl.DateTimeFormat("en", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(date)}`;
 }
 
 function cleanDateOnly(value?: string) {
@@ -1693,6 +1729,90 @@ export async function addContactReaction(
 
   revalidatePath("/");
   return { ok: true, data };
+}
+
+/**
+ * "I have seen this person and I will come back to them."
+ *
+ * Deliberately NOT routed through `updatePerson`: that would mark the details
+ * changed and log a `details_updated` event, which counts as activity and would
+ * reset the quiet clock. Acknowledging is not contact, so this writes
+ * next_follow_up_at directly and leaves last_contacted_at alone. The day counter
+ * on the card must keep climbing.
+ */
+export async function acknowledgePerson(
+  input: AcknowledgePersonInput
+): Promise<ActionResult<AcknowledgeResult>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const actor = await validateActorProfile(input.actorProfileId);
+
+  if ("error" in actor) {
+    return { ok: false, error: actor.error };
+  }
+
+  // "" clears; undefined takes the default window; anything else is a chosen day.
+  const clearing = input.until === "";
+  let nextFollowUpAt: string | null = null;
+
+  if (!clearing) {
+    if (input.until) {
+      // Local start-of-day, matching cleanDateOnly's parsing, so a picked date
+      // becomes due the moment that day begins for the teacher.
+      const chosen = new Date(`${input.until}T00:00:00`);
+
+      if (Number.isNaN(chosen.getTime())) {
+        return { ok: false, error: "Choose a valid follow-up date." };
+      }
+
+      nextFollowUpAt = chosen.toISOString();
+    } else {
+      nextFollowUpAt = new Date(
+        Date.now() + ACKNOWLEDGE_DAYS * 86_400_000
+      ).toISOString();
+    }
+  }
+
+  // The journal entry goes first: if it fails, nothing has changed yet. Writing
+  // the date first would leave the person silently acknowledged with no trail.
+  let event: PersonEvent | null = null;
+
+  if (!clearing) {
+    const { data, error } = await supabase
+      .from("person_events")
+      .insert({
+        person_id: input.id,
+        event_type: "acknowledged",
+        title: "Acknowledged",
+        body: `Seen. Following up ${formatFollowUpDay(nextFollowUpAt)}.`,
+        actor_profile_id: actor.actorProfileId,
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    event = data;
+  }
+
+  const { error: personError } = await supabase
+    .from("people")
+    .update({ next_follow_up_at: nextFollowUpAt })
+    .eq("id", input.id)
+    .is("archived_at", null);
+
+  if (personError) {
+    return { ok: false, error: personError.message };
+  }
+
+  revalidatePath("/");
+  return { ok: true, data: { event, nextFollowUpAt } };
 }
 
 export async function addPersonStudy(

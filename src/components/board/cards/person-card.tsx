@@ -20,6 +20,7 @@ import { getLatestCompletedStudy } from "../lib/studies";
 import { AvatarStack } from "../primitives/avatar-stack";
 import { PersonFramedAvatar } from "../primitives/framed-avatar";
 import { StageRibbon } from "../primitives/stage-ribbon";
+import { SwipeToAcknowledge } from "../primitives/swipe-to-acknowledge";
 import { UrgencyMeter } from "../primitives/urgency-meter";
 
 /** The registrar line: one composed mono string, never competing chips. */
@@ -84,6 +85,11 @@ type PersonCardProps = {
   person: BoardPerson;
   stage: Stage;
   sortableDisabled?: boolean;
+  /**
+   * Enables swipe-to-acknowledge. Only the stack view passes this: its rows
+   * have dnd disabled, so a horizontal drag has nothing to race.
+   */
+  swipeable?: boolean;
 };
 
 /**
@@ -96,6 +102,7 @@ export const PersonCard = memo(function PersonCard({
   person,
   stage,
   sortableDisabled = false,
+  swipeable = false,
 }: PersonCardProps) {
   const { profiles, configured, isPending, celebratePersonId } = useBoardData();
   const actions = useBoardActions();
@@ -115,7 +122,7 @@ export const PersonCard = memo(function PersonCard({
     disabled: sortableDisabled || !configured || isPending,
   });
 
-  return (
+  const card = (
     <div
       ref={setNodeRef}
       style={{
@@ -170,4 +177,10 @@ export const PersonCard = memo(function PersonCard({
       </AnimatePresence>
     </div>
   );
+
+  if (!swipeable) {
+    return card;
+  }
+
+  return <SwipeToAcknowledge person={person}>{card}</SwipeToAcknowledge>;
 });

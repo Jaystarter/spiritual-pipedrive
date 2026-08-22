@@ -84,7 +84,8 @@ export type Database = {
             | "study_logged"
             | "text_reaction"
             | "call_reaction"
-            | "archived";
+            | "archived"
+            | "acknowledged";
           title: string;
           body: string | null;
           from_stage: StageId | null;
@@ -105,7 +106,8 @@ export type Database = {
             | "study_logged"
             | "text_reaction"
             | "call_reaction"
-            | "archived";
+            | "archived"
+            | "acknowledged";
           title: string;
           body?: string | null;
           from_stage?: StageId | null;
@@ -126,7 +128,8 @@ export type Database = {
             | "study_logged"
             | "text_reaction"
             | "call_reaction"
-            | "archived";
+            | "archived"
+            | "acknowledged";
           title?: string;
           body?: string | null;
           from_stage?: StageId | null;

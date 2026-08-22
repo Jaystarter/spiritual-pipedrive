@@ -47,6 +47,11 @@ export type BoardActions = {
   onStudyRenamed: (personId: string, study: PersonStudy) => void;
   onStudyDeleted: (personId: string, studyId: string) => void;
   onReactionLogged: (personId: string, event: PersonEvent) => void;
+  onAcknowledged: (
+    personId: string,
+    event: PersonEvent | null,
+    nextFollowUpAt: string | null
+  ) => void;
   onProfilesChange: (
     profiles: BoardProfile[] | ((current: BoardProfile[]) => BoardProfile[])
   ) => void;
@@ -89,6 +94,7 @@ export function BoardProvider({
       onStudyRenamed: (...args) => actionsRef.current.onStudyRenamed(...args),
       onStudyDeleted: (...args) => actionsRef.current.onStudyDeleted(...args),
       onReactionLogged: (...args) => actionsRef.current.onReactionLogged(...args),
+      onAcknowledged: (...args) => actionsRef.current.onAcknowledged(...args),
       onProfilesChange: (...args) => actionsRef.current.onProfilesChange(...args),
       requireActiveProfile: () => actionsRef.current.requireActiveProfile(),
       openQuickAdd: () => actionsRef.current.openQuickAdd(),

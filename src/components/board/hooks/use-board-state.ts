@@ -328,6 +328,28 @@ export function useBoardState({
     });
   }
 
+  /**
+   * Acknowledgement patches only the follow-up window. `last_contacted_at` is
+   * left untouched on purpose so the day counter keeps telling the truth.
+   */
+  function handleAcknowledged(
+    personId: string,
+    event: PersonEvent | null,
+    nextFollowUpAt: string | null
+  ) {
+    setPeople((current) =>
+      current.map((person) =>
+        person.id === personId
+          ? {
+              ...person,
+              next_follow_up_at: nextFollowUpAt,
+              events: event ? [event, ...person.events] : person.events,
+            }
+          : person
+      )
+    );
+  }
+
   function handleReactionLogged(personId: string, event: PersonEvent) {
     setPeople((current) =>
       current.map((person) =>
@@ -384,6 +406,7 @@ export function useBoardState({
     handleStudyRenamed,
     handleStudyDeleted,
     handleReactionLogged,
+    handleAcknowledged,
   };
 }
 

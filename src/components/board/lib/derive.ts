@@ -3,11 +3,15 @@ import type {
   BoardProfile,
   PersonEvent,
 } from "@/app/actions";
-import { FOLLOW_UP_QUIET_DAYS, getLatestActivity } from "@/lib/follow-ups";
+import {
+  FOLLOW_UP_QUIET_DAYS,
+  getFollowUpStatus,
+  getLatestActivity,
+} from "@/lib/follow-ups";
 import type { Stage, StageId, StageToneName } from "@/lib/stages";
 
 import type { AssignmentNotificationItem, FollowUpItem } from "../types";
-import { addDays, daysSinceDate } from "./format";
+import { addDays } from "./format";
 import { getStudyTitle } from "./studies";
 
 export const FOLLOW_UP_REMINDER_VISIBLE_MS = 15_000;
@@ -155,8 +159,12 @@ export function getFollowUpItems(
   return people
     .filter((person) => person.stage !== "archive")
     .map((person) => {
-      const latestActivity = getLatestActivitySnapshot(person);
-      const daysQuiet = daysSinceDate(latestActivity.value);
+      // Routed through the shared rule (rather than recomputing the threshold
+      // here) so the board and the push digest cannot drift apart, and so
+      // acknowledged contacts drop out of both at once.
+      const { latestActivity, daysQuiet, isOverdue } = getFollowUpStatus(person, {
+        studyLabel: (study) => `Study: ${getStudyTitle(study)}`,
+      });
       const assignedProfiles = getAssignedProfiles(person, profiles);
       const followUpDueAt = addDays(latestActivity.value, FOLLOW_UP_QUIET_DAYS);
       const ownerLabel =
@@ -167,6 +175,7 @@ export function getFollowUpItems(
       return {
         person,
         daysQuiet,
+        isOverdue,
         latestActivity,
         ownerLabel,
         stageLabel: displayStageCopy(getStageById(stages, person.stage).label),
@@ -174,7 +183,7 @@ export function getFollowUpItems(
         missedAt: getMissedFollowUpDate(person.next_follow_up_at, followUpDueAt),
       };
     })
-    .filter((item) => item.daysQuiet >= FOLLOW_UP_QUIET_DAYS)
+    .filter((item) => item.isOverdue)
     .sort((a, b) => b.daysQuiet - a.daysQuiet);
 }
 

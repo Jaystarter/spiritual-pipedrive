@@ -68,6 +68,7 @@ export function BibleStudyBoard(props: BoardProps) {
     handleStudyRenamed,
     handleStudyDeleted,
     handleReactionLogged,
+    handleAcknowledged,
   } = useBoardState(props);
   const {
     sensors,
@@ -110,6 +111,7 @@ export function BibleStudyBoard(props: BoardProps) {
         onStudyRenamed: handleStudyRenamed,
         onStudyDeleted: handleStudyDeleted,
         onReactionLogged: handleReactionLogged,
+        onAcknowledged: handleAcknowledged,
         onProfilesChange: setProfiles,
         requireActiveProfile,
         openQuickAdd: () => setQuickAddOpen(true),

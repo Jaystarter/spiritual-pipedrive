@@ -10,6 +10,7 @@ import {
 import { Archive, Camera, NotebookPen, Pencil, Trash2 } from "lucide-react";
 
 import {
+  acknowledgePerson,
   addPersonNote,
   deletePerson,
   updatePerson,
@@ -40,6 +41,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ACKNOWLEDGE_DAYS, isAcknowledged } from "@/lib/follow-ups";
 import { cn } from "@/lib/utils";
 
 import { useBoardActions, useBoardData } from "../board-context";
@@ -50,7 +52,9 @@ import {
   getArchiveReason,
   getStageById,
 } from "../lib/derive";
+import { getDateValue, shiftDateValue } from "../lib/format";
 import { toneVars } from "../lib/stage-theme";
+import { DateTrigger } from "../primitives/date-trigger";
 import { FramedAvatar } from "../primitives/framed-avatar";
 import { SectionHeading } from "../primitives/section-heading";
 import { StageRibbon } from "../primitives/stage-ribbon";
@@ -84,6 +88,7 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
   const [isArchivePending, startArchiveTransition] = useTransition();
   const [isDeletePending, startDeleteTransition] = useTransition();
   const [, startAvatarTransition] = useTransition();
+  const [isFollowUpPending, startFollowUpTransition] = useTransition();
 
   const nameInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -109,6 +114,15 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
   const stage = getStageById(visibleStages, person.stage);
   const archived = person.stage === "archive";
   const journeyDone = archived || person.stage === "brothers" || person.stage === "baptized";
+  const today = getDateValue(new Date().toISOString());
+  const followUpQuickOptions = [
+    { label: "Tomorrow", value: shiftDateValue(today, 1) },
+    { label: "In 3 days", value: shiftDateValue(today, ACKNOWLEDGE_DAYS) },
+    { label: "Next week", value: shiftDateValue(today, 7) },
+  ];
+  // A date already gone by is a broken promise, so the pill wears the signal.
+  const followUpMissed =
+    person.next_follow_up_at !== null && !isAcknowledged(person);
   function canEdit() {
     if (!configured) {
       actions.onNotice("Connect Supabase before editing people.");
@@ -121,6 +135,42 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
     }
 
     return activeProfile.id;
+  }
+
+  /**
+   * The deliberate twin of the row swipe: pick the day you'll come back.
+   * Goes through acknowledgePerson (never updatePerson) so setting a date is
+   * not mistaken for activity and never resets the quiet clock.
+   */
+  function commitFollowUp(dateValue: string) {
+    const actorProfileId = canEdit();
+
+    if (!actorProfileId || !person) {
+      return;
+    }
+
+    startFollowUpTransition(async () => {
+      const result = await acknowledgePerson({
+        id: person.id,
+        until: dateValue,
+        actorProfileId,
+      });
+
+      if (!result.ok) {
+        actions.onNotice(result.error);
+        return;
+      }
+
+      if (result.data) {
+        actions.onAcknowledged(
+          person.id,
+          result.data.event,
+          result.data.nextFollowUpAt
+        );
+      }
+
+      actions.onNotice(undefined);
+    });
   }
 
   function commitName() {
@@ -469,6 +519,19 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
           {/* Care & studies — chromeless and unlabeled: the progress rule leads. */}
           <section className="flex flex-col gap-3" style={toneVars(stage.tone)}>
             <NextStudyComposer person={person} stage={stage} />
+            {!archived ? (
+              <DateTrigger
+                value={getDateValue(person.next_follow_up_at)}
+                onChange={commitFollowUp}
+                label="Follow up"
+                placeholder="Set follow-up"
+                quickOptions={followUpQuickOptions}
+                allowClear
+                min={today}
+                urgent={followUpMissed}
+                disabled={isFollowUpPending}
+              />
+            ) : null}
           </section>
 
           <Journal person={person} />
