@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Columns3,
   Layers3,
+  MapPin,
   MoonStar,
   Plus,
   Search,
@@ -50,6 +51,8 @@ type MastheadProps = {
   notificationCount: number;
   boardView: BoardView;
   profileFilter: string;
+  activeRegionName: string | null;
+  onSwitchRegion: () => void;
   onProfileFilterChange: (filter: string) => void;
   onBoardViewChange: (view: BoardView) => void;
   onSelectProfile: (profileId: string) => void;
@@ -75,6 +78,8 @@ export function Masthead({
   notificationCount,
   boardView,
   profileFilter,
+  activeRegionName,
+  onSwitchRegion,
   onProfileFilterChange,
   onBoardViewChange,
   onSelectProfile,
@@ -124,6 +129,9 @@ export function Masthead({
           <span aria-hidden className="hidden h-4 w-px self-center bg-line-strong md:block" />
           <span className="t-meta hidden whitespace-nowrap text-ink-3 md:inline">
             {dateLine}
+            {activeRegionName ? (
+              <span className="text-ink-2"> · {activeRegionName}</span>
+            ) : null}
           </span>
         </div>
 
@@ -212,6 +220,17 @@ export function Masthead({
               <DropdownMenuItem className="gap-2.5" onSelect={onOpenProfiles}>
                 <UsersRound className="size-4 text-ink-3" />
                 <span className="t-body-sm">Manage profiles…</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2.5" onSelect={onSwitchRegion}>
+                <MapPin className="size-4 text-ink-3" />
+                <span className="t-body-sm min-w-0 flex-1 truncate">
+                  Switch region…
+                </span>
+                {activeRegionName ? (
+                  <span className="t-meta-sm max-w-24 truncate text-ink-4">
+                    {activeRegionName}
+                  </span>
+                ) : null}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

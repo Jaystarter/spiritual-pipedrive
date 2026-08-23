@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { ACKNOWLEDGE_DAYS } from "@/lib/follow-ups";
 import {
   DEFAULT_STAGES,
   cleanStageDescription,
@@ -32,6 +33,7 @@ type StageInsert = Database["public"]["Tables"]["stages"]["Insert"];
 
 export type PersonEvent = Database["public"]["Tables"]["person_events"]["Row"];
 export type PersonStudy = Database["public"]["Tables"]["person_studies"]["Row"];
+export type BoardRegion = Database["public"]["Tables"]["regions"]["Row"];
 export type BoardProfile = Database["public"]["Tables"]["profiles"]["Row"] & {
   active_contacts: number;
   baptized_this_month: number;
@@ -45,6 +47,7 @@ export type PersonLifeStatus = NonNullable<PersonRow["life_status"]>;
 export type BoardState = {
   people: BoardPerson[];
   profiles: BoardProfile[];
+  regions: BoardRegion[];
   stages: Stage[];
   configured: boolean;
   error?: string;
@@ -137,6 +140,22 @@ type AddContactReactionInput = {
   actorProfileId: string;
 };
 
+type AcknowledgePersonInput = {
+  id: string;
+  /**
+   * Date-only (YYYY-MM-DD) to stay quiet until. Omit for the default window,
+   * pass "" to clear the acknowledgement.
+   */
+  until?: string;
+  actorProfileId: string;
+};
+
+export type AcknowledgeResult = {
+  /** Null when an acknowledgement is being cleared, which logs nothing. */
+  event: PersonEvent | null;
+  nextFollowUpAt: string | null;
+};
+
 type AddPersonStudyResult = {
   study: PersonStudy;
   event: PersonEvent;
@@ -168,6 +187,25 @@ function cleanDate(value?: string) {
   }
 
   return date.toISOString();
+}
+
+/** "on Tue 22 Jul" for the acknowledgement journal line. */
+function formatFollowUpDay(value: string | null) {
+  if (!value) {
+    return "later";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "later";
+  }
+
+  return `on ${new Intl.DateTimeFormat("en", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(date)}`;
 }
 
 function cleanDateOnly(value?: string) {
@@ -633,17 +671,23 @@ async function hydratePeople(people: PersonRow[]) {
   }));
 }
 
-async function listProfilesWithStats(people?: PersonRow[]) {
+async function listProfilesWithStats(people?: PersonRow[], regionId?: string) {
   const supabase = createSupabaseAdmin();
 
   if (!supabase) {
     return [] as BoardProfile[];
   }
 
-  const { data, error } = await supabase
+  let profilesQuery = supabase
     .from("profiles")
     .select("*")
     .order("name", { ascending: true });
+
+  if (regionId) {
+    profilesQuery = profilesQuery.eq("region_id", regionId);
+  }
+
+  const { data, error } = await profilesQuery;
 
   if (error) {
     throw new Error(error.message);
@@ -681,13 +725,37 @@ async function listProfilesWithStats(people?: PersonRow[]) {
     });
 }
 
-export async function listPeople(): Promise<BoardState> {
+async function listRegions(): Promise<BoardRegion[]> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("regions")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
+export async function listPeople(
+  regionId?: string | null,
+  options?: { allRegions?: boolean }
+): Promise<BoardState> {
+  const allRegions = options?.allRegions === true;
   const stages = await listStages();
 
   if (!isSupabaseConfigured()) {
     return {
       people: [],
       profiles: [],
+      regions: [],
       stages,
       configured: false,
       error:
@@ -701,18 +769,60 @@ export async function listPeople(): Promise<BoardState> {
     return {
       people: [],
       profiles: [],
+      regions: [],
       stages,
       configured: false,
       error: "Supabase credentials are missing.",
     };
   }
 
+  let regions: BoardRegion[];
+
+  try {
+    regions = await listRegions();
+  } catch (regionError) {
+    return {
+      people: [],
+      profiles: [],
+      regions: [],
+      stages,
+      configured: true,
+      error:
+        regionError instanceof Error
+          ? regionError.message
+          : "Regions could not be loaded.",
+    };
+  }
+
+  // A stale cookie (deleted region) falls back to the onboarding gate.
+  const activeRegion =
+    (!allRegions &&
+      regionId &&
+      regions.find((region) => region.id === regionId)) ||
+    null;
+  const activeRegionId = activeRegion?.id ?? null;
+
+  if (!allRegions && !activeRegionId) {
+    // No region chosen yet — the welcome gate only needs the region list.
+    return { people: [], profiles: [], regions, stages, configured: true };
+  }
+
   await promoteLegacyBaptizedPeople(stages);
 
-  const { data, error } = await supabase
+  // The hub region (Poland) oversees every location: its board loads all
+  // people and all workers, while other regions stay strictly their own.
+  const scopedRegionId = activeRegion?.is_hub ? null : activeRegionId;
+
+  let peopleQuery = supabase
     .from("people")
     .select("*")
-    .is("archived_at", null)
+    .is("archived_at", null);
+
+  if (scopedRegionId) {
+    peopleQuery = peopleQuery.eq("region_id", scopedRegionId);
+  }
+
+  const { data, error } = await peopleQuery
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -720,6 +830,7 @@ export async function listPeople(): Promise<BoardState> {
     return {
       people: [],
       profiles: [],
+      regions,
       stages,
       configured: true,
       error: error.message,
@@ -733,7 +844,11 @@ export async function listPeople(): Promise<BoardState> {
   try {
     return {
       people: hydratedPeople,
-      profiles: await listProfilesWithStats(hydratedPeople),
+      profiles: await listProfilesWithStats(
+        hydratedPeople,
+        scopedRegionId ?? undefined
+      ),
+      regions,
       stages,
       configured: true,
     };
@@ -741,6 +856,7 @@ export async function listPeople(): Promise<BoardState> {
     return {
       people: hydratedPeople,
       profiles: [],
+      regions,
       stages,
       configured: true,
       error:
@@ -751,8 +867,54 @@ export async function listPeople(): Promise<BoardState> {
   }
 }
 
-export async function createProfile(
+export async function createRegion(
   name: string
+): Promise<ActionResult<BoardRegion>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const cleanName = name.trim().replace(/\s+/g, " ").slice(0, 40);
+
+  if (!cleanName) {
+    return { ok: false, error: "Name your region first." };
+  }
+
+  const { data, error } = await supabase
+    .from("regions")
+    .insert({ name: cleanName })
+    .select("*")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      // Someone else already registered this region — joining it is what the
+      // person wanted anyway, so hand back the existing row.
+      const { data: existing } = await supabase
+        .from("regions")
+        .select("*")
+        .ilike("name", cleanName)
+        .maybeSingle();
+
+      if (existing) {
+        return { ok: true, data: existing };
+      }
+
+      return { ok: false, error: "That region already exists." };
+    }
+
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return { ok: true, data };
+}
+
+export async function createProfile(
+  name: string,
+  regionId?: string
 ): Promise<ActionResult<BoardProfile>> {
   const supabase = createSupabaseAdmin();
 
@@ -766,9 +928,15 @@ export async function createProfile(
     return { ok: false, error: "Name is required." };
   }
 
+  const cleanRegionId = regionId?.trim() ?? "";
+
+  if (cleanRegionId && !uuidPattern.test(cleanRegionId)) {
+    return { ok: false, error: "Choose a valid region." };
+  }
+
   const { data, error } = await supabase
     .from("profiles")
-    .insert({ name: cleanName })
+    .insert({ name: cleanName, region_id: cleanRegionId || null })
     .select("*")
     .single();
 
@@ -1179,6 +1347,13 @@ export async function createPerson(
   const sortOrder = await getNextSortOrder(targetStage);
   const baptizedAt =
     isBaptizedLane(targetStage) ? new Date().toISOString() : null;
+  // The contact lives in the region of whoever entered it — derived
+  // server-side from the actor's profile, never trusted from the client.
+  const { data: actorProfileRow } = await supabase
+    .from("profiles")
+    .select("region_id")
+    .eq("id", actor.actorProfileId)
+    .maybeSingle();
   const insert: PersonInsert = {
     name,
     stage: targetStage,
@@ -1187,6 +1362,7 @@ export async function createPerson(
     notes: cleanOptional(input.notes),
     assigned_profile_ids: normalizedProfiles.ids,
     created_by_profile_id: actor.actorProfileId,
+    region_id: actorProfileRow?.region_id ?? null,
     sort_order: sortOrder,
     baptized_at: baptizedAt,
     next_follow_up_at: cleanDate(input.nextFollowUpAt),
@@ -1693,6 +1869,90 @@ export async function addContactReaction(
 
   revalidatePath("/");
   return { ok: true, data };
+}
+
+/**
+ * "I have seen this person and I will come back to them."
+ *
+ * Deliberately NOT routed through `updatePerson`: that would mark the details
+ * changed and log a `details_updated` event, which counts as activity and would
+ * reset the quiet clock. Acknowledging is not contact, so this writes
+ * next_follow_up_at directly and leaves last_contacted_at alone. The day counter
+ * on the card must keep climbing.
+ */
+export async function acknowledgePerson(
+  input: AcknowledgePersonInput
+): Promise<ActionResult<AcknowledgeResult>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const actor = await validateActorProfile(input.actorProfileId);
+
+  if ("error" in actor) {
+    return { ok: false, error: actor.error };
+  }
+
+  // "" clears; undefined takes the default window; anything else is a chosen day.
+  const clearing = input.until === "";
+  let nextFollowUpAt: string | null = null;
+
+  if (!clearing) {
+    if (input.until) {
+      // Local start-of-day, matching cleanDateOnly's parsing, so a picked date
+      // becomes due the moment that day begins for the teacher.
+      const chosen = new Date(`${input.until}T00:00:00`);
+
+      if (Number.isNaN(chosen.getTime())) {
+        return { ok: false, error: "Choose a valid follow-up date." };
+      }
+
+      nextFollowUpAt = chosen.toISOString();
+    } else {
+      nextFollowUpAt = new Date(
+        Date.now() + ACKNOWLEDGE_DAYS * 86_400_000
+      ).toISOString();
+    }
+  }
+
+  // The journal entry goes first: if it fails, nothing has changed yet. Writing
+  // the date first would leave the person silently acknowledged with no trail.
+  let event: PersonEvent | null = null;
+
+  if (!clearing) {
+    const { data, error } = await supabase
+      .from("person_events")
+      .insert({
+        person_id: input.id,
+        event_type: "acknowledged",
+        title: "Acknowledged",
+        body: `Seen. Following up ${formatFollowUpDay(nextFollowUpAt)}.`,
+        actor_profile_id: actor.actorProfileId,
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    event = data;
+  }
+
+  const { error: personError } = await supabase
+    .from("people")
+    .update({ next_follow_up_at: nextFollowUpAt })
+    .eq("id", input.id)
+    .is("archived_at", null);
+
+  if (personError) {
+    return { ok: false, error: personError.message };
+  }
+
+  revalidatePath("/");
+  return { ok: true, data: { event, nextFollowUpAt } };
 }
 
 export async function addPersonStudy(

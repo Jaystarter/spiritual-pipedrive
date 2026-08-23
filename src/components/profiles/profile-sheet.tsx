@@ -58,6 +58,13 @@ type ProfileSheetProps = {
   required?: boolean;
   profiles: BoardProfile[];
   activeProfileId: string;
+  /** Region whose board is on screen — stamped onto newly created profiles. */
+  regionId: string | null;
+  /**
+   * On the hub board every location's workers mix, so rows name each
+   * worker's region. Null everywhere else.
+   */
+  regionNameById: Record<string, string> | null;
   onClose: () => void;
   onProfilesChange: (profiles: BoardProfile[]) => void;
   onSelectProfile: (profileId: string) => void;
@@ -72,6 +79,8 @@ export function ProfileSheet({
   required,
   profiles,
   activeProfileId,
+  regionId,
+  regionNameById,
   onClose,
   onProfilesChange,
   onSelectProfile,
@@ -107,7 +116,10 @@ export function ProfileSheet({
     }
 
     startTransition(async () => {
-      const result = await createProfile(name);
+      // New teachers belong to the region whose board is on screen — passed
+      // down from the board root rather than re-read from the cookie, so a
+      // region switch in another tab can't stamp the wrong region.
+      const result = await createProfile(name, regionId ?? undefined);
 
       if (!result.ok || !result.data) {
         setError(result.ok ? "The profile could not be created." : result.error);
@@ -319,6 +331,9 @@ export function ProfileSheet({
                     <span className="t-meta-sm mt-0.5 block text-ink-4">
                       {profile.active_contacts} contact
                       {profile.active_contacts === 1 ? "" : "s"}
+                      {regionNameById?.[profile.region_id ?? ""]
+                        ? ` · ${regionNameById[profile.region_id ?? ""]}`
+                        : ""}
                       {profile.baptized_this_month > 0
                         ? ` · ${profile.baptized_this_month} baptized this month`
                         : ""}

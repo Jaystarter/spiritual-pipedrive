@@ -23,6 +23,7 @@ export type Database = {
           life_status: "student" | "worker" | null;
           assigned_profile_ids: string[];
           created_by_profile_id: string | null;
+          region_id: string | null;
           sort_order: number;
           baptized_at: string | null;
           last_contacted_at: string | null;
@@ -42,6 +43,7 @@ export type Database = {
           life_status?: "student" | "worker" | null;
           assigned_profile_ids?: string[];
           created_by_profile_id?: string | null;
+          region_id?: string | null;
           sort_order?: number;
           baptized_at?: string | null;
           last_contacted_at?: string | null;
@@ -61,6 +63,7 @@ export type Database = {
           life_status?: "student" | "worker" | null;
           assigned_profile_ids?: string[];
           created_by_profile_id?: string | null;
+          region_id?: string | null;
           sort_order?: number;
           baptized_at?: string | null;
           last_contacted_at?: string | null;
@@ -84,7 +87,8 @@ export type Database = {
             | "study_logged"
             | "text_reaction"
             | "call_reaction"
-            | "archived";
+            | "archived"
+            | "acknowledged";
           title: string;
           body: string | null;
           from_stage: StageId | null;
@@ -105,7 +109,8 @@ export type Database = {
             | "study_logged"
             | "text_reaction"
             | "call_reaction"
-            | "archived";
+            | "archived"
+            | "acknowledged";
           title: string;
           body?: string | null;
           from_stage?: StageId | null;
@@ -126,7 +131,8 @@ export type Database = {
             | "study_logged"
             | "text_reaction"
             | "call_reaction"
-            | "archived";
+            | "archived"
+            | "acknowledged";
           title?: string;
           body?: string | null;
           from_stage?: StageId | null;
@@ -204,6 +210,7 @@ export type Database = {
           avatar_offset_x: number;
           avatar_offset_y: number;
           avatar_scale: number;
+          region_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -213,6 +220,7 @@ export type Database = {
           avatar_offset_x?: number;
           avatar_offset_y?: number;
           avatar_scale?: number;
+          region_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -222,6 +230,36 @@ export type Database = {
           avatar_offset_x?: number;
           avatar_offset_y?: number;
           avatar_scale?: number;
+          region_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "profiles_region_id_fkey";
+            columns: ["region_id"];
+            isOneToOne: false;
+            referencedRelation: "regions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      regions: {
+        Row: {
+          id: string;
+          name: string;
+          is_hub: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          is_hub?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          is_hub?: boolean;
           created_at?: string;
         };
         Relationships: [];

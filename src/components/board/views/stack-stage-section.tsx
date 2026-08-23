@@ -152,6 +152,7 @@ export function StackStageSection({
                     person={person}
                     stage={stage}
                     sortableDisabled
+                    swipeable
                   />
                 ))}
               </div>

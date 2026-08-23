@@ -42,6 +42,7 @@ export function QuickAddDialog({
   const { visibleStages, activeProfile, configured } = useBoardData();
   const actions = useBoardActions();
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [stage, setStage] = useState<StageId>(visibleStages[0]?.id ?? "hunting");
   const [assignedProfileIds, setAssignedProfileIds] = useState<string[]>(() =>
@@ -57,6 +58,7 @@ export function QuickAddDialog({
 
     const frame = window.requestAnimationFrame(() => {
       setName("");
+      setPhone("");
       setNotes("");
       setStage(visibleStages[0]?.id ?? "hunting");
       setAssignedProfileIds(activeProfile ? [activeProfile.id] : []);
@@ -79,6 +81,7 @@ export function QuickAddDialog({
     startTransition(async () => {
       const result = await createPerson({
         name,
+        phone,
         notes,
         stage,
         assignedProfileIds,
@@ -97,6 +100,7 @@ export function QuickAddDialog({
         actions.onCreated(result.data);
         actions.onSelect(null);
         setName("");
+        setPhone("");
         setNotes("");
         window.requestAnimationFrame(() => nameInputRef.current?.focus());
         return;
@@ -136,6 +140,17 @@ export function QuickAddDialog({
             onChange={(event) => setName(event.target.value)}
             placeholder="Full name…"
             value={name}
+          />
+
+          <Input
+            aria-label="Phone number"
+            autoComplete="off"
+            className="t-body-sm h-11 border-line bg-surface px-3.5"
+            inputMode="tel"
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="Phone number (optional)"
+            type="tel"
+            value={phone}
           />
 
           <Select value={stage} onValueChange={(value) => setStage(value)}>

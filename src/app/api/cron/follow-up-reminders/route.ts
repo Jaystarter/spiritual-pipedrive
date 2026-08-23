@@ -102,7 +102,9 @@ export async function GET(request: Request) {
 
   // Reuse the board's data loader so the cron sees exactly the same active
   // contacts (archived filtering, legacy stage promotion, hydrated studies/events).
-  const board = await listPeople();
+  // The digest covers every region — reminders go to whoever entered the
+  // contact, wherever they serve.
+  const board = await listPeople(null, { allRegions: true });
 
   if (!board.configured) {
     return Response.json(

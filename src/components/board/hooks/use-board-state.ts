@@ -30,6 +30,11 @@ import {
   onActiveProfileChange,
   setActiveProfileId,
 } from "@/lib/profiles-client";
+import {
+  getActiveRegionId,
+  getActiveRegionServerSnapshot,
+  onActiveRegionChange,
+} from "@/lib/region-client";
 import { getVisibleStages, normalizeStages, type StageId } from "@/lib/stages";
 
 import type { BoardProps } from "../types";
@@ -54,6 +59,7 @@ import { sortStudies } from "../lib/studies";
 export function useBoardState({
   initialPeople,
   initialProfiles,
+  initialRegions,
   initialStages,
   configured,
   error,
@@ -74,6 +80,11 @@ export function useBoardState({
     onActiveProfileChange,
     getActiveProfileId,
     getActiveProfileServerSnapshot
+  );
+  const activeRegionId = useSyncExternalStore(
+    onActiveRegionChange,
+    getActiveRegionId,
+    getActiveRegionServerSnapshot
   );
   const boardView = useSyncExternalStore(
     onBoardViewChange,
@@ -105,12 +116,16 @@ export function useBoardState({
 
   const activeProfile =
     profiles.find((profile) => profile.id === activeProfileId) ?? null;
+  const activeRegion =
+    initialRegions.find((region) => region.id === activeRegionId) ?? null;
   const visibleStages = useMemo(() => getVisibleStages(stages), [stages]);
   const visibleStageIds = useMemo(
     () => new Set(visibleStages.map((stage) => stage.id)),
     [visibleStages]
   );
-  const requireProfile = configured && !activeProfile;
+  // "Who are you" is step two of onboarding — it only fires once a region is
+  // chosen, so the region gate owns the screen until then.
+  const requireProfile = configured && Boolean(activeRegion) && !activeProfile;
   const selectedPerson = selectedId
     ? people.find((person) => person.id === selectedId) ?? null
     : null;
@@ -328,6 +343,28 @@ export function useBoardState({
     });
   }
 
+  /**
+   * Acknowledgement patches only the follow-up window. `last_contacted_at` is
+   * left untouched on purpose so the day counter keeps telling the truth.
+   */
+  function handleAcknowledged(
+    personId: string,
+    event: PersonEvent | null,
+    nextFollowUpAt: string | null
+  ) {
+    setPeople((current) =>
+      current.map((person) =>
+        person.id === personId
+          ? {
+              ...person,
+              next_follow_up_at: nextFollowUpAt,
+              events: event ? [event, ...person.events] : person.events,
+            }
+          : person
+      )
+    );
+  }
+
   function handleReactionLogged(personId: string, event: PersonEvent) {
     setPeople((current) =>
       current.map((person) =>
@@ -356,6 +393,8 @@ export function useBoardState({
     visibleStageIds,
     activeProfile,
     activeProfileId,
+    regions: initialRegions,
+    activeRegion,
     boardView,
     isPending,
     notice,
@@ -384,6 +423,7 @@ export function useBoardState({
     handleStudyRenamed,
     handleStudyDeleted,
     handleReactionLogged,
+    handleAcknowledged,
   };
 }
 

@@ -6,8 +6,12 @@ import { closestCorners, DndContext, DragOverlay } from "@dnd-kit/core";
 import { ProfileSheet } from "@/components/profiles/profile-sheet";
 import { LoginReminder } from "@/components/notifications/login-reminder";
 import { AttentionDrawer } from "@/components/notifications/attention-drawer";
+import { FirstContactTour } from "@/components/onboarding/first-contact-tour";
+import { RegionGate } from "@/components/onboarding/region-gate";
+import { WorkerGate } from "@/components/onboarding/worker-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { setBoardView } from "@/lib/board-view-client";
+import { clearActiveRegionId } from "@/lib/region-client";
 
 import type { BoardProps } from "./types";
 import { useBoardState } from "./hooks/use-board-state";
@@ -42,6 +46,8 @@ export function BibleStudyBoard(props: BoardProps) {
     visibleStageIds,
     activeProfile,
     activeProfileId,
+    regions,
+    activeRegion,
     boardView,
     isPending,
     notice,
@@ -68,6 +74,7 @@ export function BibleStudyBoard(props: BoardProps) {
     handleStudyRenamed,
     handleStudyDeleted,
     handleReactionLogged,
+    handleAcknowledged,
   } = useBoardState(props);
   const {
     sensors,
@@ -84,6 +91,38 @@ export function BibleStudyBoard(props: BoardProps) {
     return <main className="relative min-h-screen overflow-hidden bg-canvas text-ink" />;
   }
 
+  // Onboarding step one: no region chosen yet, so the welcome gate owns the
+  // screen. Once a region is picked the page reloads with scoped data and
+  // step two follows in the same centered voice.
+  if (configured && !activeRegion) {
+    return <RegionGate regions={regions} />;
+  }
+
+  const hubRegionNameById =
+    activeRegion?.is_hub
+      ? Object.fromEntries(
+          regions
+            .filter((region) => region.id !== activeRegion.id)
+            .map((region) => [region.id, region.name])
+        )
+      : null;
+
+  // Onboarding step two, centered like step one: pick yourself or add your
+  // name. The ProfileSheet is no longer forced open — it reads as a blocked
+  // screen, not a welcome — and now only opens from "Manage profiles".
+  if (requireProfile) {
+    return (
+      <WorkerGate
+        regionName={activeRegion?.name ?? ""}
+        regionId={activeRegion?.id ?? null}
+        profiles={profiles}
+        regionNameById={hubRegionNameById}
+        onSelect={handleSelectProfile}
+        onProfilesChange={setProfiles}
+      />
+    );
+  }
+
   return (
     <BoardProvider
       data={{
@@ -92,6 +131,8 @@ export function BibleStudyBoard(props: BoardProps) {
         profiles,
         activeProfile,
         activeProfileId,
+        regions,
+        activeRegion,
         stages,
         visibleStages,
         visibleStageIds,
@@ -110,6 +151,7 @@ export function BibleStudyBoard(props: BoardProps) {
         onStudyRenamed: handleStudyRenamed,
         onStudyDeleted: handleStudyDeleted,
         onReactionLogged: handleReactionLogged,
+        onAcknowledged: handleAcknowledged,
         onProfilesChange: setProfiles,
         requireActiveProfile,
         openQuickAdd: () => setQuickAddOpen(true),
@@ -128,6 +170,8 @@ export function BibleStudyBoard(props: BoardProps) {
           }
           boardView={boardView}
           profileFilter={profileFilter}
+          activeRegionName={activeRegion?.name ?? null}
+          onSwitchRegion={clearActiveRegionId}
           onProfileFilterChange={setProfileFilter}
           onBoardViewChange={setBoardView}
           onSelectProfile={handleSelectProfile}
@@ -198,10 +242,11 @@ export function BibleStudyBoard(props: BoardProps) {
         ) : null}
         <QuickAddDialog open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
         <ProfileSheet
-          open={profileSheetOpen || requireProfile}
-          required={requireProfile}
+          open={profileSheetOpen}
           profiles={profiles}
           activeProfileId={activeProfileId}
+          regionId={activeRegion?.id ?? null}
+          regionNameById={hubRegionNameById}
           onClose={() => setProfileSheetOpen(false)}
           onProfilesChange={setProfiles}
           onSelectProfile={handleSelectProfile}
@@ -230,6 +275,7 @@ export function BibleStudyBoard(props: BoardProps) {
           onSaved={setStages}
         />
         <CelebrationLayer />
+        <FirstContactTour />
         <Toaster />
       </main>
     </BoardProvider>

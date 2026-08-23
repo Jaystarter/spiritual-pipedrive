@@ -20,16 +20,29 @@ import { getLatestCompletedStudy } from "../lib/studies";
 import { AvatarStack } from "../primitives/avatar-stack";
 import { PersonFramedAvatar } from "../primitives/framed-avatar";
 import { StageRibbon } from "../primitives/stage-ribbon";
+import { SwipeToAcknowledge } from "../primitives/swipe-to-acknowledge";
 import { UrgencyMeter } from "../primitives/urgency-meter";
 
 /** The registrar line: one composed mono string, never competing chips. */
-export function RegistrarLine({ person, stage }: { person: BoardPerson; stage: Stage }) {
+export function RegistrarLine({
+  person,
+  stage,
+  regionLabel,
+}: {
+  person: BoardPerson;
+  stage: Stage;
+  /** Origin region, shown only on the hub board where locations mix. */
+  regionLabel?: string | null;
+}) {
+  const regionSuffix = regionLabel ? ` · ${regionLabel}` : "";
+
   if (stage.id === "archive") {
     const reason = getArchiveReason(person.events);
 
     return (
       <span className="t-body-sm truncate italic text-ink-3">
         {reason ?? "Set aside"}
+        {regionSuffix}
       </span>
     );
   }
@@ -38,6 +51,7 @@ export function RegistrarLine({ person, stage }: { person: BoardPerson; stage: S
     return (
       <span className="t-meta-sm truncate text-tone-green-ink">
         Baptized {person.baptized_at ? formatDate(person.baptized_at) : ""}
+        {regionSuffix}
       </span>
     );
   }
@@ -45,7 +59,11 @@ export function RegistrarLine({ person, stage }: { person: BoardPerson; stage: S
   const latestStudy = getLatestCompletedStudy(person.studies);
 
   if (!latestStudy) {
-    return <span className="t-meta-sm truncate text-signal-wane">No study yet</span>;
+    return (
+      <span className="t-meta-sm truncate text-signal-wane">
+        No study yet{regionSuffix}
+      </span>
+    );
   }
 
   return (
@@ -54,6 +72,7 @@ export function RegistrarLine({ person, stage }: { person: BoardPerson; stage: S
       title={`Study ${String(latestStudy.study_number).padStart(2, "0")}`}
     >
       {formatDate(latestStudy.studied_at ?? latestStudy.created_at)}
+      {regionSuffix}
     </span>
   );
 }
@@ -84,6 +103,11 @@ type PersonCardProps = {
   person: BoardPerson;
   stage: Stage;
   sortableDisabled?: boolean;
+  /**
+   * Enables swipe-to-acknowledge. Only the stack view passes this: its rows
+   * have dnd disabled, so a horizontal drag has nothing to race.
+   */
+  swipeable?: boolean;
 };
 
 /**
@@ -96,12 +120,25 @@ export const PersonCard = memo(function PersonCard({
   person,
   stage,
   sortableDisabled = false,
+  swipeable = false,
 }: PersonCardProps) {
-  const { profiles, configured, isPending, celebratePersonId } = useBoardData();
+  const {
+    profiles,
+    regions,
+    activeRegion,
+    configured,
+    isPending,
+    celebratePersonId,
+  } = useBoardData();
   const actions = useBoardActions();
   const tone = getToneStyle(stage.tone);
   const assignedProfiles = getAssignedProfiles(person, profiles);
   const journeyDone = stage.id === "brothers" || stage.id === "archive";
+  // On the hub board every location's people mix, so name where each is from.
+  const originRegion =
+    activeRegion?.is_hub && person.region_id && person.region_id !== activeRegion.id
+      ? regions.find((region) => region.id === person.region_id) ?? null
+      : null;
 
   const {
     attributes,
@@ -115,7 +152,7 @@ export const PersonCard = memo(function PersonCard({
     disabled: sortableDisabled || !configured || isPending,
   });
 
-  return (
+  const card = (
     <div
       ref={setNodeRef}
       style={{
@@ -143,7 +180,11 @@ export const PersonCard = memo(function PersonCard({
           <span className="t-display-sm truncate text-ink">{person.name}</span>
           <LifeStatusGlyph status={person.life_status} />
         </span>
-        <RegistrarLine person={person} stage={stage} />
+        <RegistrarLine
+          person={person}
+          stage={stage}
+          regionLabel={originRegion?.name}
+        />
       </div>
 
       <div className="flex shrink-0 flex-col items-end gap-1.5">
@@ -170,4 +211,10 @@ export const PersonCard = memo(function PersonCard({
       </AnimatePresence>
     </div>
   );
+
+  if (!swipeable) {
+    return card;
+  }
+
+  return <SwipeToAcknowledge person={person}>{card}</SwipeToAcknowledge>;
 });
