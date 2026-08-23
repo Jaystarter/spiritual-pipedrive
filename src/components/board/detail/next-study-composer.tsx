@@ -162,20 +162,43 @@ export function NextStudyComposer({
         ) : null}
       </div>
 
-      {/* The hero IS the picker: tap the title to choose another study. */}
+      {/* The picker wears its purpose: an unmistakable select control, not a
+          preset headline — the suggested next study is a default, not a
+          decision already made. */}
       <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
         <PopoverTrigger asChild>
           <button
             aria-label="Choose which study to log"
-            className="group/hero block w-full text-center"
+            className={cn(
+              "group/hero card-lit w-full rounded-(--sd-r-md) border bg-surface px-4 py-3 text-left",
+              "border-[color-mix(in_oklch,var(--sd-accent)_35%,var(--sd-line))] transition-colors",
+              "hover:border-[color-mix(in_oklch,var(--sd-accent)_60%,var(--sd-line))]"
+            )}
             type="button"
           >
-            <h3 className="t-display-md flex items-center justify-center gap-2 text-ink transition-colors group-hover/hero:text-ink-2">
-              <span className="min-w-0 underline-offset-4 group-hover/hero:underline decoration-[color-mix(in_oklch,var(--tone)_45%,transparent)]">
+            <span className="t-meta-sm flex items-center justify-between gap-2">
+              <span className="text-ink-4">
+                {nextNumber > TOTAL_STUDIES
+                  ? `FI ${nextNumber - TOTAL_STUDIES}`
+                  : `Study ${String(nextNumber).padStart(2, "0")}`}
+              </span>
+              <span className="text-brand">Tap to change</span>
+            </span>
+            <span className="mt-1 flex items-center justify-between gap-3">
+              <span className="t-display-md line-clamp-2 min-w-0 flex-1 text-ink">
                 {title}
               </span>
-              <ChevronDown className="size-4 shrink-0 text-ink-4 transition-colors group-hover/hero:text-ink-2" />
-            </h3>
+              <span
+                className={cn(
+                  "flex size-7 shrink-0 items-center justify-center rounded-full",
+                  "border border-[color-mix(in_oklch,var(--sd-accent)_50%,transparent)]",
+                  "bg-[color-mix(in_oklch,var(--sd-accent)_10%,transparent)] text-gilt",
+                  "transition-transform group-hover/hero:translate-y-0.5"
+                )}
+              >
+                <ChevronDown className="size-4" />
+              </span>
+            </span>
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-80 p-0" sideOffset={6}>
