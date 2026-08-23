@@ -103,10 +103,10 @@
 }
 
 :root {
-  /* --- Armor White: white armor, crimson lines -------------------------- */
+  /* --- Armor White: white armor, azure lines ---------------------------- */
   /* White suit light mode: a luminous haze canvas, pure white beveled
      panels seamed with silver lavender wire, near black ink, and
-     glossy crimson as the acting hand. Depth stays sculpted: crisp
+     glossy azure as the acting hand. Depth stays sculpted: crisp
      borders, tight soft shadows, a bright top bevel. */
   --sd-canvas: oklch(0.975 0.004 280);
   --sd-canvas-deep: oklch(0.94 0.006 280);
@@ -120,10 +120,10 @@
   --sd-ink-3: oklch(0.56 0.02 280);
   --sd-ink-4: oklch(0.71 0.015 280);
 
-  /* Glossy crimson: the suit's red, lit at the top edge. */
-  --sd-accent: oklch(0.52 0.22 18);
-  --sd-accent-hi: oklch(0.58 0.21 20);
-  --sd-accent-lo: oklch(0.44 0.21 14);
+  /* Glossy azure: the suit's deep blue, lit at the top edge. */
+  --sd-accent: oklch(0.5 0.19 259);
+  --sd-accent-hi: oklch(0.57 0.17 255);
+  --sd-accent-lo: oklch(0.43 0.19 263);
   --sd-accent-ink: oklch(1 0 0);
   /* The armor panel seams: slim silver lavender. */
   --sd-line: oklch(0.87 0.012 280);
@@ -143,8 +143,8 @@
   --tone-green-core: oklch(0.66 0.15 150);
   --tone-green-ink: oklch(0.46 0.13 150);
 
-  /* Urgency signals; urgent leans vermilion so it reads apart from the
-     crimson hand. */
+  /* Urgency signals; warm reds read unmistakably apart from the blue
+     hand. */
   --sd-signal-calm: var(--sd-ink-3);
   --sd-signal-wane: oklch(0.6 0.14 55);
   --sd-signal-urgent: oklch(0.55 0.19 35);
@@ -197,7 +197,7 @@
   /* Faint geometric web strands etched into the plate. */
   --sky-web: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640'%3e%3cg stroke='%236B7280' stroke-opacity='0.05' fill='none'%3e%3cpath d='M0 80 Q160 96 320 64 T640 96'/%3e%3cpath d='M0 168 Q160 184 320 152 T640 184'/%3e%3cpath d='M88 0 Q104 160 72 320 T104 640'/%3e%3cpath d='M472 0 Q488 160 456 320 T488 640'/%3e%3cpath d='M0 472 Q160 488 320 456 T640 488'/%3e%3c/g%3e%3c/svg%3e");
   --sky-stars-sm: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3e%3cg fill='white'%3e%3ccircle cx='24' cy='36' r='1'/%3e%3ccircle cx='92' cy='14' r='1.3' opacity='0.8'/%3e%3ccircle cx='160' cy='58' r='0.9' opacity='0.7'/%3e%3ccircle cx='231' cy='30' r='1.1'/%3e%3ccircle cx='58' cy='118' r='1' opacity='0.75'/%3e%3ccircle cx='143' cy='141' r='1.4'/%3e%3ccircle cx='210' cy='112' r='0.8' opacity='0.65'/%3e%3ccircle cx='262' cy='168' r='1.1' opacity='0.85'/%3e%3ccircle cx='33' cy='197' r='1.2'/%3e%3ccircle cx='112' cy='222' r='0.9' opacity='0.7'/%3e%3ccircle cx='187' cy='202' r='1'/%3e%3ccircle cx='247' cy='249' r='1.3' opacity='0.8'/%3e%3ccircle cx='75' cy='266' r='1' opacity='0.75'/%3e%3c/g%3e%3c/svg%3e");
-  --sky-stars-lg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='460' height='460'%3e%3cg%3e%3ccircle cx='60' cy='80' r='1.6' fill='%23ffe9a8'/%3e%3ccircle cx='215' cy='45' r='1.2' fill='white' opacity='0.9'/%3e%3ccircle cx='356' cy='120' r='1.8' fill='%23ffe9a8' opacity='0.9'/%3e%3ccircle cx='130' cy='230' r='1.3' fill='white' opacity='0.8'/%3e%3ccircle cx='300' cy='280' r='1.5' fill='%23ffe9a8'/%3e%3ccircle cx='420' cy='360' r='1.2' fill='white' opacity='0.85'/%3e%3ccircle cx='80' cy='390' r='1.7' fill='white'/%3e%3ccircle cx='240' cy='420' r='1.2' fill='%23ffe9a8' opacity='0.8'/%3e%3c/g%3e%3c/svg%3e");
+  --sky-stars-lg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='460' height='460'%3e%3cg%3e%3ccircle cx='60' cy='80' r='1.6' fill='%23cfe2ff'/%3e%3ccircle cx='215' cy='45' r='1.2' fill='white' opacity='0.9'/%3e%3ccircle cx='356' cy='120' r='1.8' fill='%23cfe2ff' opacity='0.9'/%3e%3ccircle cx='130' cy='230' r='1.3' fill='white' opacity='0.8'/%3e%3ccircle cx='300' cy='280' r='1.5' fill='%23cfe2ff'/%3e%3ccircle cx='420' cy='360' r='1.2' fill='white' opacity='0.85'/%3e%3ccircle cx='80' cy='390' r='1.7' fill='white'/%3e%3ccircle cx='240' cy='420' r='1.2' fill='%23cfe2ff' opacity='0.8'/%3e%3c/g%3e%3c/svg%3e");
   --sky-constellations: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='720' height='720'%3e%3cg stroke='white' stroke-opacity='0.14' stroke-width='0.7' fill='none'%3e%3cpath d='M80 120 L150 90 L210 150'/%3e%3cpath d='M420 260 L500 230 L560 300 L500 340'/%3e%3cpath d='M180 520 L260 480 L300 560'/%3e%3c/g%3e%3cg fill='white' fill-opacity='0.5'%3e%3ccircle cx='80' cy='120' r='1.2'/%3e%3ccircle cx='150' cy='90' r='1.4'/%3e%3ccircle cx='210' cy='150' r='1.1'/%3e%3ccircle cx='420' cy='260' r='1.2'/%3e%3ccircle cx='500' cy='230' r='1.5'/%3e%3ccircle cx='560' cy='300' r='1.1'/%3e%3ccircle cx='500' cy='340' r='1.2'/%3e%3ccircle cx='180' cy='520' r='1.3'/%3e%3ccircle cx='260' cy='480' r='1.5'/%3e%3ccircle cx='300' cy='560' r='1.1'/%3e%3c/g%3e%3c/svg%3e");
 
   /* shadcn tokens mapped onto the ledger (theme-aware via --sd vars) */
@@ -228,12 +228,11 @@
 }
 
 [data-theme="dark"] {
-  /* --- Vespers: gold and obsidian -------------------------------------- */
-  /* Liquid gold armor on pitch black: a #000 canvas under charcoal
-     smoke (#121215), ultra dark translucent panels (#16161A) in
-     metallic gray wire (#333338), crisp white ink with warm gold
-     secondary (#C29438) and silver body (#9E9EAF), and a liquid gold
-     hand (#E5A93C) lit specular from #F5C060 down to #C29438. */
+  /* --- Vespers: sapphire and obsidian ----------------------------------- */
+  /* Liquid sapphire armor on pitch black: a #000 canvas under charcoal
+     smoke, ultra dark translucent panels in metallic gray wire, crisp
+     white ink with cool blue secondary and silver body, and a liquid
+     blue hand lit specular at the top. */
   color-scheme: dark;
 
   --sd-canvas: oklch(0 0 0);
@@ -244,60 +243,60 @@
   --sd-surface-sunken: oklch(0.12 0.005 286);
   --sd-veil: oklch(0 0 0 / 0.7);
 
-  /* Gold rides the sparks. */
-  --sd-spark: oklch(0.837 0.128 80);
+  /* Blue light rides the sparks. */
+  --sd-spark: oklch(0.82 0.1 245);
 
   /* Velvet tooth: a whisper of grain over the indigo gradient. */
   --sky-grain-soft: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3e%3cfilter id='n'%3e%3cfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3e%3cfeColorMatrix type='saturate' values='0'/%3e%3c/filter%3e%3crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.1'/%3e%3c/svg%3e");
 
   --sd-ink: oklch(1 0 0);
-  /* Secondary voice in warm muted gold, body copy in silver. */
-  --sd-ink-2: oklch(0.694 0.12 81);
+  /* Secondary voice in cool muted blue, body copy in silver. */
+  --sd-ink-2: oklch(0.72 0.09 250);
   --sd-ink-3: oklch(0.705 0.025 286);
   --sd-ink-4: oklch(0.553 0.02 286);
 
-  /* The acting hand: liquid gold, lit specular at the top. */
-  --sd-accent: oklch(0.773 0.139 78);
-  --sd-accent-hi: oklch(0.837 0.128 80);
-  --sd-accent-lo: oklch(0.694 0.12 81);
-  --sd-accent-ink: oklch(0.16 0.02 80);
+  /* The acting hand: liquid sapphire, lit specular at the top. */
+  --sd-accent: oklch(0.75 0.11 250);
+  --sd-accent-hi: oklch(0.82 0.1 245);
+  --sd-accent-lo: oklch(0.66 0.12 255);
+  --sd-accent-ink: oklch(0.14 0.03 255);
   /* Sleek metallic gray wire (#333338) */
   --sd-line: oklch(0.323 0.009 286);
   --sd-line-strong: oklch(0.42 0.012 286);
 
-  /* In the gold armor, the six hues retire: the journey runs a smoke to
-     liquid gold ramp instead. Identity is ordinal here (lane order and
-     names carry it), so the further along, the more gold the metal. */
+  /* In the sapphire armor, the six hues retire: the journey runs a smoke
+     to liquid blue ramp instead. Identity is ordinal here (lane order and
+     names carry it), so the further along, the bluer the metal. */
   --tone-amber-core: oklch(0.7 0.02 286);
   --tone-amber-ink: oklch(0.78 0.02 286);
-  --tone-sky-core: oklch(0.74 0.05 85);
-  --tone-sky-ink: oklch(0.8 0.05 85);
-  --tone-indigo-core: oklch(0.75 0.08 82);
-  --tone-indigo-ink: oklch(0.81 0.08 82);
-  --tone-violet-core: oklch(0.77 0.11 80);
-  --tone-violet-ink: oklch(0.83 0.11 80);
-  --tone-emerald-core: oklch(0.79 0.13 78);
-  --tone-emerald-ink: oklch(0.85 0.12 78);
-  --tone-green-core: oklch(0.84 0.13 80);
-  --tone-green-ink: oklch(0.88 0.12 80);
+  --tone-sky-core: oklch(0.74 0.05 252);
+  --tone-sky-ink: oklch(0.8 0.05 252);
+  --tone-indigo-core: oklch(0.75 0.08 250);
+  --tone-indigo-ink: oklch(0.81 0.08 250);
+  --tone-violet-core: oklch(0.77 0.11 248);
+  --tone-violet-ink: oklch(0.83 0.11 248);
+  --tone-emerald-core: oklch(0.79 0.13 246);
+  --tone-emerald-ink: oklch(0.85 0.12 246);
+  --tone-green-core: oklch(0.84 0.13 245);
+  --tone-green-ink: oklch(0.88 0.12 245);
 
-  /* Urgency leans red so it never reads as the gold hand. */
+  /* Urgency leans red so it never reads as the blue hand. */
   --sd-signal-wane: oklch(0.72 0.15 45);
   --sd-signal-urgent: oklch(0.68 0.19 25);
 
-  /* Depth is golden reflection, not heavy black drop: a whisper of
-     contact shadow for grounding, then a tight gold ambient bloom;
-     edge-gilt keeps the lit gold rim over a dark seat. */
+  /* Depth is blue reflection, not heavy black drop: a whisper of
+     contact shadow for grounding, then a tight blue ambient bloom;
+     edge-gilt keeps the lit rim over a dark seat. */
   --sd-shadow-1: 0 1px 2px oklch(0 0 0 / 0.5),
-    0 0 16px -2px oklch(0.77 0.14 78 / 0.07);
+    0 0 16px -2px oklch(0.75 0.11 250 / 0.07);
   --sd-shadow-2: 0 1px 3px oklch(0 0 0 / 0.55),
-    0 0 24px -4px oklch(0.77 0.14 78 / 0.1),
+    0 0 24px -4px oklch(0.75 0.11 250 / 0.1),
     0 12px 32px -8px oklch(0 0 0 / 0.6);
   --sd-shadow-3: 0 2px 6px oklch(0 0 0 / 0.55),
-    0 0 48px -8px oklch(0.77 0.14 78 / 0.14),
+    0 0 48px -8px oklch(0.75 0.11 250 / 0.14),
     0 24px 64px -12px oklch(0 0 0 / 0.7);
   --sd-shadow-well: inset 0 1px 3px oklch(0 0 0 / 0.55),
-    inset 0 -1px 0 oklch(0.837 0.128 80 / 0.08);
+    inset 0 -1px 0 oklch(0.82 0.1 245 / 0.08);
   --sd-edge-gilt: inset 0 1px 0
       color-mix(in oklch, var(--sd-accent) 45%, transparent),
     inset 0 -1px 0 oklch(0 0 0 / 0.5);
@@ -319,9 +318,9 @@
   --sd-ink-3: oklch(0.78 0.05 264);
   --sd-ink-4: oklch(0.65 0.07 264);
 
-  --sd-accent: oklch(0.87 0.165 95);
-  --sd-accent-hi: oklch(0.905 0.16 100);
-  --sd-accent-lo: oklch(0.815 0.17 88);
+  --sd-accent: oklch(0.88 0.08 230);
+  --sd-accent-hi: oklch(0.92 0.06 225);
+  --sd-accent-lo: oklch(0.83 0.09 235);
   --sd-accent-ink: oklch(0.22 0.1 266);
   --sd-line: oklch(1 0 0 / 0.14);
   --sd-line-strong: oklch(1 0 0 / 0.24);
@@ -571,7 +570,7 @@
       transparent 70%
     ),
     radial-gradient(60% 22% at 20% 40%, oklch(0.55 0.008 280 / 0.22), transparent 70%),
-    radial-gradient(50% 18% at 78% 64%, oklch(0.55 0.06 80 / 0.16), transparent 70%),
+    radial-gradient(50% 18% at 78% 64%, oklch(0.55 0.06 250 / 0.16), transparent 70%),
     radial-gradient(70% 26% at 45% 88%, oklch(0.55 0.008 280 / 0.14), transparent 70%),
     radial-gradient(
       120% 90% at 50% 48%,
@@ -598,7 +597,7 @@
   /* The gold ember breathing low. */
   background-image: radial-gradient(
     closest-side at 76% 74%,
-    oklch(0.68 0.12 80 / 0.18),
+    oklch(0.68 0.12 250 / 0.18),
     transparent 70%
   );
 }
@@ -609,7 +608,7 @@
 [data-theme="dark"] .t-display-lg:not(.text-gilt),
 [data-theme="dark"] .t-display-md:not(.text-gilt) {
   text-shadow:
-    1px 0 0 oklch(0.75 0.12 80 / 0.3),
+    1px 0 0 oklch(0.75 0.12 250 / 0.3),
     -1px 0 0 oklch(0.8 0.012 280 / 0.25);
 }
 
@@ -692,7 +691,7 @@
   background-image:
     radial-gradient(
       120% 90% at 85% -10%,
-      oklch(0.55 0.08 80 / 0.13),
+      oklch(0.55 0.08 250 / 0.13),
       transparent 60%
     ),
     radial-gradient(
@@ -730,7 +729,7 @@
   border-image: linear-gradient(
       90deg,
       oklch(0.323 0.009 286),
-      oklch(0.65 0.1 80 / 0.55) 50%,
+      oklch(0.65 0.1 250 / 0.55) 50%,
       oklch(0.323 0.009 286)
     )
     1;
@@ -842,9 +841,9 @@
   --orb-ink: oklch(0.45 0.02 290 / 0.14);
 }
 [data-theme="dark"] .sky-bg {
-  --const-star: oklch(0.95 0.02 90 / 0.9);
-  --const-line: oklch(0.7 0.06 82 / 0.3);
-  --const-glow: oklch(0.8 0.12 82 / 0.45);
+  --const-star: oklch(0.95 0.02 250 / 0.9);
+  --const-line: oklch(0.7 0.06 250 / 0.3);
+  --const-glow: oklch(0.8 0.1 248 / 0.45);
   --orb-ink: oklch(0.9 0.01 280 / 0.4);
 }
 [data-theme="star"] .sky-bg {
