@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
-import { ArrowRight, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Plus } from "lucide-react";
 
 import { createProfile, type BoardProfile } from "@/app/actions";
 import { ProfileFramedAvatar } from "@/components/board/primitives/framed-avatar";
@@ -16,6 +16,8 @@ type WorkerGateProps = {
   regionNameById: Record<string, string> | null;
   onSelect: (profileId: string) => void;
   onProfilesChange: (profiles: BoardProfile[]) => void;
+  /** Back to the region gate — for anyone who picked the wrong location. */
+  onBack: () => void;
 };
 
 /**
@@ -31,6 +33,7 @@ export function WorkerGate({
   regionNameById,
   onSelect,
   onProfilesChange,
+  onBack,
 }: WorkerGateProps) {
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -156,6 +159,15 @@ export function WorkerGate({
             {error}
           </p>
         ) : null}
+
+        <button
+          type="button"
+          onClick={onBack}
+          className="t-label mt-8 flex items-center gap-1.5 text-ink-3 transition-colors hover:text-ink"
+        >
+          <ArrowLeft className="size-3.5" />
+          Not {regionName}? Choose a different region
+        </button>
       </div>
     </main>
   );

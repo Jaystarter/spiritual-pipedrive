@@ -11,7 +11,7 @@ import { RegionGate } from "@/components/onboarding/region-gate";
 import { WorkerGate } from "@/components/onboarding/worker-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { setBoardView } from "@/lib/board-view-client";
-import { clearActiveRegionId } from "@/lib/region-client";
+import { clearActiveRegionId, setActiveRegionId } from "@/lib/region-client";
 
 import type { BoardProps } from "./types";
 import { useBoardState } from "./hooks/use-board-state";
@@ -119,6 +119,7 @@ export function BibleStudyBoard(props: BoardProps) {
         regionNameById={hubRegionNameById}
         onSelect={handleSelectProfile}
         onProfilesChange={setProfiles}
+        onBack={clearActiveRegionId}
       />
     );
   }
@@ -170,8 +171,14 @@ export function BibleStudyBoard(props: BoardProps) {
           }
           boardView={boardView}
           profileFilter={profileFilter}
-          activeRegionName={activeRegion?.name ?? null}
-          onSwitchRegion={clearActiveRegionId}
+          regions={regions}
+          activeRegion={activeRegion}
+          onSelectRegion={(regionId) => {
+            // A different board means differently scoped data: set the
+            // cookie and reload so state re-initializes from the server.
+            setActiveRegionId(regionId);
+            window.location.reload();
+          }}
           onProfileFilterChange={setProfileFilter}
           onBoardViewChange={setBoardView}
           onSelectProfile={handleSelectProfile}

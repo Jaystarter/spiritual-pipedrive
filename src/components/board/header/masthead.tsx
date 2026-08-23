@@ -18,7 +18,7 @@ import {
   UsersRound,
 } from "lucide-react";
 
-import type { BoardPerson, BoardProfile } from "@/app/actions";
+import type { BoardPerson, BoardProfile, BoardRegion } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -51,8 +51,9 @@ type MastheadProps = {
   notificationCount: number;
   boardView: BoardView;
   profileFilter: string;
-  activeRegionName: string | null;
-  onSwitchRegion: () => void;
+  regions: BoardRegion[];
+  activeRegion: BoardRegion | null;
+  onSelectRegion: (regionId: string) => void;
   onProfileFilterChange: (filter: string) => void;
   onBoardViewChange: (view: BoardView) => void;
   onSelectProfile: (profileId: string) => void;
@@ -78,8 +79,9 @@ export function Masthead({
   notificationCount,
   boardView,
   profileFilter,
-  activeRegionName,
-  onSwitchRegion,
+  regions,
+  activeRegion,
+  onSelectRegion,
   onProfileFilterChange,
   onBoardViewChange,
   onSelectProfile,
@@ -120,19 +122,68 @@ export function Masthead({
     <header className="sticky top-0 z-(--z-appbar) border-b bg-canvas/85 backdrop-blur-md [border-bottom-color:color-mix(in_oklch,var(--sd-accent)_18%,var(--sd-line))]">
       <div className="relative mx-auto flex h-14 w-full max-w-[1840px] items-center gap-3 px-4 sm:px-6">
         <div className="flex min-w-0 items-baseline gap-3">
-          <span className="wordmark leading-none max-sm:absolute max-sm:left-1/2 max-sm:-translate-x-1/2">
+          {/* On phones the seal stands alone — the full name is too wide to
+              center-float beside the region pill and the action cluster. */}
+          <span className="wordmark whitespace-nowrap leading-none">
             <span className="logo-seal">
               <span>Z</span>
             </span>
-            <span className="logo-word text-gilt">Zion Drive</span>
+            <span className="logo-word text-gilt max-sm:hidden">Zion Drive</span>
           </span>
           <span aria-hidden className="hidden h-4 w-px self-center bg-line-strong md:block" />
           <span className="t-meta hidden whitespace-nowrap text-ink-3 md:inline">
             {dateLine}
-            {activeRegionName ? (
-              <span className="text-ink-2"> · {activeRegionName}</span>
-            ) : null}
           </span>
+
+          {/* The region pill: where you're looking, and the way out. The
+              old text-only region label read as decoration, so people
+              couldn't find their way back to switch locations. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={`Region: ${activeRegion?.name ?? "none"}. Tap to switch.`}
+                className={cn(
+                  "flex h-8 shrink-0 items-center gap-1.5 self-center rounded-(--sd-r-pill) border px-2.5",
+                  "border-[color-mix(in_oklch,var(--sd-accent)_35%,var(--sd-line))] bg-surface",
+                  "t-label text-ink-2 transition-colors hover:border-[color-mix(in_oklch,var(--sd-accent)_60%,var(--sd-line))] hover:text-ink"
+                )}
+              >
+                <MapPin className="size-3.5 text-brand" />
+                <span className="max-w-28 truncate max-sm:hidden">
+                  {activeRegion?.name ?? "Choose region"}
+                </span>
+                <ChevronDown className="size-3 text-ink-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuLabel className="t-meta-sm text-ink-3">
+                Viewing region
+              </DropdownMenuLabel>
+              {regions.map((region) => (
+                <DropdownMenuItem
+                  key={region.id}
+                  className="gap-2.5"
+                  onSelect={() => {
+                    if (region.id !== activeRegion?.id) {
+                      onSelectRegion(region.id);
+                    }
+                  }}
+                >
+                  <MapPin className="size-4 text-ink-3" />
+                  <span className="t-body-sm min-w-0 flex-1 truncate">
+                    {region.name}
+                  </span>
+                  {region.is_hub ? (
+                    <span className="t-meta-sm text-ink-4">All boards</span>
+                  ) : null}
+                  {region.id === activeRegion?.id ? (
+                    <Check className="size-3.5 text-brand" />
+                  ) : null}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
@@ -220,17 +271,6 @@ export function Masthead({
               <DropdownMenuItem className="gap-2.5" onSelect={onOpenProfiles}>
                 <UsersRound className="size-4 text-ink-3" />
                 <span className="t-body-sm">Manage profiles…</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2.5" onSelect={onSwitchRegion}>
-                <MapPin className="size-4 text-ink-3" />
-                <span className="t-body-sm min-w-0 flex-1 truncate">
-                  Switch region…
-                </span>
-                {activeRegionName ? (
-                  <span className="t-meta-sm max-w-24 truncate text-ink-4">
-                    {activeRegionName}
-                  </span>
-                ) : null}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
