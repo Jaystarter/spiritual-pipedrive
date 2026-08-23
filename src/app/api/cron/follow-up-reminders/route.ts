@@ -164,7 +164,7 @@ export async function GET(request: Request) {
     }
 
     const payload = JSON.stringify({
-      title: "S-Drive · Follow-ups",
+      title: "Zion Drive · Follow-ups",
       body: buildDigestBody(contacts.map((contact) => contact.person.name)),
       url: "/",
       tag: "s-drive-follow-up",

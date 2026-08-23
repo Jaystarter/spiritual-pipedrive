@@ -122,9 +122,9 @@ export function Masthead({
         <div className="flex min-w-0 items-baseline gap-3">
           <span className="wordmark leading-none max-sm:absolute max-sm:left-1/2 max-sm:-translate-x-1/2">
             <span className="logo-seal">
-              <span>S</span>
+              <span>Z</span>
             </span>
-            <span className="logo-word text-gilt">Drive</span>
+            <span className="logo-word text-gilt">Zion Drive</span>
           </span>
           <span aria-hidden className="hidden h-4 w-px self-center bg-line-strong md:block" />
           <span className="t-meta hidden whitespace-nowrap text-ink-3 md:inline">

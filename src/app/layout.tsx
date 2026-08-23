@@ -28,7 +28,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "S-Drive — Bible Study CRM",
+  title: "Zion Drive — Bible Study CRM",
   description:
     "An illuminated ledger for the journey from first contact to baptism.",
 };

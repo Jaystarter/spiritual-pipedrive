@@ -103,7 +103,7 @@ function TourSteps({
           transition={{ duration: 0.3, ease: "easeOut" }}
           className="card-lit-2 w-full max-w-md rounded-(--sd-r-lg) border border-line bg-surface p-6"
         >
-          <p className="t-meta text-ink-4">Welcome to S-Drive</p>
+          <p className="t-meta text-ink-4">Welcome to Zion Drive</p>
           <h2 className="t-display-md mt-2 text-ink">
             This is the {regionName} board
           </h2>

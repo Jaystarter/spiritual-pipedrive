@@ -18,7 +18,7 @@ Database schema lives in `supabase/migrations/` (Supabase CLI project, `supabase
 
 ## What this app is
 
-"S-Drive" — a multi-region kanban CRM tracking people from first contact through baptism. Each preaching region has its own board. One route (`/`, `force-dynamic`) reads the active region from the `sd-region` cookie, loads that region's board via `listPeople(regionId)`, and renders `BibleStudyBoard`. The seeded locations are Virginia Beach, Brooklyn, Bronx, and Poland; Poland is the hub (`regions.is_hub`) — its board loads every region's people and workers, while the other locations see only their own.
+"Zion Drive" — a multi-region kanban CRM tracking people from first contact through baptism. Each preaching region has its own board. One route (`/`, `force-dynamic`) reads the active region from the `sd-region` cookie, loads that region's board via `listPeople(regionId)`, and renders `BibleStudyBoard`. The seeded locations are Virginia Beach, Brooklyn, Bronx, and Poland; Poland is the hub (`regions.is_hub`) — its board loads every region's people and workers, while the other locations see only their own.
 
 ## Architecture
 

@@ -1,4 +1,4 @@
-/* S-Drive follow-up reminders service worker.
+/* Zion Drive follow-up reminders service worker.
  * Handles Web Push delivery and notification clicks. Served from the site root
  * so its scope covers the whole app. */
 
@@ -24,7 +24,7 @@ self.addEventListener("push", (event) => {
     }
   }
 
-  const title = payload.title || "S-Drive";
+  const title = payload.title || "Zion Drive";
   const url = typeof payload.url === "string" && payload.url ? payload.url : "/";
   const options = {
     body: payload.body || "",
