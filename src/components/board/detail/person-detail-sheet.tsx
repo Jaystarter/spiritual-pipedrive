@@ -7,7 +7,15 @@ import {
   useTransition,
   type ChangeEvent,
 } from "react";
-import { Archive, Camera, NotebookPen, Pencil, Trash2 } from "lucide-react";
+import {
+  Archive,
+  Camera,
+  MessageCircle,
+  NotebookPen,
+  Pencil,
+  Phone,
+  Trash2,
+} from "lucide-react";
 
 import {
   acknowledgePerson,
@@ -76,6 +84,8 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
 
   const [isNameEditing, setIsNameEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(person?.name ?? "");
+  const [isPhoneEditing, setIsPhoneEditing] = useState(false);
+  const [phoneDraft, setPhoneDraft] = useState(person?.phone ?? "");
   const [lifeStatus, setLifeStatusState] = useState<BoardPerson["life_status"]>(
     person?.life_status ?? null
   );
@@ -93,6 +103,8 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const isCommittingNameRef = useRef(false);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+  const isCommittingPhoneRef = useRef(false);
 
   useEffect(() => {
     if (!isNameEditing) {
@@ -106,6 +118,19 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
 
     return () => window.cancelAnimationFrame(frame);
   }, [isNameEditing]);
+
+  useEffect(() => {
+    if (!isPhoneEditing) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      phoneInputRef.current?.focus();
+      phoneInputRef.current?.select();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isPhoneEditing]);
 
   if (!person) {
     return null;
@@ -212,6 +237,43 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
       actions.onUpdated(result.data);
       setNameDraft(result.data.name);
       setIsNameEditing(false);
+    });
+  }
+
+  function commitPhone() {
+    const actorProfileId = canEdit();
+
+    if (!actorProfileId || !person || isCommittingPhoneRef.current) {
+      return;
+    }
+
+    const nextPhone = phoneDraft.trim();
+
+    if (nextPhone === (person.phone ?? "")) {
+      setIsPhoneEditing(false);
+      return;
+    }
+
+    isCommittingPhoneRef.current = true;
+    startSaveTransition(async () => {
+      // An empty string clears the number server-side (cleanOptional → null).
+      const result = await updatePerson({
+        id: person.id,
+        phone: nextPhone,
+        actorProfileId,
+      });
+
+      isCommittingPhoneRef.current = false;
+
+      if (!result.ok || !result.data) {
+        actions.onNotice(result.ok ? "The number could not be saved." : result.error);
+        return;
+      }
+
+      actions.onNotice(undefined);
+      actions.onUpdated(result.data);
+      setPhoneDraft(result.data.phone ?? "");
+      setIsPhoneEditing(false);
     });
   }
 
@@ -499,6 +561,77 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
               {/* The registrar line: just the stage. */}
               <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                 <StageStepper person={person} stages={visibleStages} />
+              </div>
+
+              {/* The line to them: number in registrar mono, tap to call or text. */}
+              <div className="mt-1.5 flex min-w-0 items-center gap-2">
+                {isPhoneEditing ? (
+                  <Input
+                    ref={phoneInputRef}
+                    aria-label="Phone number"
+                    className="t-body-sm h-8 w-48 border-line bg-surface px-2"
+                    inputMode="tel"
+                    onBlur={commitPhone}
+                    onChange={(event) => setPhoneDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        commitPhone();
+                      }
+
+                      if (event.key === "Escape") {
+                        setPhoneDraft(person.phone ?? "");
+                        setIsPhoneEditing(false);
+                      }
+                    }}
+                    placeholder="Phone number…"
+                    type="tel"
+                    value={phoneDraft}
+                  />
+                ) : person.phone ? (
+                  <span className="group/phone flex min-w-0 items-center gap-2">
+                    <a
+                      className="t-meta flex min-w-0 items-center gap-1.5 text-ink-2 transition-colors hover:text-ink"
+                      href={`tel:${person.phone.replace(/[^+\d]/g, "")}`}
+                    >
+                      <Phone className="size-3 shrink-0" />
+                      <span className="truncate">{person.phone}</span>
+                    </a>
+                    <a
+                      aria-label={`Text ${person.name}`}
+                      className="text-ink-4 transition-colors hover:text-ink-2"
+                      href={`sms:${person.phone.replace(/[^+\d]/g, "")}`}
+                    >
+                      <MessageCircle className="size-3.5" />
+                    </a>
+                    <button
+                      aria-label="Edit phone number"
+                      className="text-ink-4 opacity-0 transition-opacity focus-visible:opacity-100 group-hover/phone:opacity-100"
+                      onClick={() => {
+                        if (canEdit()) {
+                          setPhoneDraft(person.phone ?? "");
+                          setIsPhoneEditing(true);
+                        }
+                      }}
+                      type="button"
+                    >
+                      <Pencil className="size-3" />
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    className="t-meta-sm flex items-center gap-1.5 text-ink-4 transition-colors hover:text-ink-2"
+                    onClick={() => {
+                      if (canEdit()) {
+                        setPhoneDraft("");
+                        setIsPhoneEditing(true);
+                      }
+                    }}
+                    type="button"
+                  >
+                    <Phone className="size-3" />
+                    Add phone…
+                  </button>
+                )}
               </div>
             </div>
 
