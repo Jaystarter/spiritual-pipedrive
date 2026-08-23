@@ -165,7 +165,10 @@ export function NextStudyComposer({
       {/* The picker wears its purpose: an unmistakable select control, not a
           preset headline — the suggested next study is a default, not a
           decision already made. */}
-      <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+      {/* modal: the sheet's scroll lock only whitelists its own subtree, and
+          this popover portals to body — without its own lock layer, wheel and
+          touch scrolling inside the catalog list gets swallowed. */}
+      <Popover modal open={pickerOpen} onOpenChange={setPickerOpen}>
         <PopoverTrigger asChild>
           <button
             aria-label="Choose which study to log"
