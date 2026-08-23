@@ -26,6 +26,10 @@ contact. Existing production data lands in Poland.
 - [x] Live walkthrough on the local Supabase stack (db reset with the new chain): four locations on the gate; Brooklyn first-contact tutorial end-to-end (welcome → guided quick-add → auto-advance when Tanya landed); Poland hub shows Brooklyn's contact with origin label plus its own exclusive; Brooklyn cannot see Poland's contact and re-forces the worker picker; legacy-backfill SQL verified to land pre-region rows in Poland
 - [x] Codex second-opinion review; fixed the two findings that held up (archive cards were missing the origin label; the hub worker register now names each worker's region so same-named workers from different locations are distinguishable). Rejected as not applicable: "edited migration already shipped" (it never shipped anywhere), "Original Board rows stranded" (no database ever ran that version). Accepted-but-deferred: open hub access and extensible locations are the app's existing no-auth trust model (Jayden to decide on locking region creation); the global 300-event hydration cap predates regions (same volume as the old single board) and is a scale item
 
+## Follow-on requests
+- [x] Phone number field: optional tel input in quick-add; tap-to-call/text line with inline edit in the person sheet header; persists to the existing people.phone column (verified in the local DB)
+- [x] Onboarding step two recentered: the forced side ProfileSheet (blurred board behind it) replaced by a centered WorkerGate matching the region gate's voice; ProfileSheet now opens only from "Manage profiles"
+
 ## Ship (needs Jayden)
 - [ ] Push branch, open draft PR (needs the Asana ticket link per PR rules)
 - [ ] Production deploy order: run migrations against the production Supabase first (`supabase db push`), then merge/deploy — the code needs the `regions` table to exist

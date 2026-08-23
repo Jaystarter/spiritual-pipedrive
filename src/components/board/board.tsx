@@ -8,6 +8,7 @@ import { LoginReminder } from "@/components/notifications/login-reminder";
 import { AttentionDrawer } from "@/components/notifications/attention-drawer";
 import { FirstContactTour } from "@/components/onboarding/first-contact-tour";
 import { RegionGate } from "@/components/onboarding/region-gate";
+import { WorkerGate } from "@/components/onboarding/worker-gate";
 import { Toaster } from "@/components/ui/sonner";
 import { setBoardView } from "@/lib/board-view-client";
 import { clearActiveRegionId } from "@/lib/region-client";
@@ -91,10 +92,35 @@ export function BibleStudyBoard(props: BoardProps) {
   }
 
   // Onboarding step one: no region chosen yet, so the welcome gate owns the
-  // screen. Once a region is picked the page reloads with scoped data and the
-  // required profile picker becomes step two.
+  // screen. Once a region is picked the page reloads with scoped data and
+  // step two follows in the same centered voice.
   if (configured && !activeRegion) {
     return <RegionGate regions={regions} />;
+  }
+
+  const hubRegionNameById =
+    activeRegion?.is_hub
+      ? Object.fromEntries(
+          regions
+            .filter((region) => region.id !== activeRegion.id)
+            .map((region) => [region.id, region.name])
+        )
+      : null;
+
+  // Onboarding step two, centered like step one: pick yourself or add your
+  // name. The ProfileSheet is no longer forced open — it reads as a blocked
+  // screen, not a welcome — and now only opens from "Manage profiles".
+  if (requireProfile) {
+    return (
+      <WorkerGate
+        regionName={activeRegion?.name ?? ""}
+        regionId={activeRegion?.id ?? null}
+        profiles={profiles}
+        regionNameById={hubRegionNameById}
+        onSelect={handleSelectProfile}
+        onProfilesChange={setProfiles}
+      />
+    );
   }
 
   return (
@@ -216,20 +242,11 @@ export function BibleStudyBoard(props: BoardProps) {
         ) : null}
         <QuickAddDialog open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
         <ProfileSheet
-          open={profileSheetOpen || requireProfile}
-          required={requireProfile}
+          open={profileSheetOpen}
           profiles={profiles}
           activeProfileId={activeProfileId}
           regionId={activeRegion?.id ?? null}
-          regionNameById={
-            activeRegion?.is_hub
-              ? Object.fromEntries(
-                  regions
-                    .filter((region) => region.id !== activeRegion.id)
-                    .map((region) => [region.id, region.name])
-                )
-              : null
-          }
+          regionNameById={hubRegionNameById}
           onClose={() => setProfileSheetOpen(false)}
           onProfilesChange={setProfiles}
           onSelectProfile={handleSelectProfile}
