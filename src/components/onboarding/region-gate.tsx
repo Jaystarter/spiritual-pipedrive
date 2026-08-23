@@ -61,9 +61,9 @@ export function RegionGate({ regions }: RegionGateProps) {
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 py-16">
         <span className="wordmark">
           <span className="logo-seal">
-            <span>S</span>
+            <span>Z</span>
           </span>
-          <span className="logo-word text-gilt">Drive</span>
+          <span className="logo-word text-gilt">Zion Drive</span>
         </span>
 
         <p className="t-meta mt-8 text-ink-4">First, your region</p>

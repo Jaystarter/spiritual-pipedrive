@@ -126,7 +126,7 @@ export function PushReminderToggle({
 
   const hint =
     status === "unsupported"
-      ? "This browser can't show push reminders. On iPhone, add S-Drive to your Home Screen first."
+      ? "This browser can't show push reminders. On iPhone, add Zion Drive to your Home Screen first."
       : status === "denied"
         ? "Notifications are blocked. Re-enable them in your browser settings."
         : needsProfile
