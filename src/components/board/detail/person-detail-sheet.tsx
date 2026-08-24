@@ -60,10 +60,10 @@ import {
   getArchiveReason,
   getStageById,
 } from "../lib/derive";
-import { getDateValue, shiftDateValue } from "../lib/format";
+import { formatDate, getDateValue, shiftDateValue } from "../lib/format";
 import { toneVars } from "../lib/stage-theme";
 import { DateTrigger } from "../primitives/date-trigger";
-import { FramedAvatar } from "../primitives/framed-avatar";
+import { FramedAvatar, ProfileFramedAvatar } from "../primitives/framed-avatar";
 import { SectionHeading } from "../primitives/section-heading";
 import { StageRibbon } from "../primitives/stage-ribbon";
 import { StageStepper } from "../primitives/stage-stepper";
@@ -78,7 +78,8 @@ import { NextStudyComposer } from "./next-study-composer";
  * everything about one soul in one scroll.
  */
 export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
-  const { visibleStages, configured, activeProfile } = useBoardData();
+  const { visibleStages, configured, activeProfile, profiles, regions, activeRegion } =
+    useBoardData();
   const actions = useBoardActions();
   const autosave = useAutosaveDetails(person);
 
@@ -137,6 +138,14 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
   }
 
   const stage = getStageById(visibleStages, person.stage);
+  const registrar = person.created_by_profile_id
+    ? profiles.find((profile) => profile.id === person.created_by_profile_id) ?? null
+    : null;
+  // On the hub board every location's people mix, so name where they're from.
+  const originRegion =
+    activeRegion?.is_hub && person.region_id && person.region_id !== activeRegion.id
+      ? regions.find((region) => region.id === person.region_id) ?? null
+      : null;
   const archived = person.stage === "archive";
   const journeyDone = archived || person.stage === "brothers" || person.stage === "baptized";
   const today = getDateValue(new Date().toISOString());
@@ -631,6 +640,27 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                     <Phone className="size-3" />
                     Add phone…
                   </button>
+                )}
+              </div>
+
+              {/* Provenance: who wrote them into the book, and when. */}
+              <div className="mt-2 flex min-w-0 items-center gap-1.5">
+                {registrar ? (
+                  <>
+                    <ProfileFramedAvatar profile={registrar} size="xs" />
+                    <span className="t-meta min-w-0 text-ink-3">
+                      Entered by{" "}
+                      <span className="font-medium text-ink">{registrar.name}</span>
+                      {" · "}
+                      {formatDate(person.created_at)}
+                      {originRegion ? ` · ${originRegion.name}` : ""}
+                    </span>
+                  </>
+                ) : (
+                  <span className="t-meta min-w-0 text-ink-3">
+                    In the book since {formatDate(person.created_at)}
+                    {originRegion ? ` · ${originRegion.name}` : ""}
+                  </span>
                 )}
               </div>
             </div>
