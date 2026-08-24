@@ -86,9 +86,23 @@ export function BibleStudyBoard(props: BoardProps) {
   const [graphsOpen, setGraphsOpen] = useState(false);
   const [editStagesOpen, setEditStagesOpen] = useState(false);
   const [attentionOpen, setAttentionOpen] = useState(false);
+  // The name of the region being crossed to; set just before the reload so
+  // the frozen old page reads as a doorway, not a stall.
+  const [crossingRegionName, setCrossingRegionName] = useState<string | null>(null);
 
   if (!mounted) {
-    return <main className="relative min-h-screen overflow-hidden bg-canvas text-ink" />;
+    // The threshold while the ledger binds: same seal-and-line voice as the
+    // crossing overlay, so a region switch reads as one continuous passage.
+    return (
+      <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas text-ink">
+        <div className="board-splash flex flex-col items-center gap-4 text-[1.5rem]">
+          <span className="logo-seal">
+            <span>Z</span>
+          </span>
+          <p className="t-meta animate-pulse text-ink-3">Opening the board…</p>
+        </div>
+      </main>
+    );
   }
 
   // Onboarding step one: no region chosen yet, so the welcome gate owns the
@@ -176,6 +190,9 @@ export function BibleStudyBoard(props: BoardProps) {
           onSelectRegion={(regionId) => {
             // A different board means differently scoped data: set the
             // cookie and reload so state re-initializes from the server.
+            const target = regions.find((region) => region.id === regionId);
+
+            setCrossingRegionName(target?.name ?? null);
             setActiveRegionId(regionId);
             window.location.reload();
           }}
@@ -284,6 +301,18 @@ export function BibleStudyBoard(props: BoardProps) {
         <CelebrationLayer />
         <FirstContactTour />
         <Toaster />
+
+        {/* Covers the frozen old page from tap to reload during a region switch. */}
+        {crossingRegionName ? (
+          <div className="fixed inset-0 z-(--z-dnd-overlay) flex flex-col items-center justify-center gap-4 bg-canvas/85 text-[1.5rem] backdrop-blur-sm">
+            <span className="logo-seal">
+              <span>Z</span>
+            </span>
+            <p className="t-meta animate-pulse text-ink-2">
+              Crossing to {crossingRegionName}…
+            </p>
+          </div>
+        ) : null}
       </main>
     </BoardProvider>
   );

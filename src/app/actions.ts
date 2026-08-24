@@ -23,6 +23,7 @@ import { createSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/server
 import type { Database } from "@/lib/supabase/database.types";
 
 type PersonRow = Database["public"]["Tables"]["people"]["Row"];
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type PersonInsert = Database["public"]["Tables"]["people"]["Insert"];
 type PersonUpdate = Database["public"]["Tables"]["people"]["Update"];
 type EventInsert = Database["public"]["Tables"]["person_events"]["Insert"];
@@ -671,11 +672,11 @@ async function hydratePeople(people: PersonRow[]) {
   }));
 }
 
-async function listProfilesWithStats(people?: PersonRow[], regionId?: string) {
+async function fetchProfileRows(regionId?: string): Promise<ProfileRow[]> {
   const supabase = createSupabaseAdmin();
 
   if (!supabase) {
-    return [] as BoardProfile[];
+    return [];
   }
 
   let profilesQuery = supabase
@@ -693,6 +694,17 @@ async function listProfilesWithStats(people?: PersonRow[], regionId?: string) {
     throw new Error(error.message);
   }
 
+  return data ?? [];
+}
+
+async function listProfilesWithStats(people?: PersonRow[], regionId?: string) {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return [] as BoardProfile[];
+  }
+
+  const profileRows = await fetchProfileRows(regionId);
   const activePeople =
     people ??
     (
@@ -703,7 +715,14 @@ async function listProfilesWithStats(people?: PersonRow[], regionId?: string) {
     ).data ??
     [];
 
-  return (data ?? [])
+  return buildProfilesWithStats(profileRows, activePeople);
+}
+
+function buildProfilesWithStats(
+  profileRows: ProfileRow[],
+  activePeople: PersonRow[]
+): BoardProfile[] {
+  return profileRows
     .map((profile) => ({
       ...profile,
       active_contacts: activePeople.filter((person) =>
@@ -749,14 +768,13 @@ export async function listPeople(
   options?: { allRegions?: boolean }
 ): Promise<BoardState> {
   const allRegions = options?.allRegions === true;
-  const stages = await listStages();
 
   if (!isSupabaseConfigured()) {
     return {
       people: [],
       profiles: [],
       regions: [],
-      stages,
+      stages: DEFAULT_STAGES,
       configured: false,
       error:
         "Supabase is not configured yet. Add SUPABASE_URL and SUPABASE_SECRET_KEY in Vercel.",
@@ -770,29 +788,39 @@ export async function listPeople(
       people: [],
       profiles: [],
       regions: [],
-      stages,
+      stages: DEFAULT_STAGES,
       configured: false,
       error: "Supabase credentials are missing.",
     };
   }
 
-  let regions: BoardRegion[];
+  // The board frame — stages and regions — lands in one round-trip.
+  const [stages, regionsResult] = await Promise.all([
+    listStages(),
+    listRegions().then(
+      (regions) => ({ regions, error: null as string | null }),
+      (regionError) => ({
+        regions: [] as BoardRegion[],
+        error:
+          regionError instanceof Error
+            ? regionError.message
+            : "Regions could not be loaded.",
+      })
+    ),
+  ]);
 
-  try {
-    regions = await listRegions();
-  } catch (regionError) {
+  if (regionsResult.error !== null) {
     return {
       people: [],
       profiles: [],
       regions: [],
       stages,
       configured: true,
-      error:
-        regionError instanceof Error
-          ? regionError.message
-          : "Regions could not be loaded.",
+      error: regionsResult.error,
     };
   }
+
+  const regions = regionsResult.regions;
 
   // A stale cookie (deleted region) falls back to the onboarding gate.
   const activeRegion =
@@ -822,9 +850,23 @@ export async function listPeople(
     peopleQuery = peopleQuery.eq("region_id", scopedRegionId);
   }
 
-  const { data, error } = await peopleQuery
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true });
+  // People and profiles land in parallel; the profile stats only need the
+  // people rows, so they're computed in memory once both are here.
+  const [{ data, error }, profileRowsResult] = await Promise.all([
+    peopleQuery
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
+    fetchProfileRows(scopedRegionId ?? undefined).then(
+      (rows) => ({ rows, error: null as string | null }),
+      (profileError) => ({
+        rows: [] as ProfileRow[],
+        error:
+          profileError instanceof Error
+            ? profileError.message
+            : "Profiles could not be loaded.",
+      })
+    ),
+  ]);
 
   if (error) {
     return {
@@ -841,30 +883,17 @@ export async function listPeople(
     applyAutomaticStudyStage(person, stages)
   );
 
-  try {
-    return {
-      people: hydratedPeople,
-      profiles: await listProfilesWithStats(
-        hydratedPeople,
-        scopedRegionId ?? undefined
-      ),
-      regions,
-      stages,
-      configured: true,
-    };
-  } catch (profileError) {
-    return {
-      people: hydratedPeople,
-      profiles: [],
-      regions,
-      stages,
-      configured: true,
-      error:
-        profileError instanceof Error
-          ? profileError.message
-          : "Profiles could not be loaded.",
-    };
-  }
+  return {
+    people: hydratedPeople,
+    profiles:
+      profileRowsResult.error === null
+        ? buildProfilesWithStats(profileRowsResult.rows, hydratedPeople)
+        : [],
+    regions,
+    stages,
+    configured: true,
+    error: profileRowsResult.error ?? undefined,
+  };
 }
 
 export async function createRegion(
