@@ -40,12 +40,14 @@ import { getVisibleStages, normalizeStages, type StageId } from "@/lib/stages";
 import type { BoardProps } from "../types";
 import { celebrate } from "../lib/celebrate";
 import {
+  filterPeopleForGenderView,
   filterPeopleForProfile,
   getAssignmentNotificationItems,
   getFollowUpItems,
   matchesContactName,
   normalizeContactSearch,
   sortEventsByNewest,
+  type GenderView,
 } from "../lib/derive";
 import {
   buildMovePreview,
@@ -92,27 +94,17 @@ export function useBoardState({
     getBoardViewServerSnapshot
   );
   const [isPending, startTransition] = useTransition();
+  // Manual men/women/everyone picks, held per profile for this session only —
+  // every fresh load re-defaults to the worker's own gender.
+  const [genderViewOverrides, setGenderViewOverrides] = useState<
+    Record<string, GenderView>
+  >({});
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setMounted(true));
 
     return () => window.cancelAnimationFrame(frame);
   }, []);
-
-  const filteredPeople = useMemo(() => {
-    const query = normalizeContactSearch(search);
-    const profileFilteredPeople = filterPeopleForProfile(
-      people,
-      profileFilter,
-      activeProfileId
-    );
-
-    if (!query) {
-      return profileFilteredPeople;
-    }
-
-    return profileFilteredPeople.filter((person) => matchesContactName(person, query));
-  }, [activeProfileId, people, profileFilter, search]);
 
   const activeRegion =
     initialRegions.find((region) => region.id === activeRegionId) ?? null;
@@ -125,6 +117,34 @@ export function useBoardState({
         profile.id === activeProfileId &&
         (!activeRegion || profile.region_id === activeRegion.id)
     ) ?? null;
+
+  // The board opens on your own: brothers see the men, sisters the women.
+  // Workers who never declared a gender (or no profile) see everyone.
+  const genderView: GenderView =
+    genderViewOverrides[activeProfile?.id ?? ""] ??
+    activeProfile?.gender ??
+    "all";
+
+  function setGenderView(view: GenderView) {
+    setGenderViewOverrides((previous) => ({
+      ...previous,
+      [activeProfile?.id ?? ""]: view,
+    }));
+  }
+
+  const filteredPeople = useMemo(() => {
+    const query = normalizeContactSearch(search);
+    const profileFilteredPeople = filterPeopleForGenderView(
+      filterPeopleForProfile(people, profileFilter, activeProfileId),
+      genderView
+    );
+
+    if (!query) {
+      return profileFilteredPeople;
+    }
+
+    return profileFilteredPeople.filter((person) => matchesContactName(person, query));
+  }, [activeProfileId, genderView, people, profileFilter, search]);
   const visibleStages = useMemo(() => getVisibleStages(stages), [stages]);
   const visibleStageIds = useMemo(
     () => new Set(visibleStages.map((stage) => stage.id)),
@@ -410,6 +430,8 @@ export function useBoardState({
     setSearch,
     profileFilter,
     setProfileFilter,
+    genderView,
+    setGenderView,
     profileSheetOpen,
     setProfileSheetOpen,
     quickAddOpen,

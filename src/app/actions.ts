@@ -44,6 +44,7 @@ export type BoardPerson = PersonRow & {
   studies: PersonStudy[];
 };
 export type PersonLifeStatus = NonNullable<PersonRow["life_status"]>;
+export type PersonGender = NonNullable<PersonRow["gender"]>;
 
 export type BoardState = {
   people: BoardPerson[];
@@ -63,6 +64,7 @@ type PersonInput = {
   stage: StageId;
   phone?: string;
   notes?: string;
+  gender?: PersonGender | null;
   nextFollowUpAt?: string;
   assignedProfileIds: string[];
   actorProfileId: string;
@@ -253,6 +255,14 @@ function cleanAvatarUrl(value?: string | null) {
 
 function cleanLifeStatus(value: PersonLifeStatus | null) {
   if (value === null || value === "student" || value === "worker") {
+    return value;
+  }
+
+  return undefined;
+}
+
+function cleanGender(value: PersonGender | null) {
+  if (value === null || value === "male" || value === "female") {
     return value;
   }
 
@@ -943,7 +953,8 @@ export async function createRegion(
 
 export async function createProfile(
   name: string,
-  regionId?: string
+  regionId?: string,
+  gender?: PersonGender
 ): Promise<ActionResult<BoardProfile>> {
   const supabase = createSupabaseAdmin();
 
@@ -963,9 +974,15 @@ export async function createProfile(
     return { ok: false, error: "Choose a valid region." };
   }
 
+  const cleanedGender = cleanGender(gender ?? null) ?? null;
+
   const { data, error } = await supabase
     .from("profiles")
-    .insert({ name: cleanName, region_id: cleanRegionId || null })
+    .insert({
+      name: cleanName,
+      region_id: cleanRegionId || null,
+      gender: cleanedGender,
+    })
     .select("*")
     .single();
 
@@ -1026,6 +1043,46 @@ export async function renameProfile(
   return {
     ok: true,
     data: profile ?? { ...data, active_contacts: 0, baptized_this_month: 0 },
+  };
+}
+
+export async function updateProfileGender(
+  id: string,
+  gender: PersonGender | null
+): Promise<ActionResult<BoardProfile>> {
+  const supabase = createSupabaseAdmin();
+
+  if (!supabase) {
+    return { ok: false, error: "Supabase is not configured." };
+  }
+
+  const profileId = id.trim();
+
+  if (!uuidPattern.test(profileId)) {
+    return { ok: false, error: "Choose a valid profile." };
+  }
+
+  const cleanedGender = cleanGender(gender);
+
+  if (cleanedGender === undefined) {
+    return { ok: false, error: "Choose man, woman, or clear it." };
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ gender: cleanedGender })
+    .eq("id", profileId)
+    .select("*")
+    .single();
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/");
+  return {
+    ok: true,
+    data: { ...data, active_contacts: 0, baptized_this_month: 0 },
   };
 }
 
@@ -1389,6 +1446,7 @@ export async function createPerson(
     phone: cleanOptional(input.phone),
     teacher: assignedTeacherLabel(selectedProfiles.profiles),
     notes: cleanOptional(input.notes),
+    gender: cleanGender(input.gender ?? null) ?? null,
     assigned_profile_ids: normalizedProfiles.ids,
     created_by_profile_id: actor.actorProfileId,
     region_id: actorProfileRow?.region_id ?? null,
@@ -1517,6 +1575,17 @@ export async function updatePerson(
     }
 
     patch.life_status = lifeStatus;
+    detailsChanged = true;
+  }
+
+  if (input.gender !== undefined) {
+    const gender = cleanGender(input.gender);
+
+    if (gender === undefined) {
+      return { ok: false, error: "Choose man, woman, or clear it." };
+    }
+
+    patch.gender = gender;
     detailsChanged = true;
   }
 

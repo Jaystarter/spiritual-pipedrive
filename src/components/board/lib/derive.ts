@@ -107,6 +107,24 @@ export function filterPeopleForProfile(
     : people;
 }
 
+export type GenderView = "male" | "female" | "all";
+
+/**
+ * The men/women/everyone lens. Contacts whose gender was never recorded
+ * (every card from before the field existed) stay visible in every view —
+ * an unknown must never silently vanish from the board.
+ */
+export function filterPeopleForGenderView(
+  people: BoardPerson[],
+  view: GenderView
+) {
+  if (view === "all") {
+    return people;
+  }
+
+  return people.filter((person) => !person.gender || person.gender === view);
+}
+
 export function getStageLabel(stages: Stage[], stageId: StageId) {
   return stages.find((stage) => stage.id === stageId)?.label ?? "No stack";
 }

@@ -18,7 +18,9 @@ import {
   renameProfile,
   updateProfileAvatar,
   updateProfileAvatarFraming,
+  updateProfileGender,
   type BoardProfile,
+  type PersonGender,
 } from "@/app/actions";
 import {
   AlertDialog,
@@ -86,6 +88,7 @@ export function ProfileSheet({
   onSelectProfile,
 }: ProfileSheetProps) {
   const [newName, setNewName] = useState("");
+  const [newGender, setNewGender] = useState<PersonGender | null>(null);
   const [error, setError] = useState("");
   const [renamingId, setRenamingId] = useState("");
   const [renameDraft, setRenameDraft] = useState("");
@@ -115,11 +118,16 @@ export function ProfileSheet({
       return;
     }
 
+    if (!newGender) {
+      setError("Choose brother or sister — it sets their default view.");
+      return;
+    }
+
     startTransition(async () => {
       // New teachers belong to the region whose board is on screen — passed
       // down from the board root rather than re-read from the cookie, so a
       // region switch in another tab can't stamp the wrong region.
-      const result = await createProfile(name, regionId ?? undefined);
+      const result = await createProfile(name, regionId ?? undefined, newGender);
 
       if (!result.ok || !result.data) {
         setError(result.ok ? "The profile could not be created." : result.error);
@@ -128,7 +136,23 @@ export function ProfileSheet({
 
       setError("");
       setNewName("");
+      setNewGender(null);
       onProfilesChange([...profiles, result.data]);
+    });
+  }
+
+  function commitGender(profile: BoardProfile, gender: PersonGender) {
+    startTransition(async () => {
+      const result = await updateProfileGender(profile.id, gender);
+
+      if (!result.ok || !result.data) {
+        setError(result.ok ? "Could not update the profile." : result.error);
+        return;
+      }
+
+      setError("");
+      // Merge just the gender so the row keeps its computed contact stats.
+      replaceProfile({ ...profile, gender: result.data.gender });
     });
   }
 
@@ -373,6 +397,26 @@ export function ProfileSheet({
                         {profile.avatar_url ? "Replace photo" : "Add photo"}
                       </span>
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {(
+                      [
+                        { id: "male", label: "Brother" },
+                        { id: "female", label: "Sister" },
+                      ] as const
+                    ).map((option) => (
+                      <DropdownMenuItem
+                        key={option.id}
+                        className="gap-2"
+                        onSelect={() => commitGender(profile, option.id)}
+                      >
+                        <span className="flex size-3.5 items-center justify-center">
+                          {profile.gender === option.id ? (
+                            <Check className="size-3.5 text-brand" />
+                          ) : null}
+                        </span>
+                        <span className="t-body-sm">{option.label}</span>
+                      </DropdownMenuItem>
+                    ))}
                     {profile.avatar_url ? (
                       <>
                         <DropdownMenuItem
@@ -411,28 +455,61 @@ export function ProfileSheet({
 
         <footer className="border-t border-line px-5 py-4">
           <form
-            className="flex items-center gap-2"
+            className="flex flex-col gap-2"
             onSubmit={(event) => {
               event.preventDefault();
               addProfile();
             }}
           >
-            <Input
-              aria-label="New profile name"
-              className="t-body-sm h-9 border-line bg-surface"
-              maxLength={30}
-              onChange={(event) => setNewName(event.target.value)}
-              placeholder="Add a worker…"
-              value={newName}
-            />
-            <Button
-              className="btn-illuminated t-label h-9 gap-1.5 px-3"
-              disabled={isPending || !newName.trim()}
-              type="submit"
+            <div className="flex items-center gap-2">
+              <Input
+                aria-label="New profile name"
+                className="t-body-sm h-9 border-line bg-surface"
+                maxLength={30}
+                onChange={(event) => setNewName(event.target.value)}
+                placeholder="Add a worker…"
+                value={newName}
+              />
+              <Button
+                className="btn-illuminated t-label h-9 gap-1.5 px-3"
+                disabled={isPending || !newName.trim() || !newGender}
+                type="submit"
+              >
+                <Plus className="size-4" />
+                Add
+              </Button>
+            </div>
+            <div
+              className="flex gap-2"
+              role="group"
+              aria-label="Brother or sister?"
             >
-              <Plus className="size-4" />
-              Add
-            </Button>
+              {(
+                [
+                  { id: "male", label: "Brother" },
+                  { id: "female", label: "Sister" },
+                ] as const
+              ).map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  disabled={isPending}
+                  aria-pressed={newGender === option.id}
+                  onClick={() => {
+                    setNewGender(option.id);
+                    setError("");
+                  }}
+                  className={cn(
+                    "t-label h-8 flex-1 rounded-(--sd-r-sm) border transition-colors",
+                    newGender === option.id
+                      ? "border-brand bg-surface text-brand"
+                      : "border-line bg-surface text-ink-3 hover:border-line-strong hover:text-ink"
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </form>
         </footer>
 

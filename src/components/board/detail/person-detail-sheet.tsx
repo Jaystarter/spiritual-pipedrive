@@ -24,6 +24,7 @@ import {
   updatePerson,
   updatePersonAvatar,
   type BoardPerson,
+  type PersonGender,
 } from "@/app/actions";
 import {
   AlertDialog,
@@ -89,6 +90,9 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
   const [phoneDraft, setPhoneDraft] = useState(person?.phone ?? "");
   const [lifeStatus, setLifeStatusState] = useState<BoardPerson["life_status"]>(
     person?.life_status ?? null
+  );
+  const [gender, setGenderState] = useState<BoardPerson["gender"]>(
+    person?.gender ?? null
   );
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
@@ -306,6 +310,35 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
 
       if (!result.ok || !result.data) {
         setLifeStatusState(previous);
+        actions.onNotice(result.ok ? "The person could not be updated." : result.error);
+        return;
+      }
+
+      actions.onNotice(undefined);
+      actions.onUpdated(result.data);
+    });
+  }
+
+  function setGender(next: PersonGender | "") {
+    const actorProfileId = canEdit();
+
+    if (!actorProfileId || !person) {
+      return;
+    }
+
+    const target = next === "" ? null : next;
+    const previous = gender;
+
+    setGenderState(target);
+    startSaveTransition(async () => {
+      const result = await updatePerson({
+        id: person.id,
+        gender: target,
+        actorProfileId,
+      });
+
+      if (!result.ok || !result.data) {
+        setGenderState(previous);
         actions.onNotice(result.ok ? "The person could not be updated." : result.error);
         return;
       }
@@ -545,6 +578,21 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                           </ToggleGroupItem>
                           <ToggleGroupItem className="t-label gap-1.5" value="worker">
                             Worker
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                        <ToggleGroup
+                          onValueChange={(value) =>
+                            setGender(value as PersonGender | "")
+                          }
+                          type="single"
+                          value={gender ?? ""}
+                          variant="outline"
+                        >
+                          <ToggleGroupItem className="t-label gap-1.5" value="male">
+                            Man
+                          </ToggleGroupItem>
+                          <ToggleGroupItem className="t-label gap-1.5" value="female">
+                            Woman
                           </ToggleGroupItem>
                         </ToggleGroup>
                         <Textarea
