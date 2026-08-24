@@ -649,6 +649,22 @@
   color: var(--sd-accent);
   -webkit-text-fill-color: var(--sd-accent);
 }
+/* The threshold: shown while the ledger binds after a load. Held invisible
+   for a beat so fast loads go straight to the board without a flash. */
+.board-splash {
+  opacity: 0;
+  animation: board-splash-in var(--dur-base, 0.2s) ease-out 0.25s forwards;
+}
+@keyframes board-splash-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 /* The name: wide-tracked capitals, a band of light crossing them every
    few seconds. Layers over .text-gilt for the clip and the fallback. */
 .logo-word {
