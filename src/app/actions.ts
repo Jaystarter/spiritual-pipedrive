@@ -921,6 +921,24 @@ export async function createRegion(
     return { ok: false, error: "Name your region first." };
   }
 
+  // Founding is bootstrap-only: once any region exists, new ones are opened
+  // by an administrator — mirrors the gate, which hides the form.
+  const { data: existingRegions, error: existingError } = await supabase
+    .from("regions")
+    .select("id")
+    .limit(1);
+
+  if (existingError) {
+    return { ok: false, error: existingError.message };
+  }
+
+  if ((existingRegions ?? []).length > 0) {
+    return {
+      ok: false,
+      error: "New regions are opened by an administrator — ask Jayden.",
+    };
+  }
+
   const { data, error } = await supabase
     .from("regions")
     .insert({ name: cleanName })
