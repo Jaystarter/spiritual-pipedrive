@@ -193,6 +193,7 @@ export function BibleStudyBoard(props: BoardProps) {
             activeProfileFollowUpItems.length + assignmentNotificationItems.length
           }
           boardView={boardView}
+          genderView={genderView}
           profileFilter={profileFilter}
           regions={regions}
           activeRegion={activeRegion}
@@ -205,6 +206,7 @@ export function BibleStudyBoard(props: BoardProps) {
             setActiveRegionId(regionId);
             window.location.reload();
           }}
+          onGenderViewChange={setGenderView}
           onProfileFilterChange={setProfileFilter}
           onBoardViewChange={setBoardView}
           onSelectProfile={handleSelectProfile}
@@ -231,10 +233,6 @@ export function BibleStudyBoard(props: BoardProps) {
             people={people}
             activeProfile={activeProfile}
             attentionCount={activeProfileFollowUpItems.length}
-            genderView={genderView}
-            profileFilter={profileFilter}
-            onGenderViewChange={setGenderView}
-            onProfileFilterChange={setProfileFilter}
             onOpenGraphs={() => setGraphsOpen(true)}
             onOpenNotifications={() => setAttentionOpen(true)}
           />

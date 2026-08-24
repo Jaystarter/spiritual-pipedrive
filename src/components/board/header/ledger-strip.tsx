@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-import type { GenderView } from "../lib/derive";
 import {
   getStreak,
   getStudiesThisWeek,
@@ -26,63 +25,9 @@ type LedgerStripProps = {
   people: BoardPerson[];
   activeProfile: BoardProfile | null;
   attentionCount: number;
-  genderView: GenderView;
-  profileFilter: string;
-  onGenderViewChange: (view: GenderView) => void;
-  onProfileFilterChange: (filter: string) => void;
   onOpenGraphs: () => void;
   onOpenNotifications: () => void;
 };
-
-const GENDER_VIEWS: { id: GenderView; label: string }[] = [
-  { id: "male", label: "Male" },
-  { id: "female", label: "Female" },
-  { id: "all", label: "Everyone" },
-];
-
-/** Whose contacts: just yours, or the whole board's. */
-const OWNERSHIP_VIEWS: { id: string; label: string }[] = [
-  { id: "mine", label: "Mine" },
-  { id: "all", label: "All" },
-];
-
-/** One quiet segmented pill — the board's lens controls share this shape. */
-function LensPill<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: { id: T; label: string }[];
-  value: string;
-  onChange: (next: T) => void;
-}) {
-  return (
-    <div
-      aria-label={label}
-      className="flex h-8 items-center gap-0.5 self-center rounded-(--sd-r-pill) border border-line bg-surface p-0.5"
-      role="group"
-    >
-      {options.map((option) => (
-        <button
-          key={option.id}
-          aria-pressed={value === option.id}
-          className={cn(
-            "t-label rounded-(--sd-r-pill) px-2.5 py-1 transition-colors",
-            value === option.id
-              ? "bg-surface-sunken text-brand"
-              : "text-ink-3 hover:text-ink"
-          )}
-          onClick={() => onChange(option.id)}
-          type="button"
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 /** One vital sign: a figure breathing over a single quiet word. */
 function Vital({
@@ -272,10 +217,6 @@ export function LedgerStrip({
   people,
   activeProfile,
   attentionCount,
-  genderView,
-  profileFilter,
-  onGenderViewChange,
-  onProfileFilterChange,
   onOpenGraphs,
   onOpenNotifications,
 }: LedgerStripProps) {
@@ -323,22 +264,6 @@ export function LedgerStrip({
           <WeeklyGoalRing people={people} profileId={activeProfile.id} />
         </>
       ) : null}
-
-      {/* The lenses take the right edge; on phones they get their own line. */}
-      <div className="order-last flex w-full flex-wrap justify-center gap-2 sm:order-none sm:ml-auto sm:w-auto sm:justify-end">
-        <LensPill
-          label="Show only your contacts, or everyone's"
-          options={OWNERSHIP_VIEWS}
-          value={profileFilter}
-          onChange={onProfileFilterChange}
-        />
-        <LensPill
-          label="Show male, female, or everyone"
-          options={GENDER_VIEWS}
-          value={genderView}
-          onChange={onGenderViewChange}
-        />
-      </div>
 
       {/* On phones the Almanac lives in the bottom bar already. */}
       <Button

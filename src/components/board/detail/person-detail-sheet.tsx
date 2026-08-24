@@ -466,7 +466,7 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
       }}
     >
       <SheetContent
-        className="flex w-full flex-col gap-0 border-line bg-surface-raised p-0 sm:max-w-[540px]"
+        className="flex w-full flex-col gap-0 border-line bg-surface-raised p-0 data-[side=right]:w-full sm:max-w-[540px]"
         side="right"
       >
         <SheetTitle className="sr-only">{person.name}</SheetTitle>
@@ -476,15 +476,24 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
 
         {/* ------------------------------------------------ header */}
         <header
-          className="tone-wash-head border-b border-line px-5 pb-4 pt-5"
+          className="tone-wash-head relative border-b border-line px-5 pb-5 pt-7"
           style={toneVars(stage.tone)}
         >
-          <div className="flex items-start gap-3.5">
+          {!journeyDone ? (
+            <UrgencyMeter
+              className="absolute right-5 top-14 hidden sm:inline-flex"
+              person={person}
+            />
+          ) : null}
+
+          {/* Identity owns the first glance: portrait, full name, then stage. */}
+          <div className="grid grid-cols-[5rem_minmax(0,1fr)] items-center gap-4 sm:pr-12">
             <div className="group/avatar relative">
               <FramedAvatar
+                className="ring-2 ring-line-strong"
                 name={person.name}
                 avatarUrl={person.avatar_url}
-                size="lg"
+                size="xl"
               />
               <button
                 aria-label={`Update ${person.name}'s photo`}
@@ -510,7 +519,7 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
               {isNameEditing ? (
                 <Input
                   ref={nameInputRef}
-                  className="t-display-md h-10 border-line bg-surface"
+                  className="t-display-lg h-12 w-full border-line bg-surface"
                   onBlur={commitName}
                   onChange={(event) => setNameDraft(event.target.value)}
                   onKeyDown={(event) => {
@@ -526,107 +535,120 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                   value={nameDraft}
                 />
               ) : (
-                <div className="flex min-w-0 max-w-full items-center gap-1.5">
-                  <button
-                    className="group/name flex min-w-0 items-center gap-2 text-left"
-                    onClick={() => {
-                      if (canEdit()) {
-                        setNameDraft(person.name);
-                        setIsNameEditing(true);
-                      }
-                    }}
-                    type="button"
-                  >
-                    <span className="t-display-md truncate leading-none text-ink">
-                      {person.name}
-                    </span>
-                    <Pencil className="size-3.5 shrink-0 text-ink-4 opacity-0 transition-opacity group-hover/name:opacity-100" />
-                  </button>
-                  <Popover
-                    onOpenChange={(open) => {
-                      if (!open) {
-                        autosave.commitNotes();
-                      }
-                    }}
-                  >
-                    <PopoverTrigger asChild>
-                      <button
-                        aria-label={`Notes and people for ${person.name}`}
-                        className={cn(
-                          "flex size-7 shrink-0 items-center justify-center self-center rounded-(--sd-r-sm) transition-colors hover:bg-surface-sunken",
-                          autosave.notes.trim() ? "text-brand" : "text-ink-4 hover:text-ink-2"
-                        )}
-                        type="button"
-                      >
-                        <NotebookPen className="size-4" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-80 p-4" sideOffset={8}>
-                      <div className="flex flex-col gap-3">
-                        <ToggleGroup
-                          onValueChange={(value) =>
-                            setLifeStatus(
-                              value as NonNullable<BoardPerson["life_status"]> | ""
-                            )
-                          }
-                          type="single"
-                          value={lifeStatus ?? ""}
-                          variant="outline"
-                        >
-                          <ToggleGroupItem className="t-label gap-1.5" value="student">
-                            Student
-                          </ToggleGroupItem>
-                          <ToggleGroupItem className="t-label gap-1.5" value="worker">
-                            Worker
-                          </ToggleGroupItem>
-                        </ToggleGroup>
-                        <ToggleGroup
-                          onValueChange={(value) =>
-                            setGender(value as PersonGender | "")
-                          }
-                          type="single"
-                          value={gender ?? ""}
-                          variant="outline"
-                        >
-                          <ToggleGroupItem className="t-label gap-1.5" value="male">
-                            Male
-                          </ToggleGroupItem>
-                          <ToggleGroupItem className="t-label gap-1.5" value="female">
-                            Female
-                          </ToggleGroupItem>
-                        </ToggleGroup>
-                        <Textarea
-                          className="t-body min-h-28 border-line bg-surface"
-                          onBlur={autosave.commitNotes}
-                          onChange={(event) => autosave.updateNotes(event.target.value)}
-                          placeholder="Their story, their questions, what matters to them…"
-                          value={autosave.notes}
-                        />
-                        <p className="t-meta-sm text-ink-4">
-                          Saves when you leave the box.
-                        </p>
-                        <SectionHeading>People</SectionHeading>
-                        <AssignmentPicker
-                          assignedProfileIds={autosave.assignedProfileIds}
-                          onChange={autosave.updateAssignedProfiles}
-                        />
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                <button
+                  className="group/name flex min-w-0 max-w-full items-start gap-2 text-left"
+                  onClick={() => {
+                    if (canEdit()) {
+                      setNameDraft(person.name);
+                      setIsNameEditing(true);
+                    }
+                  }}
+                  type="button"
+                >
+                  <span className="t-display-lg break-words text-ink">
+                    {person.name}
+                  </span>
+                  <Pencil className="mt-1 size-3.5 shrink-0 text-ink-4 opacity-0 transition-opacity focus-visible:opacity-100 group-hover/name:opacity-100" />
+                </button>
               )}
-              {/* The registrar line: just the stage. */}
-              <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                <StageStepper person={person} stages={visibleStages} />
-              </div>
 
-              {/* The line to them: number in registrar mono, tap to call or text. */}
-              <div className="mt-1.5 flex min-w-0 items-center gap-2">
+              <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+                <StageStepper
+                  className="py-1.5"
+                  person={person}
+                  stages={visibleStages}
+                />
+                <Popover
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      autosave.commitNotes();
+                    }
+                  }}
+                >
+                  <PopoverTrigger asChild>
+                    <button
+                      aria-label={`Notes and people for ${person.name}`}
+                      className={cn(
+                        "flex size-8 shrink-0 items-center justify-center rounded-(--sd-r-sm) transition-colors hover:bg-surface-sunken",
+                        autosave.notes.trim()
+                          ? "text-brand"
+                          : "text-ink-4 hover:text-ink-2"
+                      )}
+                      type="button"
+                    >
+                      <NotebookPen className="size-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-80 p-4" sideOffset={8}>
+                    <div className="flex flex-col gap-3">
+                      <ToggleGroup
+                        onValueChange={(value) =>
+                          setLifeStatus(
+                            value as NonNullable<BoardPerson["life_status"]> | ""
+                          )
+                        }
+                        type="single"
+                        value={lifeStatus ?? ""}
+                        variant="outline"
+                      >
+                        <ToggleGroupItem className="t-label gap-1.5" value="student">
+                          Student
+                        </ToggleGroupItem>
+                        <ToggleGroupItem className="t-label gap-1.5" value="worker">
+                          Worker
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                      <ToggleGroup
+                        onValueChange={(value) =>
+                          setGender(value as PersonGender | "")
+                        }
+                        type="single"
+                        value={gender ?? ""}
+                        variant="outline"
+                      >
+                        <ToggleGroupItem className="t-label gap-1.5" value="male">
+                          Male
+                        </ToggleGroupItem>
+                        <ToggleGroupItem className="t-label gap-1.5" value="female">
+                          Female
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                      <Textarea
+                        className="t-body min-h-28 border-line bg-surface"
+                        onBlur={autosave.commitNotes}
+                        onChange={(event) => autosave.updateNotes(event.target.value)}
+                        placeholder="Their story, their questions, what matters to them…"
+                        value={autosave.notes}
+                      />
+                      <p className="t-meta-sm text-ink-4">
+                        Saves when you leave the box.
+                      </p>
+                      <SectionHeading>People</SectionHeading>
+                      <AssignmentPicker
+                        assignedProfileIds={autosave.assignedProfileIds}
+                        onChange={autosave.updateAssignedProfiles}
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {!journeyDone ? (
+                  <UrgencyMeter className="ml-auto sm:hidden" person={person} />
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {/* Contact and provenance now read as one structured record. */}
+          <div className="mt-5 overflow-hidden rounded-(--sd-r-lg) border border-line bg-surface">
+            <div className="grid min-h-16 grid-cols-[2rem_minmax(0,1fr)] items-center gap-3 px-4 py-3.5">
+              <Phone className="size-4 justify-self-center text-ink-4" />
+              <div className="min-w-0">
+                <p className="t-meta-sm mb-1.5 text-ink-4">Phone</p>
                 {isPhoneEditing ? (
                   <Input
                     ref={phoneInputRef}
                     aria-label="Phone number"
-                    className="t-body-sm h-8 w-48 border-line bg-surface px-2"
+                    className="t-body-sm h-8 w-full max-w-64 border-line bg-surface-raised px-2"
                     inputMode="tel"
                     onBlur={commitPhone}
                     onChange={(event) => setPhoneDraft(event.target.value)}
@@ -647,10 +669,9 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                 ) : person.phone ? (
                   <span className="group/phone flex min-w-0 items-center gap-2">
                     <a
-                      className="t-meta flex min-w-0 items-center gap-1.5 text-ink-2 transition-colors hover:text-ink"
+                      className="t-body flex min-w-0 items-center gap-1.5 font-medium text-ink transition-colors hover:text-brand"
                       href={`tel:${person.phone.replace(/[^+\d]/g, "")}`}
                     >
-                      <Phone className="size-3 shrink-0" />
                       <span className="truncate">{person.phone}</span>
                     </a>
                     <a
@@ -676,7 +697,7 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                   </span>
                 ) : (
                   <button
-                    className="t-meta-sm flex items-center gap-1.5 text-ink-4 transition-colors hover:text-ink-2"
+                    className="t-body-sm font-medium text-ink-2 transition-colors hover:text-brand"
                     onClick={() => {
                       if (canEdit()) {
                         setPhoneDraft("");
@@ -685,39 +706,36 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                     }}
                     type="button"
                   >
-                    <Phone className="size-3" />
-                    Add phone…
+                    Add phone number
                   </button>
-                )}
-              </div>
-
-              {/* Provenance: who wrote them into the book, and when. */}
-              <div className="mt-2 flex min-w-0 items-center gap-1.5">
-                {registrar ? (
-                  <>
-                    <ProfileFramedAvatar profile={registrar} size="xs" />
-                    <span className="t-meta min-w-0 text-ink-3">
-                      Entered by{" "}
-                      <span className="font-medium text-ink">{registrar.name}</span>
-                      {" · "}
-                      {formatDate(person.created_at)}
-                      {originRegion ? ` · ${originRegion.name}` : ""}
-                    </span>
-                  </>
-                ) : (
-                  <span className="t-meta min-w-0 text-ink-3">
-                    In the book since {formatDate(person.created_at)}
-                    {originRegion ? ` · ${originRegion.name}` : ""}
-                  </span>
                 )}
               </div>
             </div>
 
-            {!journeyDone ? <UrgencyMeter className="mt-1.5" person={person} /> : null}
+            <div className="grid min-h-16 grid-cols-[2rem_minmax(0,1fr)] items-center gap-3 border-t border-line px-4 py-3.5">
+              {registrar ? (
+                <ProfileFramedAvatar profile={registrar} size="sm" />
+              ) : (
+                <NotebookPen className="size-4 justify-self-center text-ink-4" />
+              )}
+              <div className="min-w-0">
+                <p className="t-meta-sm mb-1.5 text-ink-4">
+                  {registrar ? "Entered by" : "Added to the book"}
+                </p>
+                <p className="t-body-sm min-w-0 text-ink-2">
+                  {registrar ? (
+                    <span className="font-medium text-ink">{registrar.name}</span>
+                  ) : null}
+                  {registrar ? " · " : ""}
+                  {formatDate(person.created_at)}
+                  {originRegion ? ` · ${originRegion.name}` : ""}
+                </p>
+              </div>
+            </div>
           </div>
 
           {archived ? (
-            <p className="t-body-sm mt-3 flex items-center gap-2 italic text-ink-3">
+            <p className="t-body-sm mt-4 flex items-center gap-2 italic text-ink-3">
               <StageRibbon tone={stage.tone} size="chip" className="size-3.5" />
               Set aside{getArchiveReason(person.events) ? ` — ${getArchiveReason(person.events)}` : ""}.
               Tap the stage chip to bring them back.

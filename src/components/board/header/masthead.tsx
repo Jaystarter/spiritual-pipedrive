@@ -33,7 +33,9 @@ import { nextTheme, useTheme, type Theme } from "@/lib/theme-client";
 import type { Stage } from "@/lib/stages";
 import { cn } from "@/lib/utils";
 
+import type { GenderView } from "../lib/derive";
 import { ProfileFramedAvatar } from "../primitives/framed-avatar";
+import { BoardLensControls } from "./board-lens-controls";
 import { SearchCommand } from "./search-command";
 
 const THEME_COPY: Record<Theme, { label: string; icon: typeof Sun }> = {
@@ -50,10 +52,12 @@ type MastheadProps = {
   configured: boolean;
   notificationCount: number;
   boardView: BoardView;
+  genderView: GenderView;
   profileFilter: string;
   regions: BoardRegion[];
   activeRegion: BoardRegion | null;
   onSelectRegion: (regionId: string) => void;
+  onGenderViewChange: (view: GenderView) => void;
   onProfileFilterChange: (filter: string) => void;
   onBoardViewChange: (view: BoardView) => void;
   onSelectProfile: (profileId: string) => void;
@@ -78,10 +82,12 @@ export function Masthead({
   configured,
   notificationCount,
   boardView,
+  genderView,
   profileFilter,
   regions,
   activeRegion,
   onSelectRegion,
+  onGenderViewChange,
   onProfileFilterChange,
   onBoardViewChange,
   onSelectProfile,
@@ -126,7 +132,7 @@ export function Masthead({
   return (
     <header className="sticky top-0 z-(--z-appbar) border-b bg-canvas/85 backdrop-blur-md [border-bottom-color:color-mix(in_oklch,var(--sd-accent)_18%,var(--sd-line))]">
       <div className="relative mx-auto flex h-14 w-full max-w-[1840px] items-center gap-3 px-4 sm:px-6">
-        <div className="flex min-w-0 items-baseline gap-3">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
           {/* On phones the seal stands alone — the full name is too wide to
               center-float beside the region pill and the action cluster. */}
           <span className="wordmark whitespace-nowrap leading-none">
@@ -149,9 +155,8 @@ export function Masthead({
                 type="button"
                 aria-label={`Region: ${activeRegion?.name ?? "none"}. Tap to switch.`}
                 className={cn(
-                  "flex h-8 shrink-0 items-center gap-1.5 self-center rounded-(--sd-r-pill) border px-2.5",
-                  "border-[color-mix(in_oklch,var(--sd-accent)_35%,var(--sd-line))] bg-surface",
-                  "t-label text-ink-2 transition-colors hover:border-[color-mix(in_oklch,var(--sd-accent)_60%,var(--sd-line))] hover:text-ink"
+                  "flex h-8 shrink-0 items-center gap-1.5 self-center px-1",
+                  "t-label text-ink-2 transition-colors hover:text-brand"
                 )}
               >
                 <MapPin className="size-3.5 text-brand" />
@@ -189,6 +194,13 @@ export function Masthead({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <BoardLensControls
+            genderView={genderView}
+            profileFilter={profileFilter}
+            onGenderViewChange={onGenderViewChange}
+            onProfileFilterChange={onProfileFilterChange}
+          />
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">

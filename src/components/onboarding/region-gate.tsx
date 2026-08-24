@@ -69,7 +69,7 @@ export function RegionGate({ regions }: RegionGateProps) {
 
         <p className="t-meta mt-8 text-ink-4">First, your region</p>
         <h1 className="t-display-lg mt-2 text-center">
-          Where are you serving?
+          Which zion are you in?
         </h1>
         <p className="t-body-sm mt-3 max-w-sm text-center text-ink-3">
           {hasRegions
