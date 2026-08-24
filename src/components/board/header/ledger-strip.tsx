@@ -33,12 +33,12 @@ type LedgerStripProps = {
 };
 
 const GENDER_VIEWS: { id: GenderView; label: string }[] = [
-  { id: "male", label: "Men" },
-  { id: "female", label: "Women" },
+  { id: "male", label: "Male" },
+  { id: "female", label: "Female" },
   { id: "all", label: "Everyone" },
 ];
 
-/** The lens: men, women, or everyone — one quiet segmented pill. */
+/** The lens: male, female, or everyone — one quiet segmented pill. */
 function GenderViewSwitch({
   value,
   onChange,
@@ -48,7 +48,7 @@ function GenderViewSwitch({
 }) {
   return (
     <div
-      aria-label="Show men, women, or everyone"
+      aria-label="Show male, female, or everyone"
       className="flex h-8 items-center gap-0.5 self-center rounded-(--sd-r-pill) border border-line bg-surface p-0.5"
       role="group"
     >

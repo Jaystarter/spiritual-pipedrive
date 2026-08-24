@@ -119,7 +119,7 @@ export function ProfileSheet({
     }
 
     if (!newGender) {
-      setError("Choose brother or sister — it sets their default view.");
+      setError("Choose male or female — it sets their default view.");
       return;
     }
 
@@ -400,8 +400,8 @@ export function ProfileSheet({
                     <DropdownMenuSeparator />
                     {(
                       [
-                        { id: "male", label: "Brother" },
-                        { id: "female", label: "Sister" },
+                        { id: "male", label: "Male" },
+                        { id: "female", label: "Female" },
                       ] as const
                     ).map((option) => (
                       <DropdownMenuItem
@@ -482,12 +482,12 @@ export function ProfileSheet({
             <div
               className="flex gap-2"
               role="group"
-              aria-label="Brother or sister?"
+              aria-label="Male or female?"
             >
               {(
                 [
-                  { id: "male", label: "Brother" },
-                  { id: "female", label: "Sister" },
+                  { id: "male", label: "Male" },
+                  { id: "female", label: "Female" },
                 ] as const
               ).map((option) => (
                 <button
