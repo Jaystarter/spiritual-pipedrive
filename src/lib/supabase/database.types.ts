@@ -21,6 +21,7 @@ export type Database = {
           notes: string | null;
           avatar_url: string | null;
           life_status: "student" | "worker" | null;
+          gender: "male" | "female" | null;
           assigned_profile_ids: string[];
           created_by_profile_id: string | null;
           region_id: string | null;
@@ -41,6 +42,7 @@ export type Database = {
           notes?: string | null;
           avatar_url?: string | null;
           life_status?: "student" | "worker" | null;
+          gender?: "male" | "female" | null;
           assigned_profile_ids?: string[];
           created_by_profile_id?: string | null;
           region_id?: string | null;
@@ -61,6 +63,7 @@ export type Database = {
           notes?: string | null;
           avatar_url?: string | null;
           life_status?: "student" | "worker" | null;
+          gender?: "male" | "female" | null;
           assigned_profile_ids?: string[];
           created_by_profile_id?: string | null;
           region_id?: string | null;
@@ -211,6 +214,7 @@ export type Database = {
           avatar_offset_y: number;
           avatar_scale: number;
           region_id: string | null;
+          gender: "male" | "female" | null;
           created_at: string;
         };
         Insert: {
@@ -221,6 +225,7 @@ export type Database = {
           avatar_offset_y?: number;
           avatar_scale?: number;
           region_id?: string | null;
+          gender?: "male" | "female" | null;
           created_at?: string;
         };
         Update: {
@@ -231,6 +236,7 @@ export type Database = {
           avatar_offset_y?: number;
           avatar_scale?: number;
           region_id?: string | null;
+          gender?: "male" | "female" | null;
           created_at?: string;
         };
         Relationships: [

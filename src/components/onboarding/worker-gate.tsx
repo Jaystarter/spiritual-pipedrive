@@ -3,7 +3,11 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, Loader2, Plus } from "lucide-react";
 
-import { createProfile, type BoardProfile } from "@/app/actions";
+import {
+  createProfile,
+  type BoardProfile,
+  type PersonGender,
+} from "@/app/actions";
 import { ProfileFramedAvatar } from "@/components/board/primitives/framed-avatar";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -36,6 +40,7 @@ export function WorkerGate({
   onBack,
 }: WorkerGateProps) {
   const [name, setName] = useState("");
+  const [gender, setGender] = useState<PersonGender | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const hasWorkers = profiles.length > 0;
@@ -43,13 +48,13 @@ export function WorkerGate({
   function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (isPending || !name.trim()) {
+    if (isPending || !name.trim() || !gender) {
       return;
     }
 
     setError(null);
     startTransition(async () => {
-      const result = await createProfile(name, regionId ?? undefined);
+      const result = await createProfile(name, regionId ?? undefined, gender);
 
       if (!result.ok || !result.data) {
         setError(
@@ -124,34 +129,65 @@ export function WorkerGate({
           </div>
         ) : null}
 
-        <form onSubmit={handleCreate} className="mt-6 flex w-full gap-2">
-          <Input
-            value={name}
-            disabled={isPending}
-            maxLength={30}
-            placeholder="Your name…"
-            aria-label="Your name"
-            onChange={(event) => {
-              setName(event.target.value);
-              setError(null);
-            }}
-            className="h-11 flex-1"
-          />
-          <button
-            type="submit"
-            disabled={isPending || !name.trim()}
-            className={cn(
-              "btn-illuminated t-label flex h-11 shrink-0 items-center gap-2 rounded-(--sd-r-md) px-4",
-              "transition-opacity disabled:opacity-50"
-            )}
-          >
-            {isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Plus className="size-4" />
-            )}
-            Open the ledger
-          </button>
+        <form onSubmit={handleCreate} className="mt-6 flex w-full flex-col gap-2.5">
+          {/* Brother or sister — sets the board's default men/women view. */}
+          <div className="flex gap-2" role="group" aria-label="Are you a brother or a sister?">
+            {(
+              [
+                { id: "male", label: "Brother" },
+                { id: "female", label: "Sister" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                disabled={isPending}
+                aria-pressed={gender === option.id}
+                onClick={() => {
+                  setGender(option.id);
+                  setError(null);
+                }}
+                className={cn(
+                  "t-label h-10 flex-1 rounded-(--sd-r-md) border transition-colors",
+                  gender === option.id
+                    ? "border-brand bg-surface text-brand"
+                    : "border-line bg-surface text-ink-3 hover:border-line-strong hover:text-ink"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <Input
+              value={name}
+              disabled={isPending}
+              maxLength={30}
+              placeholder="Your name…"
+              aria-label="Your name"
+              onChange={(event) => {
+                setName(event.target.value);
+                setError(null);
+              }}
+              className="h-11 flex-1"
+            />
+            <button
+              type="submit"
+              disabled={isPending || !name.trim() || !gender}
+              className={cn(
+                "btn-illuminated t-label flex h-11 shrink-0 items-center gap-2 rounded-(--sd-r-md) px-4",
+                "transition-opacity disabled:opacity-50"
+              )}
+            >
+              {isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+              Open the ledger
+            </button>
+          </div>
         </form>
 
         {error ? (

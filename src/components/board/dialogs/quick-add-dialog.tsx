@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 
-import { createPerson } from "@/app/actions";
+import { createPerson, type PersonGender } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { StageId } from "@/lib/stages";
+import { cn } from "@/lib/utils";
 
 import { useBoardActions, useBoardData } from "../board-context";
 import { displayStageCopy } from "../lib/derive";
@@ -44,6 +45,11 @@ export function QuickAddDialog({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  // Preset to the worker's own gender — men mostly teach men, women women —
+  // but one tap flips it, and tapping the lit choice clears it to unknown.
+  const [gender, setGender] = useState<PersonGender | null>(
+    activeProfile?.gender ?? null
+  );
   const [stage, setStage] = useState<StageId>(visibleStages[0]?.id ?? "hunting");
   const [assignedProfileIds, setAssignedProfileIds] = useState<string[]>(() =>
     activeProfile ? [activeProfile.id] : []
@@ -60,6 +66,7 @@ export function QuickAddDialog({
       setName("");
       setPhone("");
       setNotes("");
+      setGender(activeProfile?.gender ?? null);
       setStage(visibleStages[0]?.id ?? "hunting");
       setAssignedProfileIds(activeProfile ? [activeProfile.id] : []);
     });
@@ -83,6 +90,7 @@ export function QuickAddDialog({
         name,
         phone,
         notes,
+        gender,
         stage,
         assignedProfileIds,
         actorProfileId: activeProfile.id,
@@ -141,6 +149,32 @@ export function QuickAddDialog({
             placeholder="Full name…"
             value={name}
           />
+
+          <div className="flex gap-2" role="group" aria-label="Man or woman?">
+            {(
+              [
+                { id: "male", label: "Man" },
+                { id: "female", label: "Woman" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={gender === option.id}
+                onClick={() =>
+                  setGender((current) => (current === option.id ? null : option.id))
+                }
+                className={cn(
+                  "t-label h-9 flex-1 rounded-(--sd-r-sm) border transition-colors",
+                  gender === option.id
+                    ? "border-brand bg-surface text-brand"
+                    : "border-line bg-surface text-ink-3 hover:border-line-strong hover:text-ink"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
 
           <Input
             aria-label="Phone number"

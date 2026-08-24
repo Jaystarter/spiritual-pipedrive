@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+import type { GenderView } from "../lib/derive";
 import {
   getStreak,
   getStudiesThisWeek,
@@ -25,9 +26,51 @@ type LedgerStripProps = {
   people: BoardPerson[];
   activeProfile: BoardProfile | null;
   attentionCount: number;
+  genderView: GenderView;
+  onGenderViewChange: (view: GenderView) => void;
   onOpenGraphs: () => void;
   onOpenNotifications: () => void;
 };
+
+const GENDER_VIEWS: { id: GenderView; label: string }[] = [
+  { id: "male", label: "Men" },
+  { id: "female", label: "Women" },
+  { id: "all", label: "Everyone" },
+];
+
+/** The lens: men, women, or everyone — one quiet segmented pill. */
+function GenderViewSwitch({
+  value,
+  onChange,
+}: {
+  value: GenderView;
+  onChange: (view: GenderView) => void;
+}) {
+  return (
+    <div
+      aria-label="Show men, women, or everyone"
+      className="flex h-8 items-center gap-0.5 self-center rounded-(--sd-r-pill) border border-line bg-surface p-0.5"
+      role="group"
+    >
+      {GENDER_VIEWS.map((option) => (
+        <button
+          key={option.id}
+          aria-pressed={value === option.id}
+          className={cn(
+            "t-label rounded-(--sd-r-pill) px-2.5 py-1 transition-colors",
+            value === option.id
+              ? "bg-surface-sunken text-brand"
+              : "text-ink-3 hover:text-ink"
+          )}
+          onClick={() => onChange(option.id)}
+          type="button"
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** One vital sign: a figure breathing over a single quiet word. */
 function Vital({
@@ -217,6 +260,8 @@ export function LedgerStrip({
   people,
   activeProfile,
   attentionCount,
+  genderView,
+  onGenderViewChange,
   onOpenGraphs,
   onOpenNotifications,
 }: LedgerStripProps) {
@@ -226,7 +271,7 @@ export function LedgerStrip({
   const baptizedThisMonth = activeProfile?.baptized_this_month ?? 0;
 
   return (
-    <section className="flex items-end justify-between gap-x-2 sm:justify-start sm:gap-x-12">
+    <section className="flex flex-wrap items-end justify-between gap-x-2 gap-y-4 sm:justify-start sm:gap-x-12">
       <Vital
         label="People"
         hint={
@@ -265,9 +310,14 @@ export function LedgerStrip({
         </>
       ) : null}
 
+      {/* The lens takes the right edge; on phones it gets its own line. */}
+      <div className="order-last flex w-full justify-center sm:order-none sm:ml-auto sm:w-auto">
+        <GenderViewSwitch value={genderView} onChange={onGenderViewChange} />
+      </div>
+
       {/* On phones the Almanac lives in the bottom bar already. */}
       <Button
-        className="t-meta hidden gap-1 self-end text-ink-3 underline-offset-4 hover:text-brand hover:underline sm:ml-auto sm:flex"
+        className="t-meta hidden gap-1 self-end text-ink-3 underline-offset-4 hover:text-brand hover:underline sm:flex"
         onClick={onOpenGraphs}
         variant="ghost"
       >

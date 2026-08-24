@@ -54,6 +54,8 @@ export function BibleStudyBoard(props: BoardProps) {
     setNotice,
     profileFilter,
     setProfileFilter,
+    genderView,
+    setGenderView,
     profileSheetOpen,
     setProfileSheetOpen,
     quickAddOpen,
@@ -229,6 +231,8 @@ export function BibleStudyBoard(props: BoardProps) {
             people={people}
             activeProfile={activeProfile}
             attentionCount={activeProfileFollowUpItems.length}
+            genderView={genderView}
+            onGenderViewChange={setGenderView}
             onOpenGraphs={() => setGraphsOpen(true)}
             onOpenNotifications={() => setAttentionOpen(true)}
           />
