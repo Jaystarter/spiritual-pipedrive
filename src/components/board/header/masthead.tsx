@@ -93,6 +93,11 @@ export function Masthead({
   onOpenNotifications,
 }: MastheadProps) {
   const [searchOpen, setSearchOpen] = useState(false);
+  // "Working as" offers only the active region's own workers — the full list
+  // keeps serving search and filters, where foreign workers are data.
+  const identityProfiles = activeRegion
+    ? profiles.filter((profile) => profile.region_id === activeRegion.id)
+    : profiles;
   const [theme, setTheme] = useTheme();
   const themeCopy = THEME_COPY[theme] ?? THEME_COPY.light;
   const ThemeIcon = themeCopy.icon;
@@ -249,7 +254,7 @@ export function Masthead({
               <DropdownMenuLabel className="t-meta-sm text-ink-3">
                 Working as
               </DropdownMenuLabel>
-              {profiles.map((profile) => (
+              {identityProfiles.map((profile) => (
                 <DropdownMenuItem
                   key={profile.id}
                   className="gap-2.5"
