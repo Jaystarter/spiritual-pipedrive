@@ -232,7 +232,9 @@ export function BibleStudyBoard(props: BoardProps) {
             activeProfile={activeProfile}
             attentionCount={activeProfileFollowUpItems.length}
             genderView={genderView}
+            profileFilter={profileFilter}
             onGenderViewChange={setGenderView}
+            onProfileFilterChange={setProfileFilter}
             onOpenGraphs={() => setGraphsOpen(true)}
             onOpenNotifications={() => setAttentionOpen(true)}
           />
