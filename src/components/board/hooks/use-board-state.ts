@@ -114,10 +114,17 @@ export function useBoardState({
     return profileFilteredPeople.filter((person) => matchesContactName(person, query));
   }, [activeProfileId, people, profileFilter, search]);
 
-  const activeProfile =
-    profiles.find((profile) => profile.id === activeProfileId) ?? null;
   const activeRegion =
     initialRegions.find((region) => region.id === activeRegionId) ?? null;
+  // Identity is a local matter: even on the hub, "who you are" must be one of
+  // the active region's own workers. A profile carried over from another
+  // region renders as data but never as identity, so the picker re-fires.
+  const activeProfile =
+    profiles.find(
+      (profile) =>
+        profile.id === activeProfileId &&
+        (!activeRegion || profile.region_id === activeRegion.id)
+    ) ?? null;
   const visibleStages = useMemo(() => getVisibleStages(stages), [stages]);
   const visibleStageIds = useMemo(
     () => new Set(visibleStages.map((stage) => stage.id)),

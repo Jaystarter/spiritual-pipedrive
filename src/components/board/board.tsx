@@ -121,6 +121,13 @@ export function BibleStudyBoard(props: BoardProps) {
         )
       : null;
 
+  // Identity is a local matter: even the hub only offers its own region's
+  // workers as "who are you" options. The unfiltered list stays in context so
+  // foreign workers still render on their contacts' cards and history.
+  const regionProfiles = activeRegion
+    ? profiles.filter((profile) => profile.region_id === activeRegion.id)
+    : profiles;
+
   // Onboarding step two, centered like step one: pick yourself or add your
   // name. The ProfileSheet is no longer forced open — it reads as a blocked
   // screen, not a welcome — and now only opens from "Manage profiles".
@@ -129,7 +136,7 @@ export function BibleStudyBoard(props: BoardProps) {
       <WorkerGate
         regionName={activeRegion?.name ?? ""}
         regionId={activeRegion?.id ?? null}
-        profiles={profiles}
+        profiles={regionProfiles}
         regionNameById={hubRegionNameById}
         onSelect={handleSelectProfile}
         onProfilesChange={setProfiles}
@@ -267,7 +274,7 @@ export function BibleStudyBoard(props: BoardProps) {
         <QuickAddDialog open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
         <ProfileSheet
           open={profileSheetOpen}
-          profiles={profiles}
+          profiles={regionProfiles}
           activeProfileId={activeProfileId}
           regionId={activeRegion?.id ?? null}
           regionNameById={hubRegionNameById}
