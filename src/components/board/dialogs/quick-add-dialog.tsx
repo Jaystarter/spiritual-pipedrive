@@ -150,11 +150,11 @@ export function QuickAddDialog({
             value={name}
           />
 
-          <div className="flex gap-2" role="group" aria-label="Man or woman?">
+          <div className="flex gap-2" role="group" aria-label="Male or female?">
             {(
               [
-                { id: "male", label: "Man" },
-                { id: "female", label: "Woman" },
+                { id: "male", label: "Male" },
+                { id: "female", label: "Female" },
               ] as const
             ).map((option) => (
               <button

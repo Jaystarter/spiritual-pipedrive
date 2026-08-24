@@ -589,10 +589,10 @@ export function PersonDetailSheet({ person }: { person: BoardPerson | null }) {
                           variant="outline"
                         >
                           <ToggleGroupItem className="t-label gap-1.5" value="male">
-                            Man
+                            Male
                           </ToggleGroupItem>
                           <ToggleGroupItem className="t-label gap-1.5" value="female">
-                            Woman
+                            Female
                           </ToggleGroupItem>
                         </ToggleGroup>
                         <Textarea

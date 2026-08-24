@@ -130,12 +130,12 @@ export function WorkerGate({
         ) : null}
 
         <form onSubmit={handleCreate} className="mt-6 flex w-full flex-col gap-2.5">
-          {/* Brother or sister — sets the board's default men/women view. */}
-          <div className="flex gap-2" role="group" aria-label="Are you a brother or a sister?">
+          {/* Male or female — sets the board's default view. */}
+          <div className="flex gap-2" role="group" aria-label="Are you male or female?">
             {(
               [
-                { id: "male", label: "Brother" },
-                { id: "female", label: "Sister" },
+                { id: "male", label: "Male" },
+                { id: "female", label: "Female" },
               ] as const
             ).map((option) => (
               <button

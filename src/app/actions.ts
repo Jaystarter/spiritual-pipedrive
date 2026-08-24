@@ -1065,7 +1065,7 @@ export async function updateProfileGender(
   const cleanedGender = cleanGender(gender);
 
   if (cleanedGender === undefined) {
-    return { ok: false, error: "Choose man, woman, or clear it." };
+    return { ok: false, error: "Choose male, female, or clear it." };
   }
 
   const { data, error } = await supabase
@@ -1582,7 +1582,7 @@ export async function updatePerson(
     const gender = cleanGender(input.gender);
 
     if (gender === undefined) {
-      return { ok: false, error: "Choose man, woman, or clear it." };
+      return { ok: false, error: "Choose male, female, or clear it." };
     }
 
     patch.gender = gender;
