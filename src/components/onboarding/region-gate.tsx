@@ -13,10 +13,11 @@ type RegionGateProps = {
 };
 
 /**
- * First screen of onboarding: choose the region you're serving in (or found a
- * new one). The choice lands in the sd-region cookie, and a full reload brings
- * the board back scoped to that region — where the required profile picker
- * ("who are you") takes over as step two.
+ * First screen of onboarding: choose the region you're serving in. The choice
+ * lands in the sd-region cookie, and a full reload brings the board back
+ * scoped to that region — where the required profile picker ("who are you")
+ * takes over as step two. Founding a region is locked: the form only appears
+ * on an empty install (no regions yet), and the server enforces the same rule.
  */
 export function RegionGate({ regions }: RegionGateProps) {
   const [name, setName] = useState("");
@@ -103,43 +104,39 @@ export function RegionGate({ regions }: RegionGateProps) {
           </div>
         ) : null}
 
-        {hasRegions ? (
-          <div className="mt-6 flex w-full items-center gap-3">
-            <span aria-hidden className="h-px flex-1 bg-line" />
-            <span className="t-meta-sm text-ink-4">or start a new one</span>
-            <span aria-hidden className="h-px flex-1 bg-line" />
-          </div>
+        {/* Founding is bootstrap-only: once regions exist, new ones are
+            opened by an administrator, not from this screen. */}
+        {!hasRegions ? (
+          <form onSubmit={handleCreate} className="mt-6 flex w-full gap-2">
+            <Input
+              value={name}
+              disabled={busy}
+              maxLength={40}
+              placeholder="Name your region…"
+              aria-label="Region name"
+              onChange={(event) => {
+                setName(event.target.value);
+                setError(null);
+              }}
+              className="h-11 flex-1"
+            />
+            <button
+              type="submit"
+              disabled={busy || !name.trim()}
+              className={cn(
+                "btn-illuminated flex h-11 shrink-0 items-center gap-2 rounded-(--sd-r-md) px-4",
+                "t-label transition-opacity disabled:opacity-50"
+              )}
+            >
+              {isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+              Open board
+            </button>
+          </form>
         ) : null}
-
-        <form onSubmit={handleCreate} className="mt-6 flex w-full gap-2">
-          <Input
-            value={name}
-            disabled={busy}
-            maxLength={40}
-            placeholder="Name your region…"
-            aria-label="Region name"
-            onChange={(event) => {
-              setName(event.target.value);
-              setError(null);
-            }}
-            className="h-11 flex-1"
-          />
-          <button
-            type="submit"
-            disabled={busy || !name.trim()}
-            className={cn(
-              "btn-illuminated flex h-11 shrink-0 items-center gap-2 rounded-(--sd-r-md) px-4",
-              "t-label transition-opacity disabled:opacity-50"
-            )}
-          >
-            {isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Plus className="size-4" />
-            )}
-            Open board
-          </button>
-        </form>
 
         {error ? (
           <p role="alert" className="t-body-sm mt-3 w-full text-signal-urgent">
